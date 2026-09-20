@@ -33,3 +33,40 @@
       g: 0.92
     - unit: tbsp
       g: 13.8
+
+- id: avocado-oil
+  name: 100% Pure Avocado Oil
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 365
+
+  package:
+    container: bottle
+    unit: ml
+    amount: 500
+    container_weight_g: 458
+
+  reference:
+    brand: Compliments
+    product: Compliments Avocado Oil 500 ml
+    price: 11.99
+
+  macros_per_100g:
+    calories_kcal: 884.0
+    protein_g: 0.0
+    fat_g: 100.0
+    carbs_g: 0.0
+    fiber_g: 0.0
+    saturated_fat_g: 16.4
+    sugars_g: 0.0
+    sodium_mg: 0.0
+    potassium_mg: 0.0
+
+  conversions:
+    - unit: ml
+      g: 0.915
+    - unit: tsp
+      g: 4.575
+    - unit: tbsp
+      g: 13.725
+

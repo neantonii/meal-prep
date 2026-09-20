@@ -127,3 +127,68 @@
   conversions:
     - unit: tsp
       g: 2.3
+
+- id: onion-powder
+  name: Onion Powder
+  aisle: spices
+  storage: ambient
+  shelf_life_days: 730
+
+  package:
+    container: bag
+    unit: g
+    amount: 155
+    container_weight_g: 155
+
+  reference:
+    brand: Compliments
+    product: Compliments Spice Onion Powder 155 g
+    price: 5.29
+
+  macros_per_100g:
+    calories_kcal: 341.0
+    protein_g: 10.4
+    fat_g: 1.0
+    carbs_g: 79.1
+    fiber_g: 15.2
+    saturated_fat_g: 0.2
+    sugars_g: 35.3
+    sodium_mg: 73.0
+    potassium_mg: 985.0
+
+  conversions:
+    - unit: tsp
+      g: 2.4
+
+- id: dried-dill
+  name: Dried Dill Weed
+  aisle: spices
+  storage: ambient
+  shelf_life_days: 730
+
+  package:
+    container: bag
+    unit: g
+    amount: 55
+    container_weight_g: 55
+
+  reference:
+    brand: Compliments
+    product: Compliments Spice Dill Weed 55 g
+    price: 3.79
+
+  macros_per_100g:
+    calories_kcal: 253.0
+    protein_g: 19.9
+    fat_g: 4.4
+    carbs_g: 55.8
+    fiber_g: 11.9
+    saturated_fat_g: 0.2
+    sugars_g: 0.0
+    sodium_mg: 208.0
+    potassium_mg: 3308.0
+
+  conversions:
+    - unit: tsp
+      g: 1.0
+

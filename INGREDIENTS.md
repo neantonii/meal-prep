@@ -4,16 +4,19 @@ This guide defines the standards for all ingredient entries across the 7 aisle f
 
 ---
 
-## ⚠️ Critical Rule: No Guessed Data & Mandatory Cross-Validation
+## ⚠️ Critical Rule: Zero Silent Additions & Mandatory User Opt-In
 
-1. **NEVER invent, estimate, or assume ingredient data** (macros, prices, package weights, or product names).
-2. **Always prompt the user to provide the exact reference details** from their real purchase:
+1. **NEVER silently add, invent, estimate, or assume ingredient data** (macros, prices, package weights, or product names).
+2. **Every ingredient entry requires explicit user opt-in / reference:**
+   * Minor spices, seasonings, produce, and cooking fats are **NOT exempt**. Never assume a brand (e.g. Club House, Compliments) or package price to self-unblock recipe compilation.
+   * If an ingredient does not exist in `data/ingredients/`, the agent must stop and ask the user for purchase details or verify if it already exists in `Meal Prep Recipe Book.md`.
+3. **Always prompt the user to provide the exact reference details** from their real purchase:
    * Benchmark product (store/brand, exact product name, price in CAD).
    * Package size and mass (e.g. 950 g pack, 454 g bag).
    * Label nutrition facts (calories, protein, fat, saturated fat, carbs, fiber, sugars, sodium_mg, potassium_mg).
    * Unit-to-gram conversions (e.g. 1 item = X grams, 1 cup = X grams).
 
-3. **Mandatory Cross-Registry Verification (USDA FoodData Central):**
+4. **Mandatory Cross-Registry Verification (USDA FoodData Central):**
    * **Always cross-check supplied values against the USDA FoodData Central registry** (Foundation / SR Legacy databases).
    * **Be suspicious of missing or zero values:**
      * Validate whether a zero makes biological sense (e.g. 0 g carbs/fiber/sugars is natural for raw chicken breast, but 0 mg potassium or sodium is suspicious).

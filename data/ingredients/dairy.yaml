@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=../../schemas/ingredients.schema.json
+
+- id: unsalted-butter
+  name: Unsalted Butter
+  aisle: dairy
+  storage: refrigerated
+  shelf_life_days: 90
+
+  package:
+    container: pack
+    unit: g
+    amount: 454
+    container_weight_g: 454
+
+  reference:
+    brand: Compliments
+    product: Compliments Butter Unsalted 454 g
+    price: 6.69
+
+  macros_per_100g:
+    calories_kcal: 700.0
+    protein_g: 1.0
+    fat_g: 80.0
+    carbs_g: 0.0
+    fiber_g: 0.0
+    saturated_fat_g: 50.0
+    sugars_g: 0.0
+    sodium_mg: 0.0
+    potassium_mg: 24.0
+
+  conversions:
+    - unit: tbsp
+      g: 14.2
+    - unit: tsp
+      g: 5.0
+    - unit: g
+      g: 1.0

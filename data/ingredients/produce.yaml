@@ -1,0 +1,74 @@
+# yaml-language-server: $schema=../../schemas/ingredients.schema.json
+
+- id: fresh-garlic
+  name: Fresh Garlic
+  aisle: produce
+  storage: ambient
+  shelf_life_days: 30
+
+  package:
+    container: pack
+    unit: head
+    amount: 3
+    container_weight_g: 150
+
+  reference:
+    brand: Voilà by Sobeys
+    product: Fresh Garlic 3-Pack
+    price: 1.99
+
+  macros_per_100g:
+    calories_kcal: 149.0
+    protein_g: 6.4
+    fat_g: 0.5
+    carbs_g: 33.1
+    fiber_g: 2.1
+    saturated_fat_g: 0.1
+    sugars_g: 1.0
+    sodium_mg: 17.0
+    potassium_mg: 401.0
+
+  conversions:
+    - unit: clove
+      g: 3.0
+    - unit: head
+      g: 50.0
+    - unit: g
+      g: 1.0
+
+- id: fresh-lemon
+  name: Fresh Lemon
+  aisle: produce
+  storage: ambient
+  shelf_life_days: 14
+
+  package:
+    container: pack
+    unit: item
+    amount: 1
+    container_weight_g: 110
+
+  reference:
+    brand: Voilà by Sobeys
+    product: Lemon Large 1 Count
+    price: 1.49
+
+  macros_per_100g:
+    calories_kcal: 27.3
+    protein_g: 1.8
+    fat_g: 0.4
+    carbs_g: 9.1
+    fiber_g: 3.6
+    saturated_fat_g: 0.0
+    sugars_g: 1.8
+    sodium_mg: 2.0
+    potassium_mg: 136.0
+
+  conversions:
+    - unit: item
+      g: 50.0
+    - unit: piece
+      g: 50.0
+    - unit: g
+      g: 1.0
+

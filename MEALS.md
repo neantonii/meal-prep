@@ -124,9 +124,13 @@ The recipe file never stores redundant or computed values. When a recipe is load
 When adding a new recipe (human or AI agent), follow this strict 4-step workflow:
 
 ### Step 1: Pre-requisite Ingredient Audit
-1. Inspect the original recipe and list all ingredients needed.
+1. Inspect the original recipe and list ALL ingredients needed (proteins, produce, dairy, oils, and minor spices/seasonings).
 2. Cross-reference each ingredient against `data/ingredients/`.
-3. **If any ingredient is missing:** Stop immediately! Prompt the user to supply retail packaging and label info, run USDA FoodData Central validation, and create the ingredient entry in `data/ingredients/<aisle>.yaml` following `INGREDIENTS.md`.
+3. **If ANY ingredient is missing: STOP IMMEDIATELY.**
+   * Do NOT invent, assume, or silently add placeholder ingredients to unblock recipe compilation or pass tests.
+   * Every ingredient must be explicitly confirmed/opted in by the user with real purchase details (brand, package size, price).
+   * Run USDA FoodData Central cross-validation behind the scenes (filling in omitted micronutrients only after the reference product is confirmed).
+   * Add the ingredient entry to `data/ingredients/<aisle>.yaml` only after user confirmation.
 
 ### Step 2: Equipment Audit
 1. Ensure all kitchen tools mentioned exist in `data/equipment.yaml`.

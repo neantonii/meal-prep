@@ -31,3 +31,69 @@
   conversions:
     - unit: piece
       g: 237.5
+
+- id: extra-lean-ground-turkey
+  name: Extra Lean Ground Turkey
+  aisle: meat
+  storage: refrigerated
+  shelf_life_days: 4
+
+  package:
+    container: pack
+    unit: g
+    amount: 450
+    container_weight_g: 450
+
+  reference:
+    brand: Compliments
+    product: Compliments Minced Turkey Extra Lean 450 g
+    price: 7.49
+
+  macros_per_100g:
+    calories_kcal: 140.0
+    protein_g: 19.0
+    fat_g: 7.0
+    carbs_g: 0.0
+    fiber_g: 0.0
+    saturated_fat_g: 2.0
+    sugars_g: 0.0
+    sodium_mg: 70.0
+    potassium_mg: 250.0
+
+  conversions:
+    - unit: pack
+      g: 450.0
+
+
+- id: extra-lean-ground-beef
+  name: Extra Lean Ground Beef
+  aisle: meat
+  storage: refrigerated
+  shelf_life_days: 4
+
+  package:
+    container: pack
+    unit: g
+    amount: 454
+    container_weight_g: 454
+
+  reference:
+    brand: Voilà by Sobeys
+    product: Extra Lean Ground Beef 454 g
+    price: 10.99
+
+  macros_per_100g:
+    calories_kcal: 176.0
+    protein_g: 20.0
+    fat_g: 10.0
+    carbs_g: 0.0
+    fiber_g: 0.0
+    saturated_fat_g: 4.1
+    sugars_g: 0.0
+    sodium_mg: 66.0
+    potassium_mg: 340.0
+
+  conversions:
+    - unit: pack
+      g: 454.0
+

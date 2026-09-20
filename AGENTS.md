@@ -31,15 +31,16 @@ When the user asks to add or brainstorm a new meal, execute the following 4-step
 ### Phase 2: Ingredient Reconciliation
 * Audit the approved ingredients against the catalog in `data/ingredients/`:
   * Check each ingredient to see if a canonical staple already exists.
-* **CRITICAL DATA INTEGRITY & CROSS-VALIDATION RULE:**
-  * **NEVER invent, guess, or estimate ingredient data** (macros, packaging weights, or prices).
-  * **Prompt the user explicitly** to supply the missing information from their real purchases (product name, price, package mass, label nutrition facts).
-  * **Always cross-validate against USDA FoodData Central:**
-    * Cross-check the user-supplied label facts against the USDA benchmark.
-    * Check if missing or zero values make biological sense (e.g. 0g carbs/sugars is natural for raw chicken breast, but 0mg potassium or sodium is suspicious).
-    * **No Spamming Rule:** If all fields align with USDA, simply state that validation passed. Only alert the user and display numbers if a field is suspicious, missing, or deviates by >15%.
+* **CRITICAL RULE: NO SILENT INGREDIENT CREATION (ZERO GUESSWORK)**
+  * **The agent must NEVER silently create, assume, or add ingredients to `data/ingredients/` without user opt-in.** This applies equally to primary proteins, cooking fats, produce, sauces, and small spice staples (e.g. onion powder, dried herbs).
+  * **Strict Stop on Missing Items:** If any ingredient is missing from `data/ingredients/`, the agent must halt and ask the user for their real purchase details (or check if explicitly documented in `Meal Prep Recipe Book.md`). Never create an assumed product/price entry just to make the `.cook` parser pass or satisfy a test.
+  * **User Opt-In Required:** An ingredient may only be added to `data/ingredients/` after the user has explicitly provided or approved the specific reference item (store, brand, package size, price).
+  * **Behind-the-Scenes USDA Cross-Validation (Nutrient Verification Only):**
+    * Once the user provides the product reference, cross-check its nutritional profile against USDA FoodData Central silently behind the scenes.
+    * Use USDA data to fill in omitted label micronutrients (potassium, sodium, saturated fat) when the user directs to use USDA or when labels omit them.
+    * Only alert the user if a label value deviates significantly (>15%) from USDA biological norms.
 * Follow the authoring guidelines in `INGREDIENTS.md`.
-* Present the proposed YAML snippet and validation report to the user for review before writing it to `data/ingredients/<aisle>.yaml`.
+* Present a concise summary of the added/updated ingredient to the user.
 
 ### Phase 3: Recipe File Authoring
 * Follow the authoring guidelines in `MEALS.md`.
@@ -73,4 +74,6 @@ When the user asks to add or brainstorm a new meal, execute the following 4-step
 
 1. **One Step at a Time:** Never rush ahead to generate multiple recipes or bulk edits without intermediate user review.
 2. **Deterministic & Auditable:** All calculations (macros per serving, batch costs) must be deterministically derivable from `data/ingredients/` and `data/units.yaml`.
-3. **Respect Established Guidelines:** Consult `INGREDIENTS.md` whenever authoring or modifying ingredient staples.
+3. **Commit & Amend Policy:** When importing meals from the recipe book, keep changes in the working directory while drafting and refining. Amend/commit ONLY AFTER the user gives explicit final approval on the imported meal.
+4. **Respect Established Guidelines:** Consult `INGREDIENTS.md` whenever authoring or modifying ingredient staples.
+5. **Zero Silent Additions:** The agent is strictly forbidden from adding unconfirmed ingredients, equipment, or recipes behind the scenes. Missing ingredients are a mandatory hard stop to request the user's reference product or confirm existing book data before authoring recipes.
