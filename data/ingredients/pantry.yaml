@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../../schemas/ingredients.schema.json
+
+- id: olive-oil
+  name: Extra Virgin Olive Oil
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 365
+
+  package:
+    container: bottle
+    unit: ml
+    amount: 1000
+    container_weight_g: 920
+
+  reference:
+    brand: Longo's Essentials
+    product: Extra Virgin Olive Oil 1L
+    price: 11.99
+
+  macros_per_100g:
+    calories_kcal: 884.0
+    protein_g: 0.0
+    fat_g: 100.0
+    carbs_g: 0.0
+    fiber_g: 0.0
+    saturated_fat_g: 13.8
+    sugars_g: 0.0
+    sodium_mg: 2.0
+    potassium_mg: 1.0
+
+  conversions:
+    - unit: ml
+      g: 0.92
+    - unit: tbsp
+      g: 13.8

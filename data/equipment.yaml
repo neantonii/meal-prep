@@ -1,0 +1,81 @@
+# data/equipment.yaml
+# Canonical Kitchen Equipment & Cookware Aliases
+
+equipment:
+  - id: air_fryer
+    name: Air Fryer
+    aliases:
+      - air fryer
+      - air-fryer
+      - airfryer
+
+  - id: rice_cooker
+    name: Rice Cooker
+    aliases:
+      - rice cooker
+      - rice-cooker
+
+  - id: skillet
+    name: Large Non-Stick Skillet
+    aliases:
+      - skillet
+      - pan
+      - frying pan
+      - non-stick pan
+      - nonstick pan
+      - large skillet
+      - large non-stick skillet
+
+  - id: sheet_pan
+    name: Sheet Pan
+    aliases:
+      - sheet pan
+      - baking sheet
+      - baking tray
+      - cookie sheet
+
+  - id: large_pot
+    name: Large Pot
+    aliases:
+      - large pot
+      - stock pot
+      - soup pot
+      - big pot
+      - pot
+
+  - id: saucepan
+    name: Medium Saucepan
+    aliases:
+      - saucepan
+      - medium saucepan
+      - small pot
+      - medium pot
+
+  - id: oven
+    name: Oven
+    aliases:
+      - oven
+      - broiler
+
+  - id: blender
+    name: Blender / Food Processor
+    aliases:
+      - blender
+      - food processor
+      - immersion blender
+      - bullet blender
+
+  - id: meat_thermometer
+    name: Meat Thermometer
+    aliases:
+      - meat thermometer
+      - digital thermometer
+      - food thermometer
+      - instant read thermometer
+
+  - id: wire_rack
+    name: Wire Rack
+    aliases:
+      - wire rack
+      - cooling rack
+      - roasting rack

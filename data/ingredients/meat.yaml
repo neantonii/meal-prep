@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../schemas/ingredients.schema.json
+
+- id: boneless-chicken-breast
+  name: Boneless, Skinless Chicken Breast
+  aisle: meat
+  storage: refrigerated
+  shelf_life_days: 3
+
+  package:
+    container: pack
+    unit: piece
+    amount: 4
+    container_weight_g: 950
+
+  reference:
+    brand: Compliments
+    product: Compliments Chicken Breasts Boneless Skinless Value Pack
+    price: 22.60
+
+  macros_per_100g:
+    calories_kcal: 110.0
+    protein_g: 23.0
+    fat_g: 2.5
+    carbs_g: 0.0
+    fiber_g: 0.0
+    saturated_fat_g: 0.5
+    sugars_g: 0.0
+    sodium_mg: 45.0
+    potassium_mg: 350.0
+
+  conversions:
+    - unit: piece
+      g: 237.5

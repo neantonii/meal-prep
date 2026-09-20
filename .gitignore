@@ -51,3 +51,9 @@ htmlcov/
 # Operating System
 .DS_Store
 Thumbs.db
+
+# Rendered Recipe Cards
+recipe_cards/
+recipes/**/*.html
+recipes/*.html
+

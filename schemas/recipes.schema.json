@@ -1,0 +1,193 @@
+{
+  "$defs": {
+    "RecipeCategory": {
+      "enum": [
+        "modular_protein",
+        "modular_carb",
+        "modular_cooked_veg",
+        "fresh_salad_veg",
+        "breakfast"
+      ],
+      "title": "RecipeCategory",
+      "type": "string"
+    },
+    "RecipeCookwareRef": {
+      "properties": {
+        "id": {
+          "description": "Equipment identifier or canonical name",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "RecipeCookwareRef",
+      "type": "object"
+    },
+    "RecipeIngredientRef": {
+      "properties": {
+        "id": {
+          "description": "Ingredient identifier matching catalog id",
+          "title": "Id",
+          "type": "string"
+        },
+        "quantity": {
+          "description": "Quantity used in recipe",
+          "exclusiveMinimum": 0,
+          "title": "Quantity",
+          "type": "number"
+        },
+        "unit": {
+          "description": "Measurement unit (must convert to grams)",
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "quantity",
+        "unit"
+      ],
+      "title": "RecipeIngredientRef",
+      "type": "object"
+    },
+    "RecipeStorage": {
+      "properties": {
+        "fridge_days": {
+          "description": "Maximum safe refrigerated shelf life in days",
+          "exclusiveMinimum": 0,
+          "title": "Fridge Days",
+          "type": "integer"
+        },
+        "freezer_friendly": {
+          "description": "Whether the cooked batch can be frozen",
+          "title": "Freezer Friendly",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "fridge_days",
+        "freezer_friendly"
+      ],
+      "title": "RecipeStorage",
+      "type": "object"
+    },
+    "RecipeTimerRef": {
+      "properties": {
+        "name": {
+          "description": "Timer description or name",
+          "title": "Name",
+          "type": "string"
+        },
+        "duration": {
+          "description": "Timer duration value",
+          "exclusiveMinimum": 0,
+          "title": "Duration",
+          "type": "number"
+        },
+        "unit": {
+          "description": "Time unit (s, min, hr)",
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "duration",
+        "unit"
+      ],
+      "title": "RecipeTimerRef",
+      "type": "object"
+    },
+    "RecipeYield": {
+      "properties": {
+        "servings": {
+          "description": "Number of portions produced by the batch",
+          "exclusiveMinimum": 0,
+          "title": "Servings",
+          "type": "number"
+        },
+        "cooked_g": {
+          "description": "Total finished cooked batch weight in grams",
+          "exclusiveMinimum": 0,
+          "title": "Cooked G",
+          "type": "number"
+        }
+      },
+      "required": [
+        "servings",
+        "cooked_g"
+      ],
+      "title": "RecipeYield",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "category": {
+      "$ref": "#/$defs/RecipeCategory"
+    },
+    "yield": {
+      "$ref": "#/$defs/RecipeYield"
+    },
+    "storage": {
+      "$ref": "#/$defs/RecipeStorage"
+    },
+    "equipment": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Equipment",
+      "type": "array"
+    },
+    "ingredients": {
+      "items": {
+        "$ref": "#/$defs/RecipeIngredientRef"
+      },
+      "title": "Ingredients",
+      "type": "array"
+    },
+    "cookware": {
+      "items": {
+        "$ref": "#/$defs/RecipeCookwareRef"
+      },
+      "title": "Cookware",
+      "type": "array"
+    },
+    "timers": {
+      "items": {
+        "$ref": "#/$defs/RecipeTimerRef"
+      },
+      "title": "Timers",
+      "type": "array"
+    },
+    "instructions": {
+      "title": "Instructions",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "category",
+    "yield",
+    "storage",
+    "equipment",
+    "ingredients",
+    "cookware",
+    "timers",
+    "instructions"
+  ],
+  "title": "Recipe",
+  "type": "object"
+}

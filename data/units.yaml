@@ -1,0 +1,83 @@
+# data/units.yaml
+# Standard Measurement Units & Universal Physics Conversions
+
+units:
+  mass:
+    base: g
+    allowed:
+      g: [g, gram, grams]
+      kg: [kg, kilogram, kilograms]
+      lb: [lb, lbs, pound, pounds]
+      oz: [oz, ounce, ounces]
+    conversions:
+      kg:
+        amount: 1000
+        unit: g
+      lb:
+        amount: 453.59
+        unit: g
+      oz:
+        amount: 28.35
+        unit: g
+
+  volume:
+    base: ml
+    allowed:
+      ml: [ml, milliliter, milliliters]
+      l: [l, liter, liters, litre, litres]
+      tsp: [tsp, teaspoon, teaspoons]
+      tbsp: [tbsp, tablespoon, tablespoons]
+      cup: [cup, cups]
+      fl_oz: [fl oz, fl_oz, fluid ounce, fluid ounces]
+    conversions:
+      l:
+        amount: 1000
+        unit: ml
+      tsp:
+        amount: 5
+        unit: ml
+      tbsp:
+        amount: 15
+        unit: ml
+      cup:
+        amount: 240
+        unit: ml
+      fl_oz:
+        amount: 29.57
+        unit: ml
+
+  count:
+    base: item
+    allowed:
+      item: [item, items, count, unit, units]
+      slice: [slice, slices]
+      clove: [clove, cloves]
+      head: [head, heads]
+      bunch: [bunch, bunches]
+      piece: [piece, pieces]
+
+  time:
+    base: s
+    allowed:
+      s: [s, sec, second, seconds]
+      min: [min, mins, minute, minutes]
+      hr: [hr, hrs, hour, hours]
+    conversions:
+      min:
+        amount: 60
+        unit: s
+      hr:
+        amount: 3600
+        unit: s
+
+  packaging_containers:
+    - pack
+    - loaf
+    - carton
+    - bottle
+    - bag
+    - tub
+    - can
+    - clamshell
+    - bunch
+    - box

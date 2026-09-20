@@ -1,0 +1,129 @@
+# yaml-language-server: $schema=../../schemas/ingredients.schema.json
+
+- id: kosher-salt
+  name: Coarse Kosher Salt
+  aisle: spices
+  storage: ambient
+  shelf_life_days: 1095
+
+  package:
+    container: box
+    unit: g
+    amount: 1000
+    container_weight_g: 1000
+
+  reference:
+    brand: Windsor
+    product: Coarse Kosher Salt 1kg
+    price: 4.49
+
+  macros_per_100g:
+    calories_kcal: 0.0
+    protein_g: 0.0
+    fat_g: 0.0
+    carbs_g: 0.0
+    fiber_g: 0.0
+    saturated_fat_g: 0.0
+    sugars_g: 0.0
+    sodium_mg: 38758.0
+    potassium_mg: 8.0
+
+  conversions:
+    - unit: tsp
+      g: 5.0
+
+- id: black-pepper
+  name: Ground Black Pepper
+  aisle: spices
+  storage: ambient
+  shelf_life_days: 730
+
+  package:
+    container: bottle
+    unit: g
+    amount: 150
+    container_weight_g: 150
+
+  reference:
+    brand: Club House
+    product: Pure Ground Black Pepper 150g
+    price: 5.99
+
+  macros_per_100g:
+    calories_kcal: 251.0
+    protein_g: 10.4
+    fat_g: 3.3
+    carbs_g: 64.0
+    fiber_g: 25.3
+    saturated_fat_g: 1.4
+    sugars_g: 0.6
+    sodium_mg: 20.0
+    potassium_mg: 1329.0
+
+  conversions:
+    - unit: tsp
+      g: 2.3
+
+- id: garlic-powder
+  name: Garlic Powder
+  aisle: spices
+  storage: ambient
+  shelf_life_days: 730
+
+  package:
+    container: bottle
+    unit: g
+    amount: 165
+    container_weight_g: 165
+
+  reference:
+    brand: Club House
+    product: Garlic Powder 165g
+    price: 5.49
+
+  macros_per_100g:
+    calories_kcal: 331.0
+    protein_g: 16.6
+    fat_g: 0.7
+    carbs_g: 72.7
+    fiber_g: 9.0
+    saturated_fat_g: 0.2
+    sugars_g: 2.4
+    sodium_mg: 60.0
+    potassium_mg: 1193.0
+
+  conversions:
+    - unit: tsp
+      g: 3.1
+
+- id: smoked-paprika
+  name: Smoked Paprika
+  aisle: spices
+  storage: ambient
+  shelf_life_days: 730
+
+  package:
+    container: bottle
+    unit: g
+    amount: 130
+    container_weight_g: 130
+
+  reference:
+    brand: Club House
+    product: Smoked Paprika 130g
+    price: 5.99
+
+  macros_per_100g:
+    calories_kcal: 282.0
+    protein_g: 14.1
+    fat_g: 12.9
+    carbs_g: 54.0
+    fiber_g: 34.9
+    saturated_fat_g: 2.1
+    sugars_g: 10.3
+    sodium_mg: 68.0
+    potassium_mg: 2280.0
+
+  conversions:
+    - unit: tsp
+      g: 2.3

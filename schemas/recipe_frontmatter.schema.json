@@ -1,0 +1,102 @@
+{
+  "$defs": {
+    "RecipeCategory": {
+      "enum": [
+        "modular_protein",
+        "modular_carb",
+        "modular_cooked_veg",
+        "fresh_salad_veg",
+        "breakfast"
+      ],
+      "title": "RecipeCategory",
+      "type": "string"
+    },
+    "RecipeStorage": {
+      "properties": {
+        "fridge_days": {
+          "description": "Maximum safe refrigerated shelf life in days",
+          "exclusiveMinimum": 0,
+          "title": "Fridge Days",
+          "type": "integer"
+        },
+        "freezer_friendly": {
+          "description": "Whether the cooked batch can be frozen",
+          "title": "Freezer Friendly",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "fridge_days",
+        "freezer_friendly"
+      ],
+      "title": "RecipeStorage",
+      "type": "object"
+    },
+    "RecipeYield": {
+      "properties": {
+        "servings": {
+          "description": "Number of portions produced by the batch",
+          "exclusiveMinimum": 0,
+          "title": "Servings",
+          "type": "number"
+        },
+        "cooked_g": {
+          "description": "Total finished cooked batch weight in grams",
+          "exclusiveMinimum": 0,
+          "title": "Cooked G",
+          "type": "number"
+        }
+      },
+      "required": [
+        "servings",
+        "cooked_g"
+      ],
+      "title": "RecipeYield",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique alphanumeric slug with hyphens matching file stem",
+      "title": "Id",
+      "type": "string"
+    },
+    "title": {
+      "description": "Human-readable recipe title",
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "category": {
+      "$ref": "#/$defs/RecipeCategory",
+      "description": "Recipe category enum"
+    },
+    "yield": {
+      "$ref": "#/$defs/RecipeYield",
+      "description": "Portion count and cooked batch weight"
+    },
+    "storage": {
+      "$ref": "#/$defs/RecipeStorage",
+      "description": "Storage specifications"
+    },
+    "equipment": {
+      "description": "List of equipment IDs required",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Equipment",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "category",
+    "yield",
+    "storage",
+    "equipment"
+  ],
+  "title": "RecipeFrontmatter",
+  "type": "object"
+}

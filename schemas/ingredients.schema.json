@@ -1,0 +1,261 @@
+{
+  "$defs": {
+    "Ingredient": {
+      "properties": {
+        "id": {
+          "description": "Canonical unique slug, e.g. 'boneless-chicken-breast'",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "description": "Generic staple display name",
+          "title": "Name",
+          "type": "string"
+        },
+        "aisle": {
+          "description": "Supermarket aisle slug",
+          "title": "Aisle",
+          "type": "string"
+        },
+        "storage": {
+          "$ref": "#/$defs/StorageType",
+          "description": "Storage temperature classification"
+        },
+        "shelf_life_days": {
+          "description": "Mandatory shelf life in days under this storage mode",
+          "exclusiveMinimum": 0,
+          "title": "Shelf Life Days",
+          "type": "integer"
+        },
+        "package": {
+          "$ref": "#/$defs/PackageInfo"
+        },
+        "reference": {
+          "$ref": "#/$defs/ReferenceInfo"
+        },
+        "macros_per_100g": {
+          "$ref": "#/$defs/MacrosInfo"
+        },
+        "conversions": {
+          "description": "Mandatory list of unit-to-gram conversions",
+          "items": {
+            "$ref": "#/$defs/UnitConversion"
+          },
+          "minItems": 1,
+          "title": "Conversions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "aisle",
+        "storage",
+        "shelf_life_days",
+        "package",
+        "reference",
+        "macros_per_100g",
+        "conversions"
+      ],
+      "title": "Ingredient",
+      "type": "object"
+    },
+    "MacrosInfo": {
+      "properties": {
+        "calories_kcal": {
+          "description": "Calories (kcal) per 100g",
+          "minimum": 0,
+          "title": "Calories Kcal",
+          "type": "number"
+        },
+        "protein_g": {
+          "description": "Protein in grams per 100g",
+          "minimum": 0,
+          "title": "Protein G",
+          "type": "number"
+        },
+        "fat_g": {
+          "description": "Total fat in grams per 100g",
+          "minimum": 0,
+          "title": "Fat G",
+          "type": "number"
+        },
+        "carbs_g": {
+          "description": "Total carbohydrates in grams per 100g",
+          "minimum": 0,
+          "title": "Carbs G",
+          "type": "number"
+        },
+        "fiber_g": {
+          "description": "Dietary fiber in grams per 100g",
+          "minimum": 0,
+          "title": "Fiber G",
+          "type": "number"
+        },
+        "saturated_fat_g": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Saturated fat in grams per 100g",
+          "title": "Saturated Fat G"
+        },
+        "sugars_g": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Total sugars in grams per 100g",
+          "title": "Sugars G"
+        },
+        "sodium_mg": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Sodium in milligrams per 100g",
+          "title": "Sodium Mg"
+        },
+        "potassium_mg": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Potassium in milligrams per 100g",
+          "title": "Potassium Mg"
+        }
+      },
+      "required": [
+        "calories_kcal",
+        "protein_g",
+        "fat_g",
+        "carbs_g",
+        "fiber_g"
+      ],
+      "title": "MacrosInfo",
+      "type": "object"
+    },
+    "PackageInfo": {
+      "properties": {
+        "container": {
+          "description": "Container noun, e.g. pack, bag, carton, bottle, loaf",
+          "title": "Container",
+          "type": "string"
+        },
+        "unit": {
+          "description": "Unit noun of items in container, e.g. piece, slice, item, g, ml",
+          "title": "Unit",
+          "type": "string"
+        },
+        "amount": {
+          "description": "Amount of units in the container",
+          "exclusiveMinimum": 0,
+          "title": "Amount",
+          "type": "number"
+        },
+        "container_weight_g": {
+          "description": "Total container net weight in grams",
+          "exclusiveMinimum": 0,
+          "title": "Container Weight G",
+          "type": "number"
+        }
+      },
+      "required": [
+        "container",
+        "unit",
+        "amount",
+        "container_weight_g"
+      ],
+      "title": "PackageInfo",
+      "type": "object"
+    },
+    "ReferenceInfo": {
+      "properties": {
+        "brand": {
+          "description": "Brand name, e.g. Compliments",
+          "title": "Brand",
+          "type": "string"
+        },
+        "product": {
+          "description": "Full commercial product name",
+          "title": "Product",
+          "type": "string"
+        },
+        "price": {
+          "description": "Retail purchase price in CAD",
+          "exclusiveMinimum": 0,
+          "title": "Price",
+          "type": "number"
+        }
+      },
+      "required": [
+        "brand",
+        "product",
+        "price"
+      ],
+      "title": "ReferenceInfo",
+      "type": "object"
+    },
+    "StorageType": {
+      "enum": [
+        "ambient",
+        "refrigerated",
+        "frozen"
+      ],
+      "title": "StorageType",
+      "type": "string"
+    },
+    "UnitConversion": {
+      "properties": {
+        "unit": {
+          "description": "Measurement unit name, e.g. piece, cup, tbsp",
+          "title": "Unit",
+          "type": "string"
+        },
+        "g": {
+          "description": "Mass equivalent in grams",
+          "exclusiveMinimum": 0,
+          "title": "G",
+          "type": "number"
+        }
+      },
+      "required": [
+        "unit",
+        "g"
+      ],
+      "title": "UnitConversion",
+      "type": "object"
+    }
+  },
+  "items": {
+    "$ref": "#/$defs/Ingredient"
+  },
+  "type": "array",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IngredientsList",
+  "description": "Schema for meal prep ingredients aisle catalog YAML files"
+}

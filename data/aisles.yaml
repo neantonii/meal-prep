@@ -1,0 +1,31 @@
+# data/aisles.yaml
+# Standard Aisle Taxonomy & Supermarket Walking Order
+
+aisles:
+  - id: produce
+    name: Produce
+    order: 1
+
+  - id: bakery
+    name: Bakery
+    order: 2
+
+  - id: meat
+    name: Meat
+    order: 3
+
+  - id: seafood
+    name: Seafood
+    order: 4
+
+  - id: dairy
+    name: Dairy
+    order: 5
+
+  - id: pantry
+    name: Pantry
+    order: 6
+
+  - id: spices
+    name: Spices
+    order: 7
