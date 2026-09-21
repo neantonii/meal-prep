@@ -1,17 +1,17 @@
-# Modular Meal & Recipe Authoring Specification (`MEALS.md`)
+# Modular Meal & Recipe Specification (`MEALS.md`)
 
-This document defines the architecture, data schemas, validation protocols, and authoring guidelines for recipes in the meal prep system.
+This document defines the architecture, data schemas, validation rules, and category benchmarks for recipes in the meal prep system.
 
 ---
 
 ## 1. Modular Architecture Overview
 
-All meals in this system are authored as **modular, batch-cooked building blocks**. 
+All meals in this system are authored as **modular, batch-cooked building blocks**.
 
-* Every recipe is stored as an independent Cooklang file (`.cook`) with YAML frontmatter.
-* Stored strictly under `recipes/<category>/<recipe-slug>.cook`.
-* **Zero Inventions / Calculations in Files:** Recipe files contain **only raw quantities, equipment, timers, and storage metadata**. Macro totals, per-serving macros, moisture loss, and batch costs are **deterministically calculated in Python** using `data/ingredients/` and `data/units.yaml`.
-* *(Note: Composite meals—fixed assemblies of multiple modular components—will be introduced as a layer on top of these modular building blocks).*
+* **Independent Cooklang Files:** Every recipe is stored as an isolated Cooklang file (`.cook`) with YAML frontmatter.
+* **Category Partitioning:** Stored strictly under `recipes/<category>/<recipe-slug>.cook`.
+* **Zero Redundant / Computed Data in Files:** Recipe files contain **only raw quantities, equipment, timers, and storage metadata**. Macro totals, per-serving macros, moisture loss, and batch costs are **deterministically calculated in Python** using `data/ingredients/` and `data/units.yaml`.
+* **Composite Meals:** High-level assemblies (e.g. modular protein + carb + cooked veg) sit as a composition layer on top of these modular building blocks.
 
 ---
 
@@ -19,13 +19,13 @@ All meals in this system are authored as **modular, batch-cooked building blocks
 
 Every recipe must specify one of the five validated categories from `src/meal_prep/models/enums.py`:
 
-| Category Slug | Display Name | Scope & Purpose | Directory Destination |
-| :--- | :--- | :--- | :--- |
-| **`modular_protein`** | Modular Protein | Core batch proteins (chicken, turkey, beef, fish, shrimp, tofu) | `recipes/modular_protein/` |
-| **`modular_carb`** | Modular Side (Carbs) | Starchy sides (rice, buckwheat, potatoes, pasta, noodles) | `recipes/modular_carb/` |
-| **`modular_cooked_veg`** | Modular Side (Cooked Veg) | Hot cooked vegetables (green beans, cauliflower, corn & peas) | `recipes/modular_cooked_veg/` |
-| **`fresh_salad_veg`** | Fresh Vegetables & Salads | Raw crunchy salads and fresh veg (vitaminka, cucumber-tomato) | `recipes/fresh_salad_veg/` |
-| **`breakfast`** | Breakfast | Morning meal building blocks (oatmeal, eggs, toast) | `recipes/breakfast/` |
+| Category Slug | Display Name | Scope & Purpose | Directory Destination | Category Macro Benchmarks |
+| :--- | :--- | :--- | :--- | :--- |
+| **`modular_protein`** | Modular Protein | Core batch proteins (chicken, turkey, beef, fish, shrimp, tofu) | `recipes/modular_protein/` | 35-55 g protein, 250-420 kcal |
+| **`modular_carb`** | Modular Side (Carbs) | Starchy sides (rice, buckwheat, potatoes, pasta, noodles) | `recipes/modular_carb/` | 35-50 g carbs, 3-6 g fiber, 180-260 kcal |
+| **`modular_cooked_veg`** | Modular Side (Cooked Veg) | Hot cooked vegetables (green beans, cauliflower, corn & peas) | `recipes/modular_cooked_veg/` | 40-100 kcal, 3-6 g fiber |
+| **`fresh_salad_veg`** | Fresh Vegetables & Salads | Raw crunchy salads and fresh veg (vitaminka, cucumber-tomato) | `recipes/fresh_salad_veg/` | 30-90 kcal, high volume, light healthy fats |
+| **`breakfast`** | Breakfast | Morning meal building blocks (oatmeal, eggs, toast) | `recipes/breakfast/` | 30-45 g protein, balanced carbs & fats |
 
 ---
 
@@ -73,28 +73,26 @@ Let the chicken rest undisturbed for ~rest-time{5%min} so carryover heat complet
 
 | Field | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| **`id`** | string | Yes | Lowercase alphanumeric slug with hyphens matching file stem (e.g. `air-fried-chicken-breast`). |
+| **`id`** | string | Yes | Lowercase alphanumeric slug with hyphens matching file stem (e.g. `boiled-basmati-rice`). |
 | **`title`** | string | Yes | Human-readable recipe title. |
 | **`category`** | enum | Yes | Must match one of the 5 `RecipeCategory` values. |
-| **`yield.servings`** | int / float | Yes | Number of batch portions produced (e.g. `4`). |
-| **`yield.cooked_g`** | float | Yes | Total cooked batch weight in grams (portion grams = `cooked_g / servings`). |
+| **`yield.servings`** | int / float | Yes | Number of batch portions produced (e.g. `1` or `4`). |
+| **`yield.cooked_g`** | float | Yes | Total finished cooked batch weight in grams (portion grams = `cooked_g / servings`). |
 | **`storage.fridge_days`** | int | Yes | Maximum safe refrigerated shelf life in days. |
-| **`storage.freezer_friendly`** | bool | Yes | Whether the cooked dish can be frozen. |
-| **`equipment`** | list[str] | Yes | List of equipment IDs from `data/equipment.yaml`. |
-
----
+| **`storage.freezer_friendly`** | bool | Yes | Whether the cooked dish can be safely frozen. |
+| **`equipment`** | list[str] | Yes | List of equipment IDs matching canonical items or aliases in `data/equipment.yaml`. |
 
 ### Cooklang Body Syntax
 
 * **Ingredients: `@ingredient-id{quantity%unit}`**
   * `@ingredient-id` **must strictly match an existing `id`** in `data/ingredients/<aisle>.yaml`.
-  * `quantity`: Numeric float or integer (e.g. `4`, `1.5`, `250`).
-  * `unit`: Must be convertible to grams `g` via the ingredient's precomputed `ConversionGraph`.
-  * Examples: `@boneless-chicken-breast{4%piece}`, `@olive-oil{15%ml}`, `@kosher-salt{1%tsp}`.
+  * `quantity`: Numeric float or integer (e.g. `4`, `1.5`, `250`, `0.33`).
+  * `unit`: Must be convertible to grams `g` via the ingredient precomputed `ConversionGraph` or universal units in `data/units.yaml`.
+  * Examples: `@boneless-chicken-breast{4%piece}`, `@olive-oil{1%tbsp}`, `@kosher-salt{0.25%tsp}`, `@basmati-rice{0.33%cup}`.
 
 * **Cookware: `#equipment-id`**
   * Must match an equipment item or alias registered in `data/equipment.yaml`.
-  * Examples: `#air-fryer`, `#meat-thermometer`, `#skillet`, `#spatula`.
+  * Examples: `#air-fryer`, `#meat-thermometer`, `#saucepan`, `#skillet`.
 
 * **Timers: `~timer-name{duration%unit}`**
   * `duration`: Numeric float or integer.
@@ -102,94 +100,62 @@ Let the chicken rest undisturbed for ~rest-time{5%min} so carryover heat complet
     * Seconds: `s`, `sec`, `second`, `seconds`
     * Minutes: `min`, `mins`, `minute`, `minutes`
     * Hours: `hr`, `hrs`, `hour`, `hours`
-  * Examples: `~air-fry-time{16%min}`, `~rest-time{5%min}`, `~surface-drying{1%hr}`.
+  * Examples: `~air-fry-time{16%min}`, `~simmer-time{11%min}`, `~steam-time{5%min}`.
+
+### Untracked Ingredients Policy (Water)
+* **Water is strictly untracked as an ingredient token:** Do NOT tag water as an ingredient (e.g. do not write `@water{120%ml}`). Water carries zero macros and negligible cost; adding dummy water catalog entries pollutes inventory tracking.
+* **Explicit Cooking Volume Required:** While untracked as a token, the exact liquid volume for boiling, steaming, or simmering must be explicitly stated in the instruction text (e.g. *"In a #saucepan, combine the rinsed rice, 120 ml (1/2 cup) cold water, and..."*).
+
+### Measurement Units & Culinary Usability
+Review the chosen measurement units in the recipe body to ensure they reflect intuitive home cooking:
+* **Small fats, dairy, condiments:** Prefer volumetric spoons (`1 tsp`, `1 tbsp`) over awkward scale grams (`4.7 g`, `5 g`).
+* **Dry grains & starches:** Prefer standard cups or spoons (`0.33 cup`, `0.5 cup`) over awkward scale numbers like `63 g`.
+* **Spices & seasonings:** Prefer `0.25 tsp`, `0.5 tsp`, `1 tsp` over fractional grams (`1.1 g`, `2.3 g`).
+* **Bulk proteins & large produce:** Grams `g` (`450 g`, `200 g`) or discrete counts (`piece`, `clove`) remain the preferred standard.
+* **Conversion Graph Integrity:** Ensure every chosen culinary unit (`tsp`, `tbsp`, `cup`, `piece`) is supported by the ingredient's precomputed `ConversionGraph` to grams.
 
 ---
 
 ## 5. Values Derived Automatically by Python
 
-The recipe file never stores redundant or computed values. When a recipe is loaded, Python derives:
+The recipe file never stores redundant or computed values. When a recipe is loaded, Python deterministically derives:
 
 * **Portion weight:** `yield.cooked_g / yield.servings`
 * **Raw batch weight:** Sum of all ingredient grams
-* **Moisture / cooking yield loss %:** `1 - (yield.cooked_g / raw_batch_weight_g)`
-* **Macros per batch & per serving:** Calories, protein, fat, carbs, fiber, sodium, potassium
-* **Batch cost & cost per serving:** Retail cost based on ingredient reference prices
-* **Safe fridge storage window:** $\min(\text{storage.fridge\_days}, \min(\text{ingredient shelf life}))$
+* **Moisture / cooking yield loss %:** `1 - (yield.cooked_g / raw_batch_weight_g)` (negative indicates water absorption, e.g. for grains/pasta)
+* **Macros per batch & per serving:** Calories, protein, fat, saturated fat, carbohydrates, fiber, sugars, sodium, potassium
+* **Batch cost & cost per serving:** Retail cost derived from ingredient reference package pricing
+* **Safe fridge storage window:** min(storage.fridge_days, min(ingredient shelf life))
 
 ---
 
-## 6. Step-by-Step Recipe Authoring Workflow
+## 6. Validation, Math Auditing & Tooling
 
-When adding a new recipe (human or AI agent), follow this strict multi-step workflow:
-
-### Step 1: Pre-requisite Ingredient Audit
-1. Inspect the original recipe and list ALL ingredients needed (proteins, produce, dairy, oils, and minor spices/seasonings).
-2. Cross-reference each ingredient against `data/ingredients/`.
-3. **If ANY ingredient is missing: STOP IMMEDIATELY.**
-   * Do NOT invent, assume, or silently add placeholder ingredients to unblock recipe compilation or pass tests.
-   * Every ingredient must be explicitly confirmed/opted in by the user with real purchase details (brand, package size, price).
-   * Run USDA FoodData Central cross-validation behind the scenes (filling in omitted micronutrients only after the reference product is confirmed).
-   * Add the ingredient entry to `data/ingredients/<aisle>.yaml` only after user confirmation.
-
-### Step 2: Equipment Audit
-1. Ensure all kitchen tools mentioned exist in `data/equipment.yaml`.
-2. If a new specialized tool is needed (e.g. `pasta-roller`, `sous-vide`), add it to `data/equipment.yaml` with appropriate categories and temperature limits.
-
-### Step 3: Author the `.cook` Recipe File
-1. Create `recipes/<category>/<slug>.cook`.
-2. Add complete YAML frontmatter (slug, title, category, yield, storage, equipment).
-3. Write clear, sequential cooking instructions using `@ingredient{qty%unit}`, `#equipment`, and `~timer{duration%unit}`.
-
-### Step 4: Measurement Units & Culinary Practicality Audit
-Before running math calculations, review the chosen measurement units in the recipe body to verify they make practical, real-world culinary sense for a home cook:
-- **Avoid Awkward Mass Units for Common Kitchen Staples:** Home cooks do not measure 5 g of butter on a scale or weigh out 63 g of dry rice. Always favor natural, intuitive culinary units when available:
-  - **Small fats, dairy, and condiments:** Prefer volumetric spoons (e.g. `1 tsp`, `1 tbsp`) over awkward gram weights (e.g. `4.7 g`, `5 g`).
-  - **Dry grains & starches:** Prefer standard cups or spoons (e.g. `0.333 cup` for 1/3 cup, `0.5 cup` for 1/2 cup) over odd numbers like `63 g`.
-  - **Spices & seasonings:** Prefer `0.25 tsp`, `0.5 tsp`, `1 tsp`, `1 tbsp` over fractions of a gram (e.g. `1.1 g`, `2.3 g`).
-  - **Bulk proteins & large produce:** Grams `g` (e.g. `450 g`, `200 g`) or discrete counts (`piece`, `clove`) remain the preferred standard.
-- **Conversion Graph Integrity:** Ensure every chosen culinary unit (`tsp`, `tbsp`, `cup`, `piece`) is supported by the ingredient's precomputed `ConversionGraph` to grams.
-
-### Step 5: Macro Alignment & Category Comparative Audit
-Before finalizing the recipe, compute and present the per-portion macro breakdown to the user and perform a comparative analysis against the recipe's category standards:
-
-1. **Per-Portion Macro Analysis:**
-   * **Primary Focus:** Calories and Protein (ensure target protein density is achieved).
-   * **Secondary Focus:** Carbohydrates and Total Fat.
-   * **Tertiary Focus:** Dietary Fiber, Sodium, and Potassium.
-2. **Category Comparative Benchmarks:**
-   * **`modular_protein`:** Typically 35–55 g protein, 250–420 kcal per serving.
-   * **`modular_carb`:** Typically 35–50 g carbs, 3–6 g fiber, 180–260 kcal per serving.
-   * **`modular_cooked_veg`:** Typically 40–100 kcal, 3–6 g fiber per serving.
-   * **`fresh_salad_veg`:** Typically 30–90 kcal, high volume, light healthy fats.
-   * **`breakfast`:** Typically 30–45 g protein, balanced carbs & fats.
-3. **Outlier Detection & Decision Protocol:**
-   * Compare against other recipes in the same category directory (`recipes/<category>/`).
-   * **Cold-Start Fallback Rule:** If no other recipes exist in `recipes/<category>/` yet, compare against the category benchmarks above or prompt the user for their target ranges.
-   * If the proposed recipe is a significant outlier (e.g., protein density is too low, portion weight is disproportionately large/small, or fat/calories deviate heavily from category peers), **explicitly alert the user, provide a clear comparison table, and suggest adjustments** (e.g. adjusting batch size, serving count, or oil amount).
-   * The human user always makes the final decision.
-
-### Step 6: Automated Verification & Test Execution
-Run the automated validation suite:
+### Automated Test Suite
+Run the test suite to verify frontmatter schemas, ingredient references, unit conversions, and cookware:
 ```bash
 PYTHONPATH=src python3 -m pytest tests/
 ```
-The test suite ensures:
-* YAML frontmatter validates against `schemas/recipe_frontmatter.schema.json` and Pydantic models.
-* Every `@ingredient` resolves to an existing ingredient file in `data/ingredients/`.
-* Every unit converts cleanly to grams through the conversion graph.
-* Every `#equipment` is registered in `data/equipment.yaml`.
-* All timers use registered time units (`s`, `min`, `hr`).
 
-### Step 7: HTML Recipe Card Generation
-To generate visual, interactive recipe cards mirroring the `recipes/` directory structure:
+### Reviewing Math & Macros via Library / CLI
+Inspect batch totals, cooking loss, portion scale weight, macros, and cost breakdown:
+```bash
+PYTHONPATH=src python3 -c 'from meal_prep.library import MealPrepLibrary; print(MealPrepLibrary.load().review_math("<recipe-slug>"))'
+```
+Or via the CLI:
+```bash
+PYTHONPATH=src python3 -m meal_prep.cli audit <category> <recipe-slug>
+```
+
+### HTML Recipe Card Generation
+Generate standalone visual recipe cards:
 ```bash
 PYTHONPATH=src python3 -c 'from meal_prep.renderer import render_all_recipe_cards; render_all_recipe_cards()'
 ```
-Output is stored in `recipe_cards/<category>/<recipe-id>.html` (git-ignored).
-Recipe cards include:
-* Macro banner (Calories, Protein, Fat, Sat Fat, Carbs, Fiber, Sugars, Sodium, Potassium) dynamically omitting zero-value sub-nutrients.
-* Interactive ingredient checklist with calculated batch weights, retail costs, and kcal contributions.
-* Equipment badges and safe storage guidelines.
-* Numbered instructions with Cooklang pill badges for ingredients, cookware, and timers.
+Output files are placed in `recipe_cards/<category>/<recipe-slug>.html`.
 
+---
+
+## 7. Interactive Authoring Workflow & Skill
+
+For the interactive AI agent workflow, step-by-step authoring sequence, and guardrails (mandatory user opt-in, zero guesswork, USDA cross-checks, and file-touch boundaries), refer to the **`meal-authoring` skill** (`.agents/skills/meal-authoring/SKILL.md`).
