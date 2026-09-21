@@ -198,3 +198,37 @@
     - from: cup
       to: g
       factor: 180.0
+
+- id: rice-stick-noodles
+  name: Rice Stick Noodles
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 730
+
+  package:
+    container: bag
+    unit: g
+    amount: 454
+    container_weight_g: 454
+
+  reference:
+    brand: Eight Treasures
+    product: Eight Treasures Rice Stick Noodles Medium 454 g
+    price: 3.19
+
+  macros_per_100g:
+    calories_kcal: 352.9
+    protein_g: 7.1
+    fat_g: 0.2
+    carbs_g: 80.0
+    fiber_g: 1.2
+    saturated_fat_g: 0.1
+    sugars_g: 0.0
+    sodium_mg: 35.3
+    potassium_mg: 11.8
+
+  conversions:
+    - from: bag
+      to: g
+      factor: 454.0
+
