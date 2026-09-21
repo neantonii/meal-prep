@@ -29,9 +29,6 @@
     potassium_mg: 24.0
 
   conversions:
-    - unit: tbsp
-      g: 14.2
-    - unit: tsp
-      g: 5.0
-    - unit: g
-      g: 1.0
+    - from: tbsp
+      to: g
+      factor: 14.2

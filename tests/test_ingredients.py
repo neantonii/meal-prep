@@ -87,8 +87,9 @@ def test_aisle_file_mismatch_raises_error(tmp_path):
     carbs_g: 0
     fiber_g: 0
   conversions:
-    - unit: piece
-      g: 500
+    - from: piece
+      to: g
+      factor: 500
         """
     )
     with pytest.raises(ValueError, match="does not match file stem 'produce'"):
@@ -118,7 +119,7 @@ def test_invalid_storage_type_raises_error():
                     "carbs_g": 0,
                     "fiber_g": 0,
                 },
-                "conversions": [{"unit": "piece", "g": 500}],
+                "conversions": [{"from": "piece", "to": "g", "factor": 500}],
             }
         )
 
@@ -145,7 +146,7 @@ def test_missing_mandatory_shelf_life_raises_error():
                     "carbs_g": 0,
                     "fiber_g": 0,
                 },
-                "conversions": [{"unit": "piece", "g": 500}],
+                "conversions": [{"from": "piece", "to": "g", "factor": 500}],
             }
         )
 
@@ -251,7 +252,7 @@ def test_all_ingredient_yaml_files_exist_and_validate_against_schema():
             # Check conversions
             assert len(item.conversions) >= 1
             for conv in item.conversions:
-                assert conv.g > 0
+                assert conv.factor > 0
 
 
 
@@ -285,10 +286,161 @@ def test_schema_rejects_invalid_yaml():
                 "carbs_g": 0,
                 "fiber_g": 0,
             },
-            "conversions": [{"unit": "piece", "g": 500}],
+            "conversions": [{"from": "piece", "to": "g", "factor": 500}],
         }
     ]
 
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(instance=invalid_data, schema=schema)
+
+
+
+def test_redundant_same_dimension_conversions_raises_error():
+    """Test that specifying double conversions across the same dimension pair fails validation."""
+    # Issue 1: Butter with both tbsp and tsp (same volume <-> mass dimension pair)
+    with pytest.raises(ValidationError, match="Double conversion across dimension pair 'mass' <-> 'volume'"):
+        Ingredient.model_validate(
+            {
+                "id": "bad-butter",
+                "name": "Bad Butter",
+                "aisle": "dairy",
+                "storage": "refrigerated",
+                "shelf_life_days": 90,
+                "package": {
+                    "container": "pack",
+                    "unit": "g",
+                    "amount": 454,
+                    "container_weight_g": 454,
+                },
+                "reference": {"brand": "Test", "product": "Test", "price": 5.0},
+                "macros_per_100g": {
+                    "calories_kcal": 700,
+                    "protein_g": 1,
+                    "fat_g": 80,
+                    "carbs_g": 0,
+                    "fiber_g": 0,
+                },
+                "conversions": [
+                    {"from": "tbsp", "to": "g", "factor": 14.2},
+                    {"from": "tsp", "to": "g", "factor": 5.0},
+                ],
+            }
+        )
+
+    # Issue 2: Olive oil with ml -> g and flipped direction g -> tbsp
+    with pytest.raises(ValidationError, match="Double conversion across dimension pair 'mass' <-> 'volume'"):
+        Ingredient.model_validate(
+            {
+                "id": "bad-oil",
+                "name": "Bad Oil",
+                "aisle": "pantry",
+                "storage": "ambient",
+                "shelf_life_days": 365,
+                "package": {
+                    "container": "bottle",
+                    "unit": "ml",
+                    "amount": 1000,
+                    "container_weight_g": 920,
+                },
+                "reference": {"brand": "Test", "product": "Test", "price": 10.0},
+                "macros_per_100g": {
+                    "calories_kcal": 884,
+                    "protein_g": 0,
+                    "fat_g": 100,
+                    "carbs_g": 0,
+                    "fiber_g": 0,
+                },
+                "conversions": [
+                    {"from": "ml", "to": "g", "factor": 0.92},
+                    {"from": "g", "to": "tbsp", "factor": 0.072},
+                ],
+            }
+        )
+
+    # Issue 3: Intra-dimension conversion for mass (e.g. 'kg' -> 'g')
+    with pytest.raises(ValidationError, match="Redundant intra-dimension conversion between 'kg' and 'g' for dimension 'mass'"):
+        Ingredient.model_validate(
+            {
+                "id": "bad-mass",
+                "name": "Bad Mass",
+                "aisle": "pantry",
+                "storage": "ambient",
+                "shelf_life_days": 365,
+                "package": {
+                    "container": "bag",
+                    "unit": "g",
+                    "amount": 500,
+                    "container_weight_g": 500,
+                },
+                "reference": {"brand": "Test", "product": "Test", "price": 5.0},
+                "macros_per_100g": {
+                    "calories_kcal": 100,
+                    "protein_g": 0,
+                    "fat_g": 0,
+                    "carbs_g": 20,
+                    "fiber_g": 0,
+                },
+                "conversions": [
+                    {"from": "kg", "to": "g", "factor": 1000.0},
+                ],
+            }
+        )
+
+    # Issue 4: Intra-dimension conversion for volume (e.g. 'tbsp' -> 'tsp')
+    with pytest.raises(ValidationError, match="Redundant intra-dimension conversion between 'tbsp' and 'tsp' for dimension 'volume'"):
+        Ingredient.model_validate(
+            {
+                "id": "bad-vol",
+                "name": "Bad Vol",
+                "aisle": "pantry",
+                "storage": "ambient",
+                "shelf_life_days": 365,
+                "package": {
+                    "container": "bottle",
+                    "unit": "ml",
+                    "amount": 500,
+                    "container_weight_g": 500,
+                },
+                "reference": {"brand": "Test", "product": "Test", "price": 5.0},
+                "macros_per_100g": {
+                    "calories_kcal": 100,
+                    "protein_g": 0,
+                    "fat_g": 0,
+                    "carbs_g": 20,
+                    "fiber_g": 0,
+                },
+                "conversions": [
+                    {"from": "tbsp", "to": "tsp", "factor": 3.0},
+                ],
+            }
+        )
+
+    # Issue 5: Conversion to self
+    with pytest.raises(ValidationError, match="Conversion from unit 'piece' to itself is redundant"):
+        Ingredient.model_validate(
+            {
+                "id": "bad-self",
+                "name": "Bad Self",
+                "aisle": "pantry",
+                "storage": "ambient",
+                "shelf_life_days": 365,
+                "package": {
+                    "container": "bag",
+                    "unit": "piece",
+                    "amount": 1,
+                    "container_weight_g": 100,
+                },
+                "reference": {"brand": "Test", "product": "Test", "price": 5.0},
+                "macros_per_100g": {
+                    "calories_kcal": 100,
+                    "protein_g": 0,
+                    "fat_g": 0,
+                    "carbs_g": 20,
+                    "fiber_g": 0,
+                },
+                "conversions": [
+                    {"from": "piece", "to": "piece", "factor": 1.0},
+                ],
+            }
+        )
 

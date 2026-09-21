@@ -94,7 +94,7 @@ def test_ingredient_with_density_bridge(units):
                 "fiber_g": 0.0,
             },
             "conversions": [
-                {"unit": "ml", "g": 0.92},  # Density bridge!
+                {"from": "ml", "to": "g", "factor": 0.92},  # Density bridge!
             ],
         }
     )
@@ -114,3 +114,102 @@ def test_ingredient_with_density_bridge(units):
     # 1 bottle = 1000 ml = 920 g
     assert graph.convert(1, "bottle", "ml") == 1000.0
     assert graph.convert(1, "bottle", "g") == 920.0
+
+def test_conversion_for_tsp_works_with_only_tbsp_supplied(units):
+    """Test that an ingredient with only tbsp supplied can convert tsp via standard intermediate units."""
+    butter = Ingredient.model_validate(
+        {
+            "id": "unsalted-butter",
+            "name": "Unsalted Butter",
+            "aisle": "dairy",
+            "storage": "refrigerated",
+            "shelf_life_days": 90,
+            "package": {
+                "container": "pack",
+                "unit": "g",
+                "amount": 454,
+                "container_weight_g": 454,
+            },
+            "reference": {
+                "brand": "Compliments",
+                "product": "Compliments Butter Unsalted 454 g",
+                "price": 6.69,
+            },
+            "macros_per_100g": {
+                "calories_kcal": 700.0,
+                "protein_g": 1.0,
+                "fat_g": 80.0,
+                "carbs_g": 0.0,
+                "fiber_g": 0.0,
+            },
+            "conversions": [
+                {"from": "tbsp", "to": "g", "factor": 14.2},
+            ],
+        }
+    )
+
+    graph = butter.get_conversion_graph(units)
+
+    # Invariant units: 1 tbsp = 15 ml, 1 tsp = 5 ml -> 1 tbsp = 3 tsp
+    assert graph.can_convert("tsp", "g") is True
+    assert graph.can_convert("tbsp", "g") is True
+
+    # 1 tbsp = 14.2 g
+    assert graph.convert(1, "tbsp", "g") == 14.2
+    # 1 tsp = 14.2 / 3 = 4.733333 g
+    assert graph.convert(1, "tsp", "g") == pytest.approx(14.2 / 3.0, rel=1e-4)
+    # 3 tsp = 14.2 g
+    assert graph.convert(3, "tsp", "g") == pytest.approx(14.2, rel=1e-4)
+    # Reverse conversion: 14.2 g to tsp = 3 tsp
+    assert graph.convert(14.2, "g", "tsp") == pytest.approx(3.0, rel=1e-4)
+
+
+def test_arbitrary_edges_and_reverse_transformations(units):
+    """Test arbitrary edge between discrete unit and volume, and automatic reverse transformation."""
+    protein_powder = Ingredient.model_validate(
+        {
+            "id": "whey-protein",
+            "name": "Whey Protein Powder",
+            "aisle": "pantry",
+            "storage": "ambient",
+            "shelf_life_days": 365,
+            "package": {
+                "container": "tub",
+                "unit": "scoop",
+                "amount": 30,
+                "container_weight_g": 900,
+            },
+            "reference": {
+                "brand": "Optimum Nutrition",
+                "product": "Gold Standard 100% Whey 900g",
+                "price": 45.99,
+            },
+            "macros_per_100g": {
+                "calories_kcal": 400.0,
+                "protein_g": 80.0,
+                "fat_g": 5.0,
+                "carbs_g": 10.0,
+                "fiber_g": 0.0,
+            },
+            "conversions": [
+                # Arbitrary edge: 1 scoop = 2 tbsp (discrete count to volume, no grams directly)
+                {"from": "scoop", "to": "tbsp", "factor": 2.0},
+            ],
+        }
+    )
+
+    graph = protein_powder.get_conversion_graph(units)
+
+    # 1 scoop = 2 tbsp
+    assert graph.convert(1, "scoop", "tbsp") == 2.0
+    # Automatic reverse: 2 tbsp = 1 scoop (inverse coefficient 1/2)
+    assert graph.convert(2, "tbsp", "scoop") == 1.0
+
+    # Transitive via volume units: 1 tbsp = 15 ml, 1 tsp = 5 ml
+    # 1 scoop = 2 tbsp = 30 ml
+    assert graph.convert(1, "scoop", "ml") == 30.0
+    assert graph.convert(30, "ml", "scoop") == 1.0
+
+    # 1 scoop = 6 tsp
+    assert graph.convert(1, "scoop", "tsp") == 6.0
+    assert graph.convert(6, "tsp", "scoop") == 1.0

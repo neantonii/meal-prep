@@ -60,7 +60,7 @@ def mock_catalog(units):
                 "sodium_mg": 45.0,
                 "potassium_mg": 350.0,
             },
-            "conversions": [{"unit": "piece", "g": 237.5}],
+            "conversions": [{"from": "piece", "to": "g", "factor": 237.5}],
         }
     )
     olive_oil = Ingredient.model_validate(
@@ -88,7 +88,7 @@ def mock_catalog(units):
                 "carbs_g": 0.0,
                 "fiber_g": 0.0,
             },
-            "conversions": [{"unit": "ml", "g": 0.92}],
+            "conversions": [{"from": "ml", "to": "g", "factor": 0.92}],
         }
     )
     salt = Ingredient.model_validate(
@@ -117,7 +117,7 @@ def mock_catalog(units):
                 "fiber_g": 0.0,
                 "sodium_mg": 39000.0,
             },
-            "conversions": [{"unit": "tsp", "g": 5.0}],
+            "conversions": [{"from": "tsp", "to": "g", "factor": 5.0}],
         }
     )
     catalog = {

@@ -156,14 +156,14 @@ Before finalizing the recipe, compute and present the per-portion macro breakdow
    * **`breakfast`:** Typically 30–45 g protein, balanced carbs & fats.
 3. **Outlier Detection & Decision Protocol:**
    * Compare against other recipes in the same category directory (`recipes/<category>/`).
-   * **Cold-Start Fallback Rule:** If no other recipes exist in `recipes/<category>/` yet (e.g. during initial system bootstrap or migration), **fall back to the reference recipes in `Meal Prep Recipe Book.md`** under the corresponding category to construct the comparative benchmark table.
+   * **Cold-Start Fallback Rule:** If no other recipes exist in `recipes/<category>/` yet, compare against the category benchmarks above or prompt the user for their target ranges.
    * If the proposed recipe is a significant outlier (e.g., protein density is too low, portion weight is disproportionately large/small, or fat/calories deviate heavily from category peers), **explicitly alert the user, provide a clear comparison table, and suggest adjustments** (e.g. adjusting batch size, serving count, or oil amount).
    * The human user always makes the final decision.
 
 ### Step 5: Automated Verification & Test Execution
 Run the automated validation suite:
 ```bash
-PYTHONPATH=src pytest tests/
+PYTHONPATH=src python3 -m pytest tests/
 ```
 The test suite ensures:
 * YAML frontmatter validates against `schemas/recipe_frontmatter.schema.json` and Pydantic models.

@@ -9,7 +9,7 @@ This guide defines the standards for all ingredient entries across the 7 aisle f
 1. **NEVER silently add, invent, estimate, or assume ingredient data** (macros, prices, package weights, or product names).
 2. **Every ingredient entry requires explicit user opt-in / reference:**
    * Minor spices, seasonings, produce, and cooking fats are **NOT exempt**. Never assume a brand (e.g. Club House, Compliments) or package price to self-unblock recipe compilation.
-   * If an ingredient does not exist in `data/ingredients/`, the agent must stop and ask the user for purchase details or verify if it already exists in `Meal Prep Recipe Book.md`.
+   * If an ingredient does not exist in `data/ingredients/`, the agent must stop and ask the user for purchase details.
 3. **Always prompt the user to provide the exact reference details** from their real purchase:
    * Benchmark product (store/brand, exact product name, price in CAD).
    * Package size and mass (e.g. 950 g pack, 454 g bag).
@@ -128,15 +128,23 @@ Benchmark retail pricing and product metadata:
   * `potassium_mg`: milligrams (float)
 
 ### 9. `conversions` (list of objects, required)
-* Mandatory list of unit-to-gram conversion factors.
-* Any discrete or volume measurement unit used in recipes (e.g. `piece`, `cup`, `tbsp`, `slice`, `clove`) **must** be defined with an explicit `g` conversion factor (grams).
-* For staples measured primarily by weight (e.g. rice, salt), provide the standard kitchen volumetric conversions (e.g. `cup`, `tbsp`).
-* Example:
+* Mandatory list of explicit unit conversion edges.
+* **Both units must be specified explicitly:** Each conversion defines a directed edge `1 from = factor * to`.
   ```yaml
   conversions:
-    - unit: piece
-      g: 237.5
+    - from: piece
+      to: g
+      factor: 237.5
   ```
+* **Automatic Bidirectional / Reverse Transformations:** Adding an edge `A -> B` with factor $k$ automatically registers the reverse transformation `B -> A` with inverse factor $1 / k$.
+* **Arbitrary Edges Supported:** Conversions can connect arbitrary pairs of units (e.g., discrete count to mass `piece -> g`, volume to mass `ml -> g`, or discrete to volume `scoop -> tbsp`).
+* **Strict Rule: Never Define a Double Conversion Across a Given Pair of Dimensions (Including Flipping Direction):**
+  * The system's standard intermediate conversions table (`data/units.yaml`) automatically converts between units within standard continuous physical dimensions (`mass`, `volume`, `time`).
+  * Intra-dimension conversions (e.g. `tbsp -> tsp` or `kg -> g`) are strictly forbidden because `data/units.yaml` already universally defines them.
+  * Inter-dimension conversions between a pair of continuous dimensions (e.g. `volume` and `mass`) must have **at most one edge**. Defining both `tbsp -> g` and `tsp -> g`, or defining `ml -> g` and `g -> tbsp` (flipped direction), creates a double conversion across the `{volume, mass}` dimension pair and is strictly rejected by model validation.
+  * Discrete count units (`clove`, `head`, `piece`) represent independent physical items without universal inter-unit ratios, so distinct discrete items can each define their own bridge to mass (e.g. both `clove -> g` and `head -> g` are permitted on `fresh-garlic`).
+  * Conversions from a unit to itself (e.g. `piece -> piece`) are redundant and forbidden.
+  * Package containers (`pack`, `carton`, `bottle`, etc.) are automatically derived from the `package:` block and do not need to be duplicated in `conversions`.
 
 ---
 

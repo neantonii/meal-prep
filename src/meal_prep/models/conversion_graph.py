@@ -131,12 +131,17 @@ def build_conversion_graph(
             factor_to_ml, _ = units.to_base(1.0, canonical)
             add_edge(canonical, "ml", factor_to_ml)
 
-    # 3. Ingredient conversions (bridge to 'g')
+    # 3. Ingredient conversions (arbitrary bidirectional edges)
     for conv in ingredient.conversions:
-        unit_canonical = conv.unit.strip().lower()
-        if units.is_valid_unit(unit_canonical):
-            unit_canonical = units.normalize(unit_canonical)
-        add_edge(unit_canonical, "g", conv.g)
+        u_from = conv.from_unit.strip().lower()
+        if units.is_valid_unit(u_from):
+            u_from = units.normalize(u_from)
+
+        u_to = conv.to_unit.strip().lower()
+        if units.is_valid_unit(u_to):
+            u_to = units.normalize(u_to)
+
+        add_edge(u_from, u_to, conv.factor)
 
     # 4. Packaging container conversions
     pkg = ingredient.package

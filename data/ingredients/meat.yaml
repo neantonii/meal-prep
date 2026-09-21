@@ -29,8 +29,9 @@
     potassium_mg: 350.0
 
   conversions:
-    - unit: piece
-      g: 237.5
+    - from: piece
+      to: g
+      factor: 237.5
 
 - id: extra-lean-ground-turkey
   name: Extra Lean Ground Turkey
@@ -61,8 +62,9 @@
     potassium_mg: 250.0
 
   conversions:
-    - unit: pack
-      g: 450.0
+    - from: pack
+      to: g
+      factor: 450.0
 
 
 - id: extra-lean-ground-beef
@@ -94,6 +96,40 @@
     potassium_mg: 340.0
 
   conversions:
-    - unit: pack
-      g: 454.0
+    - from: pack
+      to: g
+      factor: 454.0
+
+- id: pork-tenderloin
+  name: Pork Tenderloin
+  aisle: meat
+  storage: refrigerated
+  shelf_life_days: 3
+
+  package:
+    container: pack
+    unit: piece
+    amount: 2
+    container_weight_g: 1200
+
+  reference:
+    brand: Conestoga Meats
+    product: Conestoga Meats Pork Tenderloins 2 Pack
+    price: 23.78
+
+  macros_per_100g:
+    calories_kcal: 109.0
+    protein_g: 21.0
+    fat_g: 2.2
+    carbs_g: 0.0
+    fiber_g: 0.0
+    saturated_fat_g: 0.7
+    sugars_g: 0.0
+    sodium_mg: 53.0
+    potassium_mg: 399.0
+
+  conversions:
+    - from: piece
+      to: g
+      factor: 600.0
 

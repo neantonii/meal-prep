@@ -29,8 +29,9 @@
     potassium_mg: 8.0
 
   conversions:
-    - unit: tsp
-      g: 5.0
+    - from: tsp
+      to: g
+      factor: 5.0
 
 - id: black-pepper
   name: Ground Black Pepper
@@ -61,8 +62,9 @@
     potassium_mg: 1329.0
 
   conversions:
-    - unit: tsp
-      g: 2.3
+    - from: tsp
+      to: g
+      factor: 2.3
 
 - id: garlic-powder
   name: Garlic Powder
@@ -93,8 +95,9 @@
     potassium_mg: 1193.0
 
   conversions:
-    - unit: tsp
-      g: 3.1
+    - from: tsp
+      to: g
+      factor: 3.1
 
 - id: smoked-paprika
   name: Smoked Paprika
@@ -125,8 +128,9 @@
     potassium_mg: 2280.0
 
   conversions:
-    - unit: tsp
-      g: 2.3
+    - from: tsp
+      to: g
+      factor: 2.3
 
 - id: onion-powder
   name: Onion Powder
@@ -157,8 +161,9 @@
     potassium_mg: 985.0
 
   conversions:
-    - unit: tsp
-      g: 2.4
+    - from: tsp
+      to: g
+      factor: 2.4
 
 - id: dried-dill
   name: Dried Dill Weed
@@ -189,6 +194,40 @@
     potassium_mg: 3308.0
 
   conversions:
-    - unit: tsp
-      g: 1.0
+    - from: tsp
+      to: g
+      factor: 1.0
+
+- id: dried-thyme
+  name: Dried Thyme Leaves
+  aisle: spices
+  storage: ambient
+  shelf_life_days: 730
+
+  package:
+    container: bag
+    unit: g
+    amount: 45
+    container_weight_g: 45
+
+  reference:
+    brand: Compliments
+    product: Compliments Spice Thyme Leaves 45 g
+    price: 2.79
+
+  macros_per_100g:
+    calories_kcal: 276.0
+    protein_g: 9.1
+    fat_g: 7.4
+    carbs_g: 63.9
+    fiber_g: 37.0
+    saturated_fat_g: 2.7
+    sugars_g: 1.7
+    sodium_mg: 55.0
+    potassium_mg: 814.0
+
+  conversions:
+    - from: tsp
+      to: g
+      factor: 1.0
 

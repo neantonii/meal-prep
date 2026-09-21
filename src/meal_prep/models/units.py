@@ -126,3 +126,20 @@ def load_units(path: Path | str = Path("data/units.yaml")) -> UnitsRegistry:
 
     schema = UnitsFileSchema.model_validate(raw["units"])
     return UnitsRegistry(schema_data=schema)
+
+
+_DEFAULT_UNITS_REGISTRY: UnitsRegistry | None = None
+
+
+def get_default_units(units_path: Path | str | None = None) -> UnitsRegistry:
+    """Get or load singleton default UnitsRegistry."""
+    global _DEFAULT_UNITS_REGISTRY
+    if units_path is not None:
+        return load_units(units_path)
+    if _DEFAULT_UNITS_REGISTRY is None:
+        default_file = Path("data/units.yaml")
+        if not default_file.exists():
+            default_file = Path(__file__).resolve().parent.parent.parent.parent / "data" / "units.yaml"
+        _DEFAULT_UNITS_REGISTRY = load_units(default_file)
+    return _DEFAULT_UNITS_REGISTRY
+

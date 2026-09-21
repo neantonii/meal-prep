@@ -29,8 +29,9 @@
     potassium_mg: 380.0
 
   conversions:
-    - unit: piece
-      g: 250.0
+    - from: piece
+      to: g
+      factor: 250.0
 
 
 - id: argentine-red-shrimp
@@ -62,10 +63,9 @@
     potassium_mg: 291.2
 
   conversions:
-    - unit: piece
-      g: 31.25
-    - unit: g
-      g: 1.0
+    - from: piece
+      to: g
+      factor: 31.25
 
 - id: wild-pollock-fillet
   name: Wild Pollock Fillets
@@ -96,8 +96,9 @@
     potassium_mg: 150.0
 
   conversions:
-    - unit: g
-      g: 1.0
+    - from: bag
+      to: g
+      factor: 400.0
 
 
 

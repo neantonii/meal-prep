@@ -74,6 +74,7 @@ class Recipe(BaseModel):
     cookware: list[RecipeCookwareRef]
     timers: list[RecipeTimerRef]
     instructions: str
+    source_path: Path | None = None
 
     @property
     def portion_cooked_weight_g(self) -> float:
@@ -384,6 +385,7 @@ def load_recipe_file(
         cookware=cookware,
         timers=timers,
         instructions=instructions,
+        source_path=file_path,
     )
 
 

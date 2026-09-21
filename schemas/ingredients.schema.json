@@ -37,7 +37,7 @@
           "$ref": "#/$defs/MacrosInfo"
         },
         "conversions": {
-          "description": "Mandatory list of unit-to-gram conversions",
+          "description": "Mandatory list of unit conversions",
           "items": {
             "$ref": "#/$defs/UnitConversion"
           },
@@ -231,21 +231,27 @@
     },
     "UnitConversion": {
       "properties": {
-        "unit": {
-          "description": "Measurement unit name, e.g. piece, cup, tbsp",
-          "title": "Unit",
+        "from": {
+          "description": "Source measurement unit",
+          "title": "From",
           "type": "string"
         },
-        "g": {
-          "description": "Mass equivalent in grams",
+        "to": {
+          "description": "Target measurement unit",
+          "title": "To",
+          "type": "string"
+        },
+        "factor": {
+          "description": "Multiplier such that 1 from_unit = factor * to_unit",
           "exclusiveMinimum": 0,
-          "title": "G",
+          "title": "Factor",
           "type": "number"
         }
       },
       "required": [
-        "unit",
-        "g"
+        "from",
+        "to",
+        "factor"
       ],
       "title": "UnitConversion",
       "type": "object"

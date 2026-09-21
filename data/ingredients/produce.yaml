@@ -29,12 +29,12 @@
     potassium_mg: 401.0
 
   conversions:
-    - unit: clove
-      g: 3.0
-    - unit: head
-      g: 50.0
-    - unit: g
-      g: 1.0
+    - from: clove
+      to: g
+      factor: 3.0
+    - from: head
+      to: g
+      factor: 50.0
 
 - id: fresh-lemon
   name: Fresh Lemon
@@ -65,10 +65,10 @@
     potassium_mg: 136.0
 
   conversions:
-    - unit: item
-      g: 50.0
-    - unit: piece
-      g: 50.0
-    - unit: g
-      g: 1.0
+    - from: item
+      to: g
+      factor: 50.0
+    - from: piece
+      to: g
+      factor: 50.0
 

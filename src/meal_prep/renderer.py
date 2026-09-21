@@ -6,13 +6,19 @@ inline badges, ingredient checklists, macro summaries, yield, storage, and equip
 
 from pathlib import Path
 import re
+from typing import Any, TYPE_CHECKING
 from meal_prep.models.recipe import Recipe
 from meal_prep.models.ingredient import Ingredient
 from meal_prep.models.equipment import EquipmentRegistry
 from meal_prep.models.units import UnitsRegistry
+from meal_prep.calculator import PreparedRecipe
 
 
-def _format_step_text(text: str, catalog: dict[str, Ingredient], equipment: EquipmentRegistry) -> str:
+def _format_step_text(
+    text: str,
+    catalog_or_names: dict[str, Ingredient] | dict[str, str],
+    equipment: EquipmentRegistry | None = None,
+) -> str:
     """Format Cooklang instructions into HTML with styled badges."""
     # Format ingredients: @id{qty%unit} or @id
     def replace_ing(m):
@@ -20,7 +26,8 @@ def _format_step_text(text: str, catalog: dict[str, Ingredient], equipment: Equi
             raw_id = m.group(1).strip().lower()
             qty = m.group(2).strip() if m.group(2) else ""
             unit = m.group(3).strip() if m.group(3) else ""
-            display_name = catalog[raw_id].name if raw_id in catalog else raw_id
+            item = catalog_or_names.get(raw_id)
+            display_name = item.name if hasattr(item, "name") else (item or raw_id)
             if qty and unit:
                 label = f"{qty} {unit} {display_name}"
             elif qty:
@@ -30,7 +37,8 @@ def _format_step_text(text: str, catalog: dict[str, Ingredient], equipment: Equi
             return f'<span class="badge badge-ingredient" title="Ingredient: {display_name}">{label}</span>'
         else:
             raw_id = m.group(4).strip().lower()
-            display_name = catalog[raw_id].name if raw_id in catalog else raw_id
+            item = catalog_or_names.get(raw_id)
+            display_name = item.name if hasattr(item, "name") else (item or raw_id)
             return f'<span class="badge badge-ingredient">{display_name}</span>'
 
     ing_pattern = re.compile(
@@ -41,7 +49,7 @@ def _format_step_text(text: str, catalog: dict[str, Ingredient], equipment: Equi
     # Format cookware: #id{} or #id
     def replace_cw(m):
         raw_id = (m.group(1) or m.group(2)).strip().lower()
-        eq_item = equipment.get(raw_id)
+        eq_item = equipment.get(raw_id) if equipment is not None else None
         display_name = eq_item.name if eq_item else raw_id.replace("-", " ").title()
         return f'<span class="badge badge-cookware" title="Equipment: {display_name}">{display_name}</span>'
 
@@ -76,39 +84,34 @@ def _format_step_text(text: str, catalog: dict[str, Ingredient], equipment: Equi
 
 
 def render_recipe_card_html(
-    recipe: Recipe,
-    catalog: dict[str, Ingredient],
-    equipment: EquipmentRegistry,
-    units: UnitsRegistry,
+    recipe_or_prepared: Recipe | PreparedRecipe,
+    catalog: dict[str, Ingredient] | None = None,
+    equipment: EquipmentRegistry | None = None,
+    units: UnitsRegistry | None = None,
 ) -> str:
-    """Generate a self-contained, responsive HTML recipe card for a Recipe."""
-    batch_macros, serv_macros = recipe.compute_macros(catalog, units)
-    batch_cost, serv_cost = recipe.compute_cost(catalog, units)
-    raw_g = recipe.compute_raw_batch_weight_g(catalog, units)
-    loss = recipe.compute_cooking_loss_percent(catalog, units)
-    safe_days = recipe.compute_safe_fridge_days(catalog)
-    portion_g = recipe.portion_cooked_weight_g
+    """Generate a self-contained, responsive HTML recipe card from precomputed PreparedRecipe data."""
+    if isinstance(recipe_or_prepared, PreparedRecipe):
+        prepared = recipe_or_prepared
+    else:
+        if catalog is None or units is None:
+            raise ValueError("catalog and units must be provided when passing a raw Recipe object")
+        from meal_prep.calculator import prepare_recipe
+        prepared = prepare_recipe(recipe_or_prepared, catalog, units, equipment)
 
-    # Format category display
+    recipe = prepared.recipe
+    batch_macros = prepared.batch_macros
+    serv_macros = prepared.serving_macros
+    batch_cost = prepared.batch_cost
+    serv_cost = prepared.serving_cost
+    raw_g = prepared.raw_batch_weight_g
+    loss = prepared.cooking_loss_percent
+    safe_days = prepared.safe_fridge_days
+    portion_g = prepared.portion_cooked_weight_g
     cat_label = recipe.category.value.replace("_", " ").title()
 
-    # Format ingredients checklist
+    # Format ingredients checklist directly from prepared data
     ing_rows = []
-    for item in recipe.ingredients:
-        ing = catalog.get(item.id)
-        if ing:
-            display_name = ing.name
-            aisle = ing.aisle.title()
-            grams = ing.convert(item.quantity, item.unit, "g", units=units)
-            cost = (grams / 100.0) * ing.price_per_100g
-            cal = (grams / 100.0) * ing.macros_per_100g.calories_kcal
-            detail = f"{grams:.1f}g · ${cost:.2f} · {cal:.0f} kcal"
-        else:
-            display_name = item.id
-            aisle = "Unknown"
-            detail = ""
-
-        # Pretty display quantity (e.g. 4 instead of 4.0, 0.5 instead of 0.50)
+    for item in prepared.ingredients:
         qty_str = f"{item.quantity:g}"
         ing_rows.append(f"""
         <li class="ingredient-item">
@@ -117,26 +120,26 @@ def render_recipe_card_html(
                 <span class="checkmark"></span>
                 <span class="ingredient-text">
                     <span class="ing-qty">{qty_str} {item.unit}</span>
-                    <span class="ing-name">{display_name}</span>
+                    <span class="ing-name">{item.name}</span>
                 </span>
             </label>
-            <span class="ing-meta">{detail}</span>
+            <span class="ing-meta">{item.detail_text}</span>
         </li>
         """)
     ingredients_html = "\n".join(ing_rows)
 
-    # Format equipment list
-    eq_badges = []
-    for eq_id in recipe.equipment:
-        eq_item = equipment.get(eq_id)
-        name = eq_item.name if eq_item else eq_id.replace("-", " ").title()
-        eq_badges.append(f'<span class="badge badge-cookware">{name}</span>')
+    # Format equipment list directly from prepared data
+    eq_badges = [
+        f'<span class="badge badge-cookware">{name}</span>'
+        for name in prepared.equipment_names
+    ]
     equipment_html = " ".join(eq_badges)
 
     # Format steps
-    steps_html = _format_step_text(recipe.instructions, catalog, equipment)
+    ingredient_name_map = {item.id: item.name for item in prepared.ingredients}
+    steps_html = _format_step_text(recipe.instructions, ingredient_name_map, equipment)
 
-    freezer_badge = "❄️ Freezer Friendly" if recipe.storage_info.freezer_friendly else "🚫 No Freezing"
+    freezer_badge = "❄️ Freezer Friendly" if prepared.freezer_friendly else "🚫 No Freezing"
 
     # Build dynamic macro items
     macro_items = [
@@ -607,6 +610,7 @@ def render_recipe_card_html(
 def render_all_recipe_cards(
     recipes_dir: Path | str = Path("recipes"),
     output_dir: Path | str = Path("recipe_cards"),
+    library: Any | None = None,
     catalog: dict[str, Ingredient] | None = None,
     equipment: EquipmentRegistry | None = None,
     units: UnitsRegistry | None = None,
@@ -616,6 +620,7 @@ def render_all_recipe_cards(
     Args:
         recipes_dir: Directory containing .cook files (e.g. `recipes/`).
         output_dir: Destination directory for rendered .html files (e.g. `recipe_cards/`).
+        library: Optional preloaded MealPrepLibrary instance.
         catalog: Optional preloaded ingredients catalog.
         equipment: Optional preloaded equipment registry.
         units: Optional preloaded units registry.
@@ -626,31 +631,30 @@ def render_all_recipe_cards(
     recipes_path = Path(recipes_dir)
     out_path = Path(output_dir)
 
-    if catalog is None:
-        from meal_prep.models.ingredient import load_all_ingredients
-        catalog = load_all_ingredients(Path("data/ingredients"))
-    if equipment is None:
-        from meal_prep.models.equipment import load_equipment
-        equipment = load_equipment(Path("data/equipment.yaml"))
-    if units is None:
-        from meal_prep.models.units import load_units
-        units = load_units(Path("data/units.yaml"))
-
-    from meal_prep.models.recipe import load_recipe_file
+    if library is None:
+        if catalog is not None and equipment is not None and units is not None:
+            from meal_prep.library import MealPrepLibrary
+            from meal_prep.models.aisle import load_aisles
+            aisles = load_aisles(Path("data/aisles.yaml"))
+            from meal_prep.models.recipe import load_all_recipes
+            recipes = load_all_recipes(recipes_path, catalog=catalog, equipment_reg=equipment, units_reg=units)
+            library = MealPrepLibrary(units=units, equipment=equipment, aisles=aisles, catalog=catalog, recipes=recipes)
+        else:
+            from meal_prep.library import MealPrepLibrary
+            library = MealPrepLibrary.load(recipes_dir=recipes_dir)
 
     rendered_files: list[Path] = []
-    for cook_file in sorted(recipes_path.rglob("*.cook")):
-        rel_path = cook_file.relative_to(recipes_path)
+    for prepared in library.prepare_all().values():
+        cook_file = prepared.recipe.source_path
+        if cook_file and recipes_path in cook_file.parents:
+            rel_path = cook_file.relative_to(recipes_path)
+        else:
+            rel_path = Path(prepared.recipe.category.value) / f"{prepared.id}.cook"
+
         dest_html = (out_path / rel_path).with_suffix(".html")
         dest_html.parent.mkdir(parents=True, exist_ok=True)
 
-        recipe = load_recipe_file(
-            cook_file,
-            catalog=catalog,
-            equipment_reg=equipment,
-            units_reg=units,
-        )
-        html_content = render_recipe_card_html(recipe, catalog, equipment, units)
+        html_content = render_recipe_card_html(prepared)
         dest_html.write_text(html_content, encoding="utf-8")
         rendered_files.append(dest_html)
 

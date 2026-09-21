@@ -29,10 +29,9 @@
     potassium_mg: 1.0
 
   conversions:
-    - unit: ml
-      g: 0.92
-    - unit: tbsp
-      g: 13.8
+    - from: ml
+      to: g
+      factor: 0.92
 
 - id: avocado-oil
   name: 100% Pure Avocado Oil
@@ -63,10 +62,73 @@
     potassium_mg: 0.0
 
   conversions:
-    - unit: ml
-      g: 0.915
-    - unit: tsp
-      g: 4.575
-    - unit: tbsp
-      g: 13.725
+    - from: ml
+      to: g
+      factor: 0.915
+
+- id: chicken-broth
+  name: No Salt Added Chicken Broth
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 365
+
+  package:
+    container: carton
+    unit: ml
+    amount: 946
+    container_weight_g: 946
+
+  reference:
+    brand: Longo's Essentials
+    product: Longo's Essentials Chicken Broth No Salt Added 946 ml
+    price: 1.99
+
+  macros_per_100g:
+    calories_kcal: 5.0
+    protein_g: 0.8
+    fat_g: 0.0
+    carbs_g: 0.4
+    fiber_g: 0.0
+    saturated_fat_g: 0.0
+    sugars_g: 0.0
+    sodium_mg: 18.0
+    potassium_mg: 40.0
+
+  conversions:
+    - from: ml
+      to: g
+      factor: 1.0
+
+- id: dijon-mustard
+  name: Prepared Dijon Mustard
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 180
+
+  package:
+    container: bottle
+    unit: ml
+    amount: 325
+    container_weight_g: 341
+
+  reference:
+    brand: Compliments
+    product: Compliments Prepared Dijon Mustard Original 325 ml
+    price: 3.19
+
+  macros_per_100g:
+    calories_kcal: 100.0
+    protein_g: 6.0
+    fat_g: 6.0
+    carbs_g: 6.0
+    fiber_g: 3.5
+    saturated_fat_g: 0.5
+    sugars_g: 1.0
+    sodium_mg: 2400.0
+    potassium_mg: 200.0
+
+  conversions:
+    - from: ml
+      to: g
+      factor: 1.05
 

@@ -33,7 +33,7 @@ When the user asks to add or brainstorm a new meal, execute the following 4-step
   * Check each ingredient to see if a canonical staple already exists.
 * **CRITICAL RULE: NO SILENT INGREDIENT CREATION (ZERO GUESSWORK)**
   * **The agent must NEVER silently create, assume, or add ingredients to `data/ingredients/` without user opt-in.** This applies equally to primary proteins, cooking fats, produce, sauces, and small spice staples (e.g. onion powder, dried herbs).
-  * **Strict Stop on Missing Items:** If any ingredient is missing from `data/ingredients/`, the agent must halt and ask the user for their real purchase details (or check if explicitly documented in `Meal Prep Recipe Book.md`). Never create an assumed product/price entry just to make the `.cook` parser pass or satisfy a test.
+  * **Strict Stop on Missing Items:** If any ingredient is missing from `data/ingredients/`, the agent must halt and ask the user for their real purchase details. Never create an assumed product/price entry just to make the `.cook` parser pass or satisfy a test.
   * **User Opt-In Required:** An ingredient may only be added to `data/ingredients/` after the user has explicitly provided or approved the specific reference item (store, brand, package size, price).
   * **Behind-the-Scenes USDA Cross-Validation (Nutrient Verification Only):**
     * Once the user provides the product reference, cross-check its nutritional profile against USDA FoodData Central silently behind the scenes.
@@ -50,12 +50,16 @@ When the user asks to add or brainstorm a new meal, execute the following 4-step
   * Cookware: `#equipment-id` (must match canonical equipment or alias from `data/equipment.yaml`)
   * Timers: `~timer-name{quantity%unit}`
 * Include YAML frontmatter specifying `id`, `title`, `category`, `yield`, `storage`, and `equipment`.
-* **Macro Alignment Audit:** Provide the user with the per-portion macro breakdown, compare it against category peers (falling back to `Meal Prep Recipe Book.md` if no local recipes exist yet), flag any significant outliers with suggested adjustments, and present the recipe for user review.
+* **Macro Alignment Audit:** Provide the user with the per-portion macro breakdown, compare it against category peers, flag any significant outliers with suggested adjustments, and present the recipe for user review.
+* Audit the math using the calculator (do not read the renderer):
+  ```bash
+  PYTHONPATH=src python3 -c 'from meal_prep.library import MealPrepLibrary; print(MealPrepLibrary.load().review_math("<recipe-slug>"))'
+  ```
 
 ### Phase 4: Verification & Test Execution
 * Always run the test suite to ensure data integrity:
   ```bash
-  PYTHONPATH=src pytest tests/
+  PYTHONPATH=src python3 -m pytest tests/
   ```
 * Ensure that:
   1. All ingredient references in the recipe resolve to canonical entries in `data/ingredients/`.
@@ -70,10 +74,13 @@ When the user asks to add or brainstorm a new meal, execute the following 4-step
 
 ---
 
-## 3. Human-in-the-Loop Safeguards
+## 3. Human-in-the-Loop Safeguards & Agent File-Touch Boundaries
 
 1. **One Step at a Time:** Never rush ahead to generate multiple recipes or bulk edits without intermediate user review.
 2. **Deterministic & Auditable:** All calculations (macros per serving, batch costs) must be deterministically derivable from `data/ingredients/` and `data/units.yaml`.
 3. **Commit & Amend Policy:** When importing meals from the recipe book, keep changes in the working directory while drafting and refining. Amend/commit ONLY AFTER the user gives explicit final approval on the imported meal.
 4. **Respect Established Guidelines:** Consult `INGREDIENTS.md` whenever authoring or modifying ingredient staples.
 5. **Zero Silent Additions:** The agent is strictly forbidden from adding unconfirmed ingredients, equipment, or recipes behind the scenes. Missing ingredients are a mandatory hard stop to request the user's reference product or confirm existing book data before authoring recipes.
+6. **Strict File Scope & Anti-Browsing Directive (Anti-Hallucination & Token Hygiene):**
+   * **Allowed Files:** The agent must ONLY touch the target `recipes/<category>/<recipe-slug>.cook`, the specific ingredient file being modified (`data/ingredients/<aisle>.yaml`), and read-only references `data/equipment.yaml` / `data/units.yaml`.
+   * **FORBIDDEN:** NEVER load or browse `src/meal_prep/renderer.py` (it is a ~23 KiB HTML/CSS template; loading it burns context tokens and it contains no meal math). NEVER browse `src/meal_prep/models/*.py`, `tests/*.py`, or unrelated aisle files. Use `MealPrepLibrary.load().review_math("<slug>")` for math inspection.
