@@ -72,3 +72,70 @@
       to: g
       factor: 50.0
 
+
+- id: frozen-sweet-corn
+  name: Frozen Sweet Corn
+  aisle: produce
+  storage: frozen
+  shelf_life_days: 365
+
+  package:
+    container: bag
+    unit: g
+    amount: 750
+    container_weight_g: 750
+
+  reference:
+    brand: Longo's
+    product: Longo's Frozen Whole Kernel Corn Peaches & Cream 750 g
+    price: 3.49
+
+  macros_per_100g:
+    calories_kcal: 94.1
+    protein_g: 2.4
+    fat_g: 1.2
+    carbs_g: 20.0
+    fiber_g: 2.4
+    saturated_fat_g: 0.1
+    sugars_g: 1.2
+    sodium_mg: 10.0
+    potassium_mg: 264.7
+
+  conversions:
+    - from: cup
+      to: g
+      factor: 145.0
+
+- id: frozen-green-peas
+  name: Frozen Green Peas
+  aisle: produce
+  storage: frozen
+  shelf_life_days: 365
+
+  package:
+    container: bag
+    unit: g
+    amount: 750
+    container_weight_g: 750
+
+  reference:
+    brand: Best Buy
+    product: Best Buy Frozen Green Peas 750 g
+    price: 3.69
+
+  macros_per_100g:
+    calories_kcal: 82.4
+    protein_g: 5.9
+    fat_g: 0.6
+    carbs_g: 14.1
+    fiber_g: 3.5
+    saturated_fat_g: 0.1
+    sugars_g: 1.2
+    sodium_mg: 0.0
+    potassium_mg: 205.9
+
+  conversions:
+    - from: cup
+      to: g
+      factor: 150.0
+
