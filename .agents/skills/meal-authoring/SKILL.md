@@ -45,7 +45,7 @@ To prevent drift over time, canonical sets are not hardcoded. When authoring rec
     ```
   * Immediately show the rendered visual card in Canvas using:
     `canvas_ui_control(command="show_preview", path="recipe_cards/<category>/<recipe-slug>.html")`
-  * Accompany the preview with a brief 1–2 sentence chat message asking for the user's review or adjustments.
+  * Accompany the preview with a brief 1–2 sentence chat message asking for the user's review (concisely highlighting any macro outlier if present).
 
 ### 3. Human-in-the-Loop & Commit Policy
 * Work methodically on one meal at a time.
@@ -95,7 +95,7 @@ Write `recipes/<category>/<recipe-slug>.cook`:
    ```bash
    PYTHONPATH=src python3 -c 'from meal_prep.library import MealPrepLibrary; print(MealPrepLibrary.load().review_math("<recipe-slug>"))'
    ```
-2. Verify per-portion macros align with category benchmarks in `MEALS.md`.
+2. **Outlier Assessment:** Compare per-portion macros against the category benchmarks in `MEALS.md`. If macros fall outside expected ranges (e.g. protein too low, calories significantly out of range), flag the specific outlier and prepare a concise adjustment suggestion.
 3. Silently run the automated test suite:
    ```bash
    PYTHONPATH=src python3 -m pytest tests/
@@ -108,4 +108,4 @@ Write `recipes/<category>/<recipe-slug>.cook`:
    ```
 2. Verify that `recipe_cards/<category>/<recipe-slug>.html` exists.
 3. Call `canvas_ui_control(command="show_preview", path="recipe_cards/<category>/<recipe-slug>.html")`.
-4. In chat, output a concise 1–2 sentence message notifying the user that the card is ready for review. Do not echo code or math tables.
+4. In chat, output a concise 1–2 sentence message notifying the user that the card is ready for review. If an outlier was flagged in Step 4, concisely note it with the suggested adjustment. Do not echo code or math tables.
