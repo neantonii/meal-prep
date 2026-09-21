@@ -132,3 +132,69 @@
       to: g
       factor: 1.05
 
+
+- id: roasted-buckwheat
+  name: Roasted Buckwheat Groats
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 365
+
+  package:
+    container: bag
+    unit: g
+    amount: 908
+    container_weight_g: 908
+
+  reference:
+    brand: R&S
+    product: R&S Roasted Buckwheat 908 g
+    price: 5.29
+
+  macros_per_100g:
+    calories_kcal: 346.0
+    protein_g: 11.7
+    fat_g: 2.7
+    carbs_g: 75.0
+    fiber_g: 10.3
+    saturated_fat_g: 0.6
+    sugars_g: 0.9
+    sodium_mg: 11.0
+    potassium_mg: 320.0
+
+  conversions:
+    - from: cup
+      to: g
+      factor: 164.0
+
+- id: basmati-rice
+  name: Basmati Rice
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 365
+
+  package:
+    container: bag
+    unit: g
+    amount: 4540
+    container_weight_g: 4540
+
+  reference:
+    brand: India Gate
+    product: India Gate Rice Basmati Feast Rozzana Value Size 4.54 kg
+    price: 17.99
+
+  macros_per_100g:
+    calories_kcal: 355.6
+    protein_g: 8.9
+    fat_g: 0.0
+    carbs_g: 80.0
+    fiber_g: 2.2
+    saturated_fat_g: 0.0
+    sugars_g: 0.0
+    sodium_mg: 0.0
+    potassium_mg: 88.9
+
+  conversions:
+    - from: cup
+      to: g
+      factor: 180.0

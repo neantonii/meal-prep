@@ -121,7 +121,7 @@ The recipe file never stores redundant or computed values. When a recipe is load
 
 ## 6. Step-by-Step Recipe Authoring Workflow
 
-When adding a new recipe (human or AI agent), follow this strict 4-step workflow:
+When adding a new recipe (human or AI agent), follow this strict multi-step workflow:
 
 ### Step 1: Pre-requisite Ingredient Audit
 1. Inspect the original recipe and list ALL ingredients needed (proteins, produce, dairy, oils, and minor spices/seasonings).
@@ -141,7 +141,16 @@ When adding a new recipe (human or AI agent), follow this strict 4-step workflow
 2. Add complete YAML frontmatter (slug, title, category, yield, storage, equipment).
 3. Write clear, sequential cooking instructions using `@ingredient{qty%unit}`, `#equipment`, and `~timer{duration%unit}`.
 
-### Step 4: Macro Alignment & Category Comparative Audit
+### Step 4: Measurement Units & Culinary Practicality Audit
+Before running math calculations, review the chosen measurement units in the recipe body to verify they make practical, real-world culinary sense for a home cook:
+- **Avoid Awkward Mass Units for Common Kitchen Staples:** Home cooks do not measure 5 g of butter on a scale or weigh out 63 g of dry rice. Always favor natural, intuitive culinary units when available:
+  - **Small fats, dairy, and condiments:** Prefer volumetric spoons (e.g. `1 tsp`, `1 tbsp`) over awkward gram weights (e.g. `4.7 g`, `5 g`).
+  - **Dry grains & starches:** Prefer standard cups or spoons (e.g. `0.333 cup` for 1/3 cup, `0.5 cup` for 1/2 cup) over odd numbers like `63 g`.
+  - **Spices & seasonings:** Prefer `0.25 tsp`, `0.5 tsp`, `1 tsp`, `1 tbsp` over fractions of a gram (e.g. `1.1 g`, `2.3 g`).
+  - **Bulk proteins & large produce:** Grams `g` (e.g. `450 g`, `200 g`) or discrete counts (`piece`, `clove`) remain the preferred standard.
+- **Conversion Graph Integrity:** Ensure every chosen culinary unit (`tsp`, `tbsp`, `cup`, `piece`) is supported by the ingredient's precomputed `ConversionGraph` to grams.
+
+### Step 5: Macro Alignment & Category Comparative Audit
 Before finalizing the recipe, compute and present the per-portion macro breakdown to the user and perform a comparative analysis against the recipe's category standards:
 
 1. **Per-Portion Macro Analysis:**
@@ -160,7 +169,7 @@ Before finalizing the recipe, compute and present the per-portion macro breakdow
    * If the proposed recipe is a significant outlier (e.g., protein density is too low, portion weight is disproportionately large/small, or fat/calories deviate heavily from category peers), **explicitly alert the user, provide a clear comparison table, and suggest adjustments** (e.g. adjusting batch size, serving count, or oil amount).
    * The human user always makes the final decision.
 
-### Step 5: Automated Verification & Test Execution
+### Step 6: Automated Verification & Test Execution
 Run the automated validation suite:
 ```bash
 PYTHONPATH=src python3 -m pytest tests/
@@ -172,7 +181,7 @@ The test suite ensures:
 * Every `#equipment` is registered in `data/equipment.yaml`.
 * All timers use registered time units (`s`, `min`, `hr`).
 
-### Step 6: HTML Recipe Card Generation
+### Step 7: HTML Recipe Card Generation
 To generate visual, interactive recipe cards mirroring the `recipes/` directory structure:
 ```bash
 PYTHONPATH=src python3 -c 'from meal_prep.renderer import render_all_recipe_cards; render_all_recipe_cards()'
