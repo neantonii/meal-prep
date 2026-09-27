@@ -4,8 +4,7 @@ This module is the single source of truth for converting between measurement
 units within one ingredient. It is deliberately dependency-free: it imports
 nothing from the rest of the codebase (no ingredients, no units registry, no
 YAML, no Pydantic). Unit names are opaque string *tokens*; their real-world
-meaning (grams, pieces, packaging containers) is imposed by the caller, never
-by this module.
+meaning (grams, pieces, packages) is imposed by the caller, never by this module.
 
 Model
 -----

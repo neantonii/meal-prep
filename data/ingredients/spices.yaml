@@ -5,11 +5,6 @@
   storage: ambient
   shelf_life_days: 1095
 
-  package:
-    container: box
-    unit: g
-    amount: 1000
-
   reference:
     brand: Windsor
     product: Coarse Kosher Salt 1kg
@@ -27,6 +22,9 @@
     potassium_mg: 8.0
 
   conversions:
+    - from: package
+      to: g
+      factor: 1000
     - from: tsp
       to: g
       factor: 5.0
@@ -36,11 +34,6 @@
   aisle: spices
   storage: ambient
   shelf_life_days: 730
-
-  package:
-    container: bottle
-    unit: g
-    amount: 150
 
   reference:
     brand: Club House
@@ -59,6 +52,9 @@
     potassium_mg: 1329.0
 
   conversions:
+    - from: package
+      to: g
+      factor: 150
     - from: tsp
       to: g
       factor: 2.3
@@ -68,11 +64,6 @@
   aisle: spices
   storage: ambient
   shelf_life_days: 730
-
-  package:
-    container: bottle
-    unit: g
-    amount: 165
 
   reference:
     brand: Club House
@@ -91,6 +82,9 @@
     potassium_mg: 1193.0
 
   conversions:
+    - from: package
+      to: g
+      factor: 165
     - from: tsp
       to: g
       factor: 3.1
@@ -100,11 +94,6 @@
   aisle: spices
   storage: ambient
   shelf_life_days: 730
-
-  package:
-    container: bottle
-    unit: g
-    amount: 130
 
   reference:
     brand: Club House
@@ -123,6 +112,9 @@
     potassium_mg: 2280.0
 
   conversions:
+    - from: package
+      to: g
+      factor: 130
     - from: tsp
       to: g
       factor: 2.3
@@ -132,11 +124,6 @@
   aisle: spices
   storage: ambient
   shelf_life_days: 730
-
-  package:
-    container: bag
-    unit: g
-    amount: 155
 
   reference:
     brand: Compliments
@@ -155,6 +142,9 @@
     potassium_mg: 985.0
 
   conversions:
+    - from: package
+      to: g
+      factor: 155
     - from: tsp
       to: g
       factor: 2.4
@@ -164,11 +154,6 @@
   aisle: spices
   storage: ambient
   shelf_life_days: 730
-
-  package:
-    container: bag
-    unit: g
-    amount: 55
 
   reference:
     brand: Compliments
@@ -187,6 +172,9 @@
     potassium_mg: 3308.0
 
   conversions:
+    - from: package
+      to: g
+      factor: 55
     - from: tsp
       to: g
       factor: 1.0
@@ -196,11 +184,6 @@
   aisle: spices
   storage: ambient
   shelf_life_days: 730
-
-  package:
-    container: bag
-    unit: g
-    amount: 45
 
   reference:
     brand: Compliments
@@ -219,6 +202,9 @@
     potassium_mg: 814.0
 
   conversions:
+    - from: package
+      to: g
+      factor: 45
     - from: tsp
       to: g
       factor: 1.0

@@ -5,11 +5,6 @@
   storage: ambient
   shelf_life_days: 365
 
-  package:
-    container: bottle
-    unit: ml
-    amount: 1000
-
   reference:
     brand: Longo's Essentials
     product: Extra Virgin Olive Oil 1L
@@ -27,6 +22,9 @@
     potassium_mg: 1.0
 
   conversions:
+    - from: package
+      to: ml
+      factor: 1000
     - from: ml
       to: g
       factor: 0.92
@@ -36,11 +34,6 @@
   aisle: pantry
   storage: ambient
   shelf_life_days: 365
-
-  package:
-    container: bottle
-    unit: ml
-    amount: 500
 
   reference:
     brand: Compliments
@@ -59,6 +52,9 @@
     potassium_mg: 0.0
 
   conversions:
+    - from: package
+      to: ml
+      factor: 500
     - from: ml
       to: g
       factor: 0.915
@@ -68,11 +64,6 @@
   aisle: pantry
   storage: ambient
   shelf_life_days: 365
-
-  package:
-    container: carton
-    unit: ml
-    amount: 946
 
   reference:
     brand: Longo's Essentials
@@ -91,6 +82,9 @@
     potassium_mg: 40.0
 
   conversions:
+    - from: package
+      to: ml
+      factor: 946
     - from: ml
       to: g
       factor: 1.0
@@ -100,11 +94,6 @@
   aisle: pantry
   storage: ambient
   shelf_life_days: 180
-
-  package:
-    container: bottle
-    unit: ml
-    amount: 325
 
   reference:
     brand: Compliments
@@ -123,6 +112,9 @@
     potassium_mg: 200.0
 
   conversions:
+    - from: package
+      to: ml
+      factor: 325
     - from: ml
       to: g
       factor: 1.05
@@ -133,11 +125,6 @@
   aisle: pantry
   storage: ambient
   shelf_life_days: 365
-
-  package:
-    container: bag
-    unit: g
-    amount: 908
 
   reference:
     brand: R&S
@@ -156,6 +143,9 @@
     potassium_mg: 320.0
 
   conversions:
+    - from: package
+      to: g
+      factor: 908
     - from: cup
       to: g
       factor: 164.0
@@ -165,11 +155,6 @@
   aisle: pantry
   storage: ambient
   shelf_life_days: 365
-
-  package:
-    container: bag
-    unit: g
-    amount: 4540
 
   reference:
     brand: India Gate
@@ -188,6 +173,9 @@
     potassium_mg: 88.9
 
   conversions:
+    - from: package
+      to: g
+      factor: 4540
     - from: cup
       to: g
       factor: 180.0
@@ -197,11 +185,6 @@
   aisle: pantry
   storage: ambient
   shelf_life_days: 730
-
-  package:
-    container: bag
-    unit: g
-    amount: 454
 
   reference:
     brand: Eight Treasures
@@ -220,5 +203,7 @@
     potassium_mg: 11.8
 
   conversions:
-    []
+    - from: package
+      to: g
+      factor: 454
 

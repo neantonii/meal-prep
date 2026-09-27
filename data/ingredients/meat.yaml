@@ -5,11 +5,6 @@
   storage: refrigerated
   shelf_life_days: 3
 
-  package:
-    container: pack
-    unit: piece
-    amount: 4
-
   reference:
     brand: Compliments
     product: Compliments Chicken Breasts Boneless Skinless Value Pack
@@ -30,6 +25,9 @@
     piece: [piece, pieces]
 
   conversions:
+    - from: package
+      to: piece
+      factor: 4
     - from: piece
       to: g
       factor: 237.5
@@ -39,11 +37,6 @@
   aisle: meat
   storage: refrigerated
   shelf_life_days: 4
-
-  package:
-    container: pack
-    unit: g
-    amount: 450
 
   reference:
     brand: Compliments
@@ -62,7 +55,9 @@
     potassium_mg: 250.0
 
   conversions:
-    []
+    - from: package
+      to: g
+      factor: 450
 
 
 - id: extra-lean-ground-beef
@@ -70,11 +65,6 @@
   aisle: meat
   storage: refrigerated
   shelf_life_days: 4
-
-  package:
-    container: pack
-    unit: g
-    amount: 454
 
   reference:
     brand: Voilà by Sobeys
@@ -93,18 +83,15 @@
     potassium_mg: 340.0
 
   conversions:
-    []
+    - from: package
+      to: g
+      factor: 454
 
 - id: pork-tenderloin
   name: Pork Tenderloin
   aisle: meat
   storage: refrigerated
   shelf_life_days: 3
-
-  package:
-    container: pack
-    unit: piece
-    amount: 2
 
   reference:
     brand: Conestoga Meats
@@ -126,6 +113,9 @@
     piece: [piece, pieces]
 
   conversions:
+    - from: package
+      to: piece
+      factor: 2
     - from: piece
       to: g
       factor: 600.0

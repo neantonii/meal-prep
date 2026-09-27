@@ -23,3 +23,4 @@ class DimensionGroup(BaseModel):
 class UnitsFileSchema(BaseModel):
     mass: DimensionGroup
     volume: DimensionGroup
+    package: DimensionGroup

@@ -29,8 +29,8 @@ def normalize_slug(value: str, *, field: str) -> str:
 def clean_token(value: str, *, field: str) -> str:
     """Return ``value`` trimmed and lowercased, or raise if empty.
 
-    For unit names, container nouns, and alias tokens: case-folding and
-    whitespace trimming are the only allowed cleanups.
+    For unit names and alias tokens: case-folding and whitespace trimming are
+    the only allowed cleanups.
     """
     clean = value.strip().lower()
     if not clean:

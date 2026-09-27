@@ -5,11 +5,6 @@
   storage: refrigerated
   shelf_life_days: 90
 
-  package:
-    container: pack
-    unit: g
-    amount: 454
-
   reference:
     brand: Compliments
     product: Compliments Butter Unsalted 454 g
@@ -27,6 +22,9 @@
     potassium_mg: 24.0
 
   conversions:
+    - from: package
+      to: g
+      factor: 454
     - from: tbsp
       to: g
       factor: 14.2

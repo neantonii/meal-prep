@@ -5,11 +5,6 @@
   storage: ambient
   shelf_life_days: 30
 
-  package:
-    container: pack
-    unit: head
-    amount: 3
-
   reference:
     brand: Voilà by Sobeys
     product: Fresh Garlic 3-Pack
@@ -31,6 +26,9 @@
     head: [head, heads]
 
   conversions:
+    - from: package
+      to: head
+      factor: 3
     - from: clove
       to: g
       factor: 3.0
@@ -43,11 +41,6 @@
   aisle: produce
   storage: ambient
   shelf_life_days: 14
-
-  package:
-    container: pack
-    unit: item
-    amount: 1
 
   reference:
     brand: Voilà by Sobeys
@@ -70,6 +63,9 @@
     serving: [serving, servings]
 
   conversions:
+    - from: package
+      to: item
+      factor: 1
     # One lemon = 2 retail label servings of 55 g each (label basis: 15 kcal / 55 g).
     - from: item
       to: serving
@@ -84,11 +80,6 @@
   aisle: produce
   storage: frozen
   shelf_life_days: 365
-
-  package:
-    container: bag
-    unit: g
-    amount: 750
 
   reference:
     brand: Longo's
@@ -107,6 +98,9 @@
     potassium_mg: 264.7
 
   conversions:
+    - from: package
+      to: g
+      factor: 750
     - from: cup
       to: g
       factor: 145.0
@@ -116,11 +110,6 @@
   aisle: produce
   storage: frozen
   shelf_life_days: 365
-
-  package:
-    container: bag
-    unit: g
-    amount: 750
 
   reference:
     brand: Best Buy
@@ -139,6 +128,9 @@
     potassium_mg: 205.9
 
   conversions:
+    - from: package
+      to: g
+      factor: 750
     - from: cup
       to: g
       factor: 150.0

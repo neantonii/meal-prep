@@ -3,17 +3,6 @@ from meal_prep.enums import StorageType
 from meal_prep.dtos._normalize import clean_token, normalize_slug
 
 
-class PackageInfo(BaseModel):
-    container: str = Field(..., description="Container noun, e.g. pack, bag, carton, bottle, loaf")
-    unit: str = Field(..., description="Unit noun of items in container, e.g. piece, slice, item, g, ml")
-    amount: float = Field(..., gt=0, description="Amount of units in the container")
-
-    @field_validator("container", "unit")
-    @classmethod
-    def clean_strings(cls, v: str) -> str:
-        return clean_token(v, field="Package field")
-
-
 class ReferenceInfo(BaseModel):
     brand: str = Field(..., description="Brand name, e.g. Compliments")
     product: str = Field(..., description="Full commercial product name")
@@ -67,7 +56,6 @@ class Ingredient(BaseModel):
     storage: StorageType = Field(..., description="Storage temperature classification")
     shelf_life_days: int = Field(..., gt=0, description="Mandatory shelf life in days under this storage mode")
 
-    package: PackageInfo
     reference: ReferenceInfo
     macros_per_100g: MacrosInfo
     custom_units: dict[str, list[str]] = Field(
@@ -77,8 +65,8 @@ class Ingredient(BaseModel):
     )
     conversions: list[UnitConversion] = Field(
         default_factory=list,
-        description="Unit conversions bridging culinary units to grams. May be empty when the "
-        "package unit is already a mass unit.",
+        description="Unit conversions. The reserved `package` node's retail edge is authored "
+        "here as `{from: package, to: <unit>, factor: <amount>}`.",
     )
 
     @field_validator("id")

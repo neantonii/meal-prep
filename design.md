@@ -58,7 +58,7 @@ Every enriched `Ingredient` carries its own full, frozen conversion graph.
 
 Edges come from four sources:
 
-1. the package edge: `container -> package.unit = amount`
+1. the package edge: `package -> <unit> = <amount>` (authored in `conversions`)
 2. authored `conversions`: `from -> to = factor`
 3. universal physics: mass -> `g`, volume -> `ml`
 4. synonyms: `alias -> canonical = 1.0`, from the YAML that owns them
@@ -78,32 +78,35 @@ custom_units:
   clove: [clove, cloves]
   head: [head, heads]
 conversions:
-  - {from: clove, to: g, factor: 3.0}
-  - {from: head,  to: g, factor: 50.0}
+  - {from: package, to: head,  factor: 3}
+  - {from: clove,   to: g,     factor: 3.0}
+  - {from: head,    to: g,     factor: 50.0}
 ```
 
 Rules:
 
 - Every unit token is **explicitly registered**: standard units come from
-  `units.yaml`, custom units from the ingredient's `custom_units` map, and
-  package/container nouns from `package`. No token is inferred from its
+  `units.yaml`, custom units from the ingredient's `custom_units` map, and the
+  reserved `package` node from `units.yaml`. No token is inferred from its
   presence in a conversion. The only permitted token cleanup is case
   normalization and trimming whitespace.
-- Every `conversions` / `package.unit` endpoint must be a **standard unit**, a
-  **packaging container**, or a **declared custom unit**.
+- Every `conversions` endpoint must be a **standard unit**, a **declared custom
+  unit**, or the reserved **`package`** token.
 - **Gram reachability is required.** A custom unit not bridged (directly or
   transitively) to grams is a validation error. A declared node with no edges is
   legal only until it fails this check.
 - The centralized `count` dimension is removed; its units become
-  ingredient-local custom units (`piece`, `item`, `head`, `clove`). `slice` and
-  `bunch` vanish; `bunch` survives only as a container.
+  ingredient-local custom units (`piece`, `item`, `head`, `clove`).
+- `package` is a **reserved retail node** with no universal conversions — its
+  `package -> *` edge is authored per ingredient (one per ingredient, only ever
+  as a `from`). It must never be shadowed by a custom unit.
 
 ## Validation strategy: fail fast
 
 - **DTO validation** runs at YAML/parse time (shape only).
 - **Ingredient enrichment** runs the full validation (graph invariants,
-  registered-container check, custom-unit grammar, gram reachability) and fails
-  the moment it runs.
+  registered-token check, custom-unit grammar, gram reachability, single
+  `package -> *` edge) and fails the moment it runs.
 - **Recipe validation is trivial**: ingredient enrichment already guarantees
   gram reachability for every registered unit, so a recipe only checks that it
   references existing ingredients using registered units.

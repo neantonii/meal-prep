@@ -45,3 +45,14 @@ units:
       fl_oz:
         amount: 29.57
         unit: ml
+
+  # Reserved retail node. `package` is a canonical token like `g` or `ml`, but
+  # it has no universal conversions: what "1 package" means differs per
+  # ingredient (4 chicken pieces vs 4540 g of rice), so every `package -> *`
+  # edge is authored on the ingredient itself. It must never be shadowed by a
+  # custom unit.
+  package:
+    base: package
+    allowed:
+      package: [package]
+    conversions: {}

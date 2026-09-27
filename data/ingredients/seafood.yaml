@@ -5,11 +5,6 @@
   storage: refrigerated
   shelf_life_days: 2
 
-  package:
-    container: pack
-    unit: piece
-    amount: 1
-
   reference:
     brand: Compliments / Voila
     product: Fresh Rainbow Trout Fillet
@@ -30,6 +25,9 @@
     piece: [piece, pieces]
 
   conversions:
+    - from: package
+      to: piece
+      factor: 1
     - from: piece
       to: g
       factor: 250.0
@@ -40,11 +38,6 @@
   aisle: seafood
   storage: frozen
   shelf_life_days: 3
-
-  package:
-    container: bag
-    unit: g
-    amount: 454
 
   reference:
     brand: Ocean Prime
@@ -66,6 +59,9 @@
     piece: [piece, pieces]
 
   conversions:
+    - from: package
+      to: g
+      factor: 454
     - from: piece
       to: g
       factor: 31.25
@@ -75,11 +71,6 @@
   aisle: seafood
   storage: frozen
   shelf_life_days: 3
-
-  package:
-    container: bag
-    unit: g
-    amount: 400
 
   reference:
     brand: Compliments
@@ -98,7 +89,9 @@
     potassium_mg: 150.0
 
   conversions:
-    []
+    - from: package
+      to: g
+      factor: 400
 
 
 

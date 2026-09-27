@@ -11,7 +11,6 @@ from meal_prep.dtos.equipment import EquipmentItem
 from meal_prep.enums import StorageType, RecipeCategory
 from meal_prep.dtos.ingredient import (
     Ingredient,
-    PackageInfo,
     ReferenceInfo,
     MacrosInfo,
     UnitConversion,
@@ -32,7 +31,6 @@ __all__ = [
     "StorageType",
     "RecipeCategory",
     "Ingredient",
-    "PackageInfo",
     "ReferenceInfo",
     "MacrosInfo",
     "UnitConversion",
