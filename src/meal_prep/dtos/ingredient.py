@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from meal_prep.models.enums import StorageType
+from meal_prep.enums import StorageType
+from meal_prep.dtos._normalize import clean_token, normalize_slug
 
 
 class PackageInfo(BaseModel):
@@ -10,10 +11,7 @@ class PackageInfo(BaseModel):
     @field_validator("container", "unit")
     @classmethod
     def clean_strings(cls, v: str) -> str:
-        clean = v.strip().lower()
-        if not clean:
-            raise ValueError("Field cannot be empty")
-        return clean
+        return clean_token(v, field="Package field")
 
 
 class ReferenceInfo(BaseModel):
@@ -46,10 +44,7 @@ class UnitConversion(BaseModel):
     @field_validator("from_unit", "to_unit")
     @classmethod
     def clean_units(cls, v: str) -> str:
-        clean = v.strip().lower()
-        if not clean:
-            raise ValueError("Unit cannot be empty")
-        return clean
+        return clean_token(v, field="Unit")
 
     @model_validator(mode="after")
     def validate_different_units(self) -> "UnitConversion":
@@ -59,6 +54,13 @@ class UnitConversion(BaseModel):
 
 
 class Ingredient(BaseModel):
+    """Ingredient DTO — the authored, validated ingredient document.
+
+    Decodes ``data/ingredients/<aisle>.yaml`` and carries raw authored values.
+    The enriched ``Ingredient`` (in ``meal_prep.models``) is computed later by a
+    service (``prepare_ingredient``). The two share a name and are distinguished
+    by import path, not by suffix or underscore.
+    """
     id: str = Field(..., description="Canonical unique slug, e.g. 'boneless-chicken-breast'")
     name: str = Field(..., description="Generic staple display name")
     aisle: str = Field(..., description="Supermarket aisle slug")
@@ -68,6 +70,11 @@ class Ingredient(BaseModel):
     package: PackageInfo
     reference: ReferenceInfo
     macros_per_100g: MacrosInfo
+    custom_units: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="Explicitly registered non-standard units (canonical -> aliases), in the "
+        "same shape as the standard `allowed` map in units.yaml.",
+    )
     conversions: list[UnitConversion] = Field(
         default_factory=list,
         description="Unit conversions bridging culinary units to grams. May be empty when the "
@@ -77,10 +84,30 @@ class Ingredient(BaseModel):
     @field_validator("id")
     @classmethod
     def validate_id(cls, v: str) -> str:
-        clean = v.strip().lower()
-        if not clean:
-            raise ValueError("Ingredient id cannot be empty")
-        if not clean.replace("-", "").isalnum():
-            raise ValueError(f"Ingredient id '{v}' must be alphanumeric with hyphens")
-        return clean
+        return normalize_slug(v, field="Ingredient id")
+
+    @field_validator("custom_units")
+    @classmethod
+    def validate_custom_units(cls, v: dict[str, list[str]]) -> dict[str, list[str]]:
+        """Normalize custom-unit tokens: canonical keys and aliases.
+
+        Custom units follow the same identifier convention as ids (kebab-case)
+        and the same alias cleanup as standard units (case-fold + trim only).
+        No inference, no plural stripping, no magic.
+        """
+        cleaned: dict[str, list[str]] = {}
+        for canonical, aliases in v.items():
+            key = normalize_slug(canonical, field="Custom unit")
+            seen: set[str] = set()
+            cleaned_aliases: list[str] = []
+            for alias in aliases:
+                a = clean_token(alias, field=f"Custom unit '{canonical}' alias")
+                if a in seen:
+                    raise ValueError(f"Duplicate alias '{alias}' for custom unit '{canonical}'")
+                seen.add(a)
+                cleaned_aliases.append(a)
+            if key not in seen:
+                cleaned_aliases.insert(0, key)
+            cleaned[key] = cleaned_aliases
+        return cleaned
 

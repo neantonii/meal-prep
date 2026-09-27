@@ -10,14 +10,16 @@ reasons about. Every domain concept therefore has two shapes:
 
 | concept | DTO (authored, validated) | enriched value (public, frozen) |
 | :--- | :--- | :--- |
-| ingredient | `_IngredientData` (private) | `Ingredient` |
+| ingredient | `Ingredient` (``meal_prep.dtos.ingredient``) | `Ingredient` (``meal_prep.models.ingredient``) |
 | recipe | `Recipe` (the authored document) | `PreparedRecipe` |
 
 - **DTO** — schema fields + shape validation only. It decodes YAML/Cooklang and
-  carries raw authored values. It is not a public abstraction; for the
-  ingredient it is private (`_IngredientData`).
+  carries raw authored values. It is not a public abstraction.
 - **Enriched value** — everything a downstream consumer needs, computed once and
   frozen. Immutable. This is the public building block.
+
+A DTO and its enriched value may share a name (`Ingredient`). They are
+distinguished by import path, not by suffix or underscore.
 
 Enrichment is a service:
 
@@ -42,9 +44,10 @@ the graph they need is already a frozen field.
 - Privacy in Python is a convention, not enforcement: a single leading
   underscore means "internal, not part of the public API." The declaration of
   intent, combined with the package `__all__`, defines the public surface.
-- The public ingredient is `Ingredient` (enriched, frozen). Its DTO
-  (`_IngredientData`) is deliberately excluded from the public surface: it is a
-  parse shim, not a building block.
+- DTOs and enriched values are distinguished by import path: `Ingredient` the
+  DTO lives in `meal_prep.dtos.ingredient`, while `Ingredient` the enriched
+  value lives in `meal_prep.models.ingredient`. No suffix or underscore is used
+  to tell them apart.
 - Recipes differ: the authored `Recipe` *is* a public object (it is the authored
   document, with a legitimate standalone consumer), and `PreparedRecipe` is its
   enriched, computed form.
@@ -67,10 +70,13 @@ Edges come from four sources:
 
 ## Custom units
 
-An ingredient declares its non-standard units explicitly:
+An ingredient declares its non-standard units explicitly, in the same shape the
+standard units use (canonical → aliases):
 
 ```yaml
-custom_units: [clove, head]
+custom_units:
+  clove: [clove, cloves]
+  head: [head, heads]
 conversions:
   - {from: clove, to: g, factor: 3.0}
   - {from: head,  to: g, factor: 50.0}
@@ -78,6 +84,11 @@ conversions:
 
 Rules:
 
+- Every unit token is **explicitly registered**: standard units come from
+  `units.yaml`, custom units from the ingredient's `custom_units` map, and
+  package/container nouns from `package`. No token is inferred from its
+  presence in a conversion. The only permitted token cleanup is case
+  normalization and trimming whitespace.
 - Every `conversions` / `package.unit` endpoint must be a **standard unit**, a
   **packaging container**, or a **declared custom unit**.
 - **Gram reachability is required.** A custom unit not bridged (directly or

@@ -1,33 +1,29 @@
 """Cooklang adapter for recipe files (``recipes/<category>/<slug>.cook``).
 
-Parses YAML frontmatter and Cooklang body markup, then performs semantic
-cross-validation against the ingredient catalog, equipment registry, and units
-registry.
+Parses YAML frontmatter and Cooklang body markup into plain DTO records. No
+cross-validation against the ingredient catalog, equipment registry, or units
+registry happens here — that is enrichment, and lives in a service.
 """
 
 from pathlib import Path
 from typing import Any
 import yaml
 
-from meal_prep.models.recipe import (
+from meal_prep.dtos.recipe import (
     Recipe,
     RecipeCookwareRef,
     RecipeFrontmatter,
     RecipeIngredientRef,
-    RecipeTimerRef,
 )
-from meal_prep.models.ingredient import Ingredient
-from meal_prep.models.units import UnitsRegistry
-from meal_prep.models.equipment import EquipmentRegistry
 from meal_prep.engines.cooklang import parse_cooklang
 
 
-def parse_cooklang_body(text: str) -> tuple[list[RecipeIngredientRef], list[RecipeCookwareRef], list[RecipeTimerRef]]:
-    """Extract ingredients, cookware, and timers from Cooklang instructions text.
+def parse_cooklang_body(text: str) -> tuple[list[RecipeIngredientRef], list[RecipeCookwareRef]]:
+    """Extract ingredients and cookware from Cooklang instructions text.
 
     Tokenization and syntax validation live in the pure ``engines.cooklang``
     engine; this adapter maps the resulting records onto the recipe reference
-    models.
+    DTOs.
     """
     doc = parse_cooklang(text)
     ingredients = [
@@ -35,11 +31,7 @@ def parse_cooklang_body(text: str) -> tuple[list[RecipeIngredientRef], list[Reci
         for i in doc.ingredients
     ]
     cookware = [RecipeCookwareRef(id=c.id) for c in doc.cookware]
-    timers = [
-        RecipeTimerRef(name=t.name, duration=t.duration, unit=t.unit)
-        for t in doc.timers
-    ]
-    return ingredients, cookware, timers
+    return ingredients, cookware
 
 
 def split_recipe_file(content: str) -> tuple[dict[str, Any], str]:
@@ -66,18 +58,12 @@ def split_recipe_file(content: str) -> tuple[dict[str, Any], str]:
     return raw_frontmatter, instructions
 
 
-def load_recipe_file(
-    path: Path | str,
-    catalog: dict[str, Ingredient] | None = None,
-    equipment_reg: EquipmentRegistry | None = None,
-    units_reg: UnitsRegistry | None = None,
-) -> Recipe:
-    """Load, parse, and validate a .cook recipe file.
+def load_recipe_file(path: Path | str) -> Recipe:
+    """Load and parse a .cook recipe file into its authored DTO.
 
-    If catalog, equipment_reg, and units_reg are provided, executes full semantic cross-validation:
-    - Verifies ingredient existence and unit conversion to grams
-    - Verifies equipment IDs against equipment registry
-    - Verifies timer units against time units in units registry
+    Performs only deserialization and shape validation (frontmatter model,
+    Cooklang syntax, ID/category/file-layout consistency). Cross-validation
+    against the catalog and registries is enrichment and is not done here.
     """
     file_path = Path(path)
     if not file_path.exists():
@@ -107,45 +93,10 @@ def load_recipe_file(
         )
 
     # Parse Cooklang body
-    ingredients, cookware, timers = parse_cooklang_body(instructions)
+    ingredients, cookware = parse_cooklang_body(instructions)
 
     if not ingredients:
         raise ValueError(f"Recipe '{frontmatter.id}' has no ingredients declared in instructions body.")
-
-    # Contextual Cross-Validation if registries provided
-    if units_reg is not None:
-        # Validate timer units
-        for timer in timers:
-            if not units_reg.is_valid_time_unit(timer.unit):
-                raise ValueError(
-                    f"Timer '{timer.name}' in recipe '{frontmatter.id}' specifies invalid time unit '{timer.unit}'. "
-                    f"Must be a registered time unit (s, min, hr)."
-                )
-
-    if equipment_reg is not None:
-        # Validate frontmatter equipment list
-        for eq_id in frontmatter.equipment:
-            if equipment_reg.get(eq_id) is None:
-                raise ValueError(
-                    f"Recipe '{frontmatter.id}' declares unknown equipment ID '{eq_id}'. "
-                    "Must exist in data/equipment.yaml"
-                )
-
-        # Validate body cookware references
-        for cw in cookware:
-            if equipment_reg.get(cw.id) is None:
-                raise ValueError(
-                    f"Recipe '{frontmatter.id}' mentions unknown cookware '#{cw.id}' in instructions. "
-                    "Must exist in data/equipment.yaml"
-                )
-
-    if catalog is not None:
-        # Validate ingredient references against the catalog
-        for item in ingredients:
-            if item.id not in catalog:
-                raise ValueError(
-                    f"Recipe '{frontmatter.id}' uses ingredient '@{item.id}' which does not exist in ingredients catalog!"
-                )
 
     return Recipe(
         id=frontmatter.id,
@@ -156,18 +107,12 @@ def load_recipe_file(
         equipment=frontmatter.equipment,
         ingredients=ingredients,
         cookware=cookware,
-        timers=timers,
         instructions=instructions,
         source_path=file_path,
     )
 
 
-def load_all_recipes(
-    recipes_dir: Path | str = Path("recipes"),
-    catalog: dict[str, Ingredient] | None = None,
-    equipment_reg: EquipmentRegistry | None = None,
-    units_reg: UnitsRegistry | None = None,
-) -> dict[str, Recipe]:
+def load_all_recipes(recipes_dir: Path | str = Path("recipes")) -> dict[str, Recipe]:
     """Load and validate all .cook recipe files across all category directories."""
     directory = Path(recipes_dir)
     if not directory.exists() or not directory.is_dir():
@@ -175,12 +120,7 @@ def load_all_recipes(
 
     recipes: dict[str, Recipe] = {}
     for cook_file in sorted(directory.rglob("*.cook")):
-        recipe = load_recipe_file(
-            cook_file,
-            catalog=catalog,
-            equipment_reg=equipment_reg,
-            units_reg=units_reg,
-        )
+        recipe = load_recipe_file(cook_file)
         if recipe.id in recipes:
             raise ValueError(f"Duplicate recipe ID '{recipe.id}' found across multiple files!")
         recipes[recipe.id] = recipe

@@ -1,3 +1,10 @@
+"""Shared domain vocabulary — closed sets of legal values used to constrain fields.
+
+These are dependency-free leaves (stdlib ``enum`` only). They are neither DTOs
+(decoded authored documents) nor enriched values, and they never change across
+the DTO/enrichment boundary. For now they may be imported from anywhere.
+"""
+
 from enum import Enum
 
 

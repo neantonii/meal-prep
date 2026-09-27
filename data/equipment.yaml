@@ -2,14 +2,14 @@
 # Canonical Kitchen Equipment & Cookware Aliases
 
 equipment:
-  - id: air_fryer
+  - id: air-fryer
     name: Air Fryer
     aliases:
       - air fryer
       - air-fryer
       - airfryer
 
-  - id: rice_cooker
+  - id: rice-cooker
     name: Rice Cooker
     aliases:
       - rice cooker
@@ -26,7 +26,7 @@ equipment:
       - large skillet
       - large non-stick skillet
 
-  - id: sheet_pan
+  - id: sheet-pan
     name: Sheet Pan
     aliases:
       - sheet pan
@@ -34,7 +34,7 @@ equipment:
       - baking tray
       - cookie sheet
 
-  - id: large_pot
+  - id: large-pot
     name: Large Pot
     aliases:
       - large pot
@@ -65,7 +65,7 @@ equipment:
       - immersion blender
       - bullet blender
 
-  - id: meat_thermometer
+  - id: meat-thermometer
     name: Meat Thermometer
     aliases:
       - meat thermometer
@@ -73,7 +73,7 @@ equipment:
       - food thermometer
       - instant read thermometer
 
-  - id: wire_rack
+  - id: wire-rack
     name: Wire Rack
     aliases:
       - wire rack

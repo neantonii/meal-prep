@@ -1,14 +1,18 @@
 """Pure Cooklang tokenizer and parser.
 
 This module is a dependency-free engine. It owns the Cooklang micro-syntax
-(the ``@ingredient``, ``#cookware`` and ``~timer`` markup) and turns raw
-instruction text into plain data records. It imports nothing from the rest of
-the codebase (stdlib only) and must stay that way — enforced by
-``test_engines_package_has_no_domain_imports``.
+(the ``@ingredient`` and ``#cookware`` markup, plus the ``~timer`` markup it
+validates in place) and turns raw instruction text into plain data records. It
+imports nothing from the rest of the codebase (stdlib only) and must stay that
+way — enforced by ``test_engines_package_has_no_domain_imports``.
+
+Timers are validated here but deliberately not surfaced: a recipe is about
+ingredients and cookware, and a timer duration is an instruction-text detail,
+not a data record the system reasons about.
 
 The compiled patterns are the single source of truth for Cooklang syntax,
-shared by the recipe adapter (parsing into models) and the renderer
-(formatting instructions back to HTML).
+shared by the recipe adapter (parsing into DTOs) and the renderer (formatting
+instructions back to HTML).
 """
 
 from dataclasses import dataclass
@@ -26,6 +30,15 @@ TIMER_PATTERN = re.compile(
     r"~([a-zA-Z0-9_-]+)?\s*\{\s*([^}%]+)\s*%\s*([^}]+)\s*\}"
 )
 
+# Valid timer duration units. Self-contained: the `time` dimension has been
+# removed from units.yaml, so this engine carries its own canonical set rather
+# than depending on an external registry.
+_TIME_UNITS = {
+    "s", "sec", "second", "seconds",
+    "min", "mins", "minute", "minutes",
+    "hr", "hrs", "hour", "hours",
+}
+
 
 @dataclass(frozen=True)
 class CooklangIngredient:
@@ -40,24 +53,18 @@ class CooklangCookware:
 
 
 @dataclass(frozen=True)
-class CooklangTimer:
-    name: str
-    duration: float
-    unit: str
-
-
-@dataclass(frozen=True)
 class CooklangDocument:
     ingredients: tuple[CooklangIngredient, ...]
     cookware: tuple[CooklangCookware, ...]
-    timers: tuple[CooklangTimer, ...]
 
 
 def parse_cooklang(text: str) -> CooklangDocument:
-    """Tokenize Cooklang instruction text into ingredient, cookware and timer records.
+    """Tokenize Cooklang instruction text into ingredient and cookware records.
 
     Raises ``ValueError`` on syntax errors: a missing quantity or unit, a
-    non-numeric quantity/duration, or a non-positive quantity/duration.
+    non-numeric/non-positive quantity, or a malformed timer (non-numeric or
+    non-positive duration, or an unrecognized time unit). Timers are validated
+    but not returned.
     """
     ingredients: list[CooklangIngredient] = []
 
@@ -95,7 +102,16 @@ def parse_cooklang(text: str) -> CooklangDocument:
             seen_cookware.add(item_id)
             cookware.append(CooklangCookware(id=item_id))
 
-    timers: list[CooklangTimer] = []
+    _validate_timers(text)
+
+    return CooklangDocument(
+        ingredients=tuple(ingredients),
+        cookware=tuple(cookware),
+    )
+
+
+def _validate_timers(text: str) -> None:
+    """Validate ``~name{duration%unit}`` markup without surfacing timer records."""
     for match in TIMER_PATTERN.finditer(text):
         name = (match.group(1) or "timer").strip()
         duration_raw = match.group(2).strip()
@@ -104,15 +120,15 @@ def parse_cooklang(text: str) -> CooklangDocument:
         try:
             duration = float(duration_raw)
         except ValueError:
-            raise ValueError(f"Invalid timer duration '{duration_raw}' for timer '{name}'. Must be a numeric value.")
+            raise ValueError(
+                f"Invalid timer duration '{duration_raw}' for timer '{name}'. Must be a numeric value."
+            )
 
         if duration <= 0:
             raise ValueError(f"Timer duration for '{name}' must be positive, got {duration}.")
 
-        timers.append(CooklangTimer(name=name, duration=duration, unit=unit_raw))
-
-    return CooklangDocument(
-        ingredients=tuple(ingredients),
-        cookware=tuple(cookware),
-        timers=tuple(timers),
-    )
+        if unit_raw not in _TIME_UNITS:
+            raise ValueError(
+                f"Timer '{name}' uses unknown time unit '{unit_raw}'. "
+                f"Must be one of: {', '.join(sorted(_TIME_UNITS))}."
+            )

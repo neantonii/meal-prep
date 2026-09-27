@@ -1,4 +1,3 @@
-# yaml-language-server: $schema=../../schemas/ingredients.schema.json
 
 - id: kosher-salt
   name: Coarse Kosher Salt

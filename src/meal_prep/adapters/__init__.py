@@ -1,8 +1,8 @@
 """Data access adapters — the only code that reads files or parses external formats.
 
-Each adapter translates between an on-disk format (YAML, Cooklang) and the Pydantic
-models in ``meal_prep.models``. Models never construct themselves from files; they
-are always built by an adapter here. Adapters import models, never the reverse.
+Each adapter translates between an on-disk format (YAML, Cooklang) and the DTOs
+in ``meal_prep.dtos``. DTOs never construct themselves from files; they are
+always built by an adapter here. Adapters import DTOs, never the reverse.
 """
 
 from meal_prep.adapters.units import load_units

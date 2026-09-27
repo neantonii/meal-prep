@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from meal_prep.adapters._yaml import read_yaml
-from meal_prep.models.ingredient import Ingredient
+from meal_prep.dtos.ingredient import Ingredient
 
 
 def load_ingredients_file(path: Path | str) -> list[Ingredient]:

@@ -1,16 +1,17 @@
 """Meal Prep Library Loader & Gateway.
 
-Loads, validates, and links all domain standards, ingredient catalogs, and recipes in a single call.
-Provides direct access to prepared mathematical data without invoking HTML renderers.
+Loads and validates all domain standards, ingredient catalogs, and recipes in a
+single call, returning raw DTO collections. Enrichment (registries, prepared
+values) is performed later by services.
 """
 
 from dataclasses import dataclass
 from pathlib import Path
-from meal_prep.models.units import UnitsRegistry
-from meal_prep.models.equipment import EquipmentRegistry
-from meal_prep.models.aisle import AislesConfig
-from meal_prep.models.ingredient import Ingredient
-from meal_prep.models.recipe import Recipe
+from meal_prep.dtos.units import UnitsFileSchema
+from meal_prep.dtos.equipment import EquipmentItem
+from meal_prep.dtos.aisle import Aisle
+from meal_prep.dtos.ingredient import Ingredient
+from meal_prep.dtos.recipe import Recipe
 from meal_prep.adapters.units import load_units
 from meal_prep.adapters.equipment import load_equipment
 from meal_prep.adapters.aisles import load_aisles
@@ -21,9 +22,9 @@ from meal_prep.adapters.recipes import load_all_recipes
 @dataclass
 class MealPrepLibrary:
     """Unified repository container with validated domain standards, ingredients, and recipes."""
-    units: UnitsRegistry
-    equipment: EquipmentRegistry
-    aisles: AislesConfig
+    units: UnitsFileSchema
+    equipment: list[EquipmentItem]
+    aisles: list[Aisle]
     catalog: dict[str, Ingredient]
     recipes: dict[str, Recipe]
 
@@ -52,12 +53,7 @@ class MealPrepLibrary:
 
         recipes: dict[str, Recipe] = {}
         if recipes_path.exists():
-            recipes = load_all_recipes(
-                recipes_dir=recipes_path,
-                catalog=catalog,
-                units_reg=units,
-                equipment_reg=equipment,
-            )
+            recipes = load_all_recipes(recipes_dir=recipes_path)
 
         return cls(
             units=units,

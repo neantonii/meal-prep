@@ -5,9 +5,9 @@ body references. Parsing of .cook files lives in ``meal_prep.adapters.recipes``.
 """
 
 from pathlib import Path
-import re
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from meal_prep.models.enums import RecipeCategory
+from meal_prep.enums import RecipeCategory
+from meal_prep.dtos._normalize import normalize_slug
 
 
 class RecipeYield(BaseModel):
@@ -33,10 +33,7 @@ class RecipeFrontmatter(BaseModel):
     @field_validator("id")
     @classmethod
     def validate_id_format(cls, v: str) -> str:
-        clean = v.strip().lower()
-        if not re.match(r"^[a-z0-9]+(?:-[a-z0-9]+)*$", clean):
-            raise ValueError(f"Recipe id '{v}' must be alphanumeric with hyphens (kebab-case)")
-        return clean
+        return normalize_slug(v, field="Recipe id")
 
 
 class RecipeIngredientRef(BaseModel):
@@ -47,12 +44,6 @@ class RecipeIngredientRef(BaseModel):
 
 class RecipeCookwareRef(BaseModel):
     id: str = Field(..., description="Equipment identifier or canonical name")
-
-
-class RecipeTimerRef(BaseModel):
-    name: str = Field(..., description="Timer description or name")
-    duration: float = Field(..., gt=0, description="Timer duration value")
-    unit: str = Field(..., min_length=1, description="Time unit (s, min, hr)")
 
 
 class Recipe(BaseModel):
@@ -66,6 +57,5 @@ class Recipe(BaseModel):
     equipment: list[str]
     ingredients: list[RecipeIngredientRef]
     cookware: list[RecipeCookwareRef]
-    timers: list[RecipeTimerRef]
     instructions: str
     source_path: Path | None = None
