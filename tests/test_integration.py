@@ -13,7 +13,9 @@ from pathlib import Path
 
 from meal_prep.adapters.ingredients import load_all_ingredients
 from meal_prep.adapters.units import load_units
+from meal_prep.library import MealPrepLibrary
 from meal_prep.services.ingredients import prepare_catalog
+from meal_prep.services.recipes import prepare_recipe
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -27,3 +29,20 @@ def test_all_ingredients_enrich_without_error():
     # without raising. This single guard only prevents a vacuous pass if the
     # catalog were accidentally empty.
     assert catalog
+
+
+def test_all_recipes_prepare_without_error():
+    library = MealPrepLibrary.load(
+        data_dir=_REPO_ROOT / "data",
+        recipes_dir=_REPO_ROOT / "recipes",
+    )
+
+    prepared = {
+        recipe_id: prepare_recipe(recipe, library.catalog, library.equipment)
+        for recipe_id, recipe in library.recipes.items()
+    }
+
+    # No per-value assertions: merely that every authored recipe prepared
+    # without raising (unknown ingredient, unregistered unit, unknown
+    # equipment, ...). This guard only prevents a vacuous pass on an empty set.
+    assert prepared
