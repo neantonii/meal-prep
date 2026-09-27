@@ -139,18 +139,12 @@ def load_recipe_file(
                     "Must exist in data/equipment.yaml"
                 )
 
-    if catalog is not None and units_reg is not None:
-        # Validate ingredients and unit conversions to grams
+    if catalog is not None:
+        # Validate ingredient references against the catalog
         for item in ingredients:
             if item.id not in catalog:
                 raise ValueError(
                     f"Recipe '{frontmatter.id}' uses ingredient '@{item.id}' which does not exist in ingredients catalog!"
-                )
-            ing = catalog[item.id]
-            if not ing.can_convert(item.unit, "g", units_reg):
-                raise ValueError(
-                    f"Recipe '{frontmatter.id}' calls for '@{item.id}{{{item.quantity}%{item.unit}}}', "
-                    f"but unit '{item.unit}' cannot be converted to grams for this ingredient."
                 )
 
     return Recipe(

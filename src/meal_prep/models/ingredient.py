@@ -1,10 +1,5 @@
-from typing import Any, TYPE_CHECKING
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from meal_prep.models.enums import StorageType
-
-if TYPE_CHECKING:
-    from meal_prep.models.units import UnitsRegistry
-    from meal_prep.engines.conversion_graph import ConversionGraph
 
 
 class PackageInfo(BaseModel):
@@ -88,87 +83,4 @@ class Ingredient(BaseModel):
         if not clean.replace("-", "").isalnum():
             raise ValueError(f"Ingredient id '{v}' must be alphanumeric with hyphens")
         return clean
-
-    _conversion_graph: Any = PrivateAttr(default=None)
-
-    def get_conversion_graph(self, units: "UnitsRegistry") -> "ConversionGraph":
-        """Return the precomputed conversion graph, building and caching it if needed."""
-        if self._conversion_graph is None:
-            self._conversion_graph = _build_ingredient_graph(self, units)
-        return self._conversion_graph
-
-    def can_convert(self, from_unit: str, to_unit: str, units: "UnitsRegistry") -> bool:
-        """Return True when ``from_unit`` can be converted to ``to_unit`` for this ingredient."""
-        graph = self.get_conversion_graph(units)
-        return graph.can_convert(
-            units.normalize_token(from_unit),
-            units.normalize_token(to_unit),
-        )
-
-    def convert(self, amount: float, from_unit: str, to_unit: str, units: "UnitsRegistry") -> float:
-        """Convert ``amount`` from ``from_unit`` to ``to_unit`` for this ingredient."""
-        graph = self.get_conversion_graph(units)
-        return graph.convert(
-            amount,
-            units.normalize_token(from_unit),
-            units.normalize_token(to_unit),
-        )
-
-
-def _authored_endpoints(ingredient: "Ingredient") -> set[str]:
-    """Return the raw (lowercased) unit names named by the ingredient's authored conversions."""
-    endpoints: set[str] = set()
-    for conv in ingredient.conversions:
-        endpoints.add(conv.from_unit.strip().lower())
-        endpoints.add(conv.to_unit.strip().lower())
-    return endpoints
-
-
-def _build_ingredient_graph(ingredient: "Ingredient", units: "UnitsRegistry") -> "ConversionGraph":
-    """Validate an ingredient's unit vocabulary and build its pure conversion graph.
-
-    This is the domain-specific half of conversion construction: it knows about
-    packages, containers, authored conversions and the universal mass/volume
-    conversions, and reduces them all to a list of directed edges handed to the
-    dependency-free :func:`build_graph`.
-    """
-    from meal_prep.engines.conversion_graph import ConversionEdge, build_graph
-
-    pkg = ingredient.package
-    container = pkg.container  # already stripped + lowercased by PackageInfo
-    pkg_unit = units.normalize_token(pkg.unit)
-
-    if not units.is_valid_container(container):
-        valid = ", ".join(sorted(units.schema_data.packaging_containers))
-        raise ValueError(
-            f"Ingredient '{ingredient.id}' declares container '{pkg.container}', which is not a "
-            f"registered packaging container. Valid containers: {valid}."
-        )
-    if not units.is_valid_unit(pkg_unit) and pkg_unit not in _authored_endpoints(ingredient):
-        raise ValueError(
-            f"Ingredient '{ingredient.id}' declares package unit '{pkg.unit}', which is neither a "
-            f"registered unit nor an endpoint of an authored conversion. Custom units must be "
-            f"bridged explicitly."
-        )
-
-    edges: list[ConversionEdge] = [ConversionEdge(container, pkg_unit, pkg.amount)]
-    edges.extend(
-        ConversionEdge(
-            units.normalize_token(conv.from_unit),
-            units.normalize_token(conv.to_unit),
-            conv.factor,
-        )
-        for conv in ingredient.conversions
-    )
-
-    for canonical in units.schema_data.mass.canonical_units:
-        if canonical != "g":
-            factor_to_g, _ = units.to_base(1.0, canonical)
-            edges.append(ConversionEdge(canonical, "g", factor_to_g))
-    for canonical in units.schema_data.volume.canonical_units:
-        if canonical != "ml":
-            factor_to_ml, _ = units.to_base(1.0, canonical)
-            edges.append(ConversionEdge(canonical, "ml", factor_to_ml))
-
-    return build_graph(edges)
 
