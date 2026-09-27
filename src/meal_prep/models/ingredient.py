@@ -89,104 +89,7 @@ class Ingredient(BaseModel):
             raise ValueError(f"Ingredient id '{v}' must be alphanumeric with hyphens")
         return clean
 
-    @model_validator(mode="after")
-    def validate_conversions_uniqueness_and_dimensions(self) -> "Ingredient":
-        """Ensure no double conversions across any pair of dimensions (including flipped directions).
-
-        Rules:
-        1. No duplicate edges (e.g. defining A -> B twice, or defining both A -> B and B -> A).
-        2. No intra-dimension conversions for dimensions that already have universal conversions
-           (e.g. volume -> volume like tbsp -> tsp, or mass -> mass like kg -> g).
-        3. No double conversion across the same pair of dimensions (e.g. defining both tbsp -> g
-           and tsp -> g, or defining ml -> g and g -> tbsp).
-        """
-        # TODO(services): move this dimension cross-check out of model validation
-        # to load time (KI-04/KI-20). The lazy adapter import below is a temporary,
-        # flagged violation of the models -> adapters dependency rule.
-        from meal_prep.adapters.units import get_default_units
-        try:
-            units_reg = get_default_units()
-        except Exception:
-            return self
-
-        def get_dim_key(unit_name: str) -> str | tuple[str, str]:
-            clean = unit_name.strip().lower()
-            if units_reg.is_valid_unit(clean):
-                canonical = units_reg.normalize(clean)
-                dim = units_reg.dimension_of(canonical)
-                group = getattr(units_reg.schema_data, dim, None)
-                if group and group.conversions:
-                    # Continuous physical dimension with universal intermediate conversions (e.g. mass, volume, time)
-                    return dim
-                return (dim, canonical)
-            return ("discrete", clean)
-
-        def format_dim(dim_key: str | tuple[str, str]) -> str:
-            if isinstance(dim_key, tuple):
-                return f"{dim_key[0]}:{dim_key[1]}"
-            return dim_key
-
-        seen_edges: set[frozenset[str]] = set()
-        seen_dim_pairs: set[frozenset[str | tuple[str, str]]] = set()
-
-        for conv in self.conversions:
-            u_from = conv.from_unit.strip().lower()
-            if units_reg.is_valid_unit(u_from):
-                u_from = units_reg.normalize(u_from)
-
-            u_to = conv.to_unit.strip().lower()
-            if units_reg.is_valid_unit(u_to):
-                u_to = units_reg.normalize(u_to)
-
-            # 1. Check duplicate edge (A -> B or B -> A)
-            edge_key = frozenset([u_from, u_to])
-            if edge_key in seen_edges:
-                raise ValueError(
-                    f"Duplicate conversion between '{conv.from_unit}' and '{conv.to_unit}' "
-                    f"defined in ingredient '{self.id}'."
-                )
-            seen_edges.add(edge_key)
-
-            d_from = get_dim_key(u_from)
-            d_to = get_dim_key(u_to)
-
-            # 2. Check intra-dimension conversion for dimensions with universal standards
-            if d_from == d_to and isinstance(d_from, str):
-                raise ValueError(
-                    f"Redundant intra-dimension conversion between '{conv.from_unit}' and '{conv.to_unit}' "
-                    f"for dimension '{d_from}' in ingredient '{self.id}'. "
-                    f"Standard universal conversions already connect all units in this dimension."
-                )
-
-            # 3. Check double conversion across dimension pair (unordered, direction-invariant)
-            dim_pair = frozenset([d_from, d_to])
-            if dim_pair in seen_dim_pairs:
-                d1_fmt, d2_fmt = sorted([format_dim(d_from), format_dim(d_to)])
-                raise ValueError(
-                    f"Double conversion across dimension pair '{d1_fmt}' <-> '{d2_fmt}' "
-                    f"in ingredient '{self.id}' (attempted with '{conv.from_unit}' <-> '{conv.to_unit}'). "
-                    f"Only a single conversion edge is permitted across any pair of dimensions."
-                )
-            seen_dim_pairs.add(dim_pair)
-
-        return self
-
     _conversion_graph: Any = PrivateAttr(default=None)
-
-    @property
-    def price_per_100g(self) -> float:
-        """Calculated retail unit price per 100g in CAD."""
-        return round((self.reference.price / self.container_weight_g) * 100, 2)
-
-    @property
-    def price_per_kg(self) -> float:
-        """Calculated retail unit price per kg in CAD."""
-        return round(self.price_per_100g * 10, 2)
-
-    @property
-    def price_per_unit(self) -> float:
-        """Calculated price per individual package unit (e.g. per piece, slice, egg, ml, or g)."""
-        return round(self.reference.price / self.package.amount, 4)
 
     def get_conversion_graph(self, units: "UnitsRegistry") -> "ConversionGraph":
         """Return the precomputed conversion graph, building and caching it if needed."""
@@ -210,23 +113,6 @@ class Ingredient(BaseModel):
             units.normalize_token(from_unit),
             units.normalize_token(to_unit),
         )
-
-    @property
-    def container_weight_g(self) -> float:
-        """Container net weight in grams, derived from the conversion graph.
-
-        Single source of truth — there is no authored field to disagree with it.
-        Returns 0.0 when the container cannot reach grams, which post-load
-        validation reports as an error.
-        """
-        if self._conversion_graph is None:
-            # TODO(services): this lazy adapter import is a temporary, flagged
-            # violation of the models -> adapters rule; it is removed when
-            # container_weight_g moves behind a conversion service.
-            from meal_prep.adapters.units import get_default_units
-            self.get_conversion_graph(get_default_units())
-        factor = self._conversion_graph.factor(self.package.container, "g")
-        return factor if factor is not None else 0.0
 
 
 def _authored_endpoints(ingredient: "Ingredient") -> set[str]:

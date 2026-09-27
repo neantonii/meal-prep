@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from pydantic import BaseModel
 from meal_prep.models.ingredient import MacrosInfo
+from meal_prep.services.pricing import price_per_100g
 
 if TYPE_CHECKING:
     from meal_prep.models.recipe import Recipe
@@ -155,7 +156,7 @@ def prepare_recipe(
         ing = catalog[item.id]
         grams = ing.convert(item.quantity, item.unit, "g", units=units)
         factor = grams / 100.0
-        item_cost = factor * ing.price_per_100g
+        item_cost = factor * price_per_100g(ing, units)
 
         total_raw_g += grams
         total_cost += item_cost

@@ -4,6 +4,7 @@ from meal_prep.adapters.units import load_units
 from meal_prep.adapters.ingredients import load_all_ingredients
 from meal_prep.models.ingredient import Ingredient
 from meal_prep.engines.conversion_graph import ConversionEdge, ConversionError, build_graph
+from meal_prep.services.pricing import container_weight_g
 
 
 @pytest.fixture
@@ -311,7 +312,7 @@ def test_package_unit_grams_needs_no_authored_conversions(units):
     )
     ingredient = Ingredient.model_validate(payload)
     graph = ingredient.get_conversion_graph(units)
-    assert ingredient.container_weight_g == 454.0
+    assert container_weight_g(ingredient, units) == 454.0
     assert graph.convert(1, "bag", "g") == 454.0
 
 
@@ -357,7 +358,7 @@ def test_bridged_custom_unit_is_accepted(units):
     )
     ingredient = Ingredient.model_validate(payload)
     ingredient.get_conversion_graph(units)
-    assert ingredient.container_weight_g == 480.0
+    assert container_weight_g(ingredient, units) == 480.0
 
 
 def test_container_weight_derived_from_conversions(units):
@@ -368,7 +369,7 @@ def test_container_weight_derived_from_conversions(units):
     )
     ingredient = Ingredient.model_validate(payload)
     ingredient.get_conversion_graph(units)
-    assert ingredient.container_weight_g == 950.0
+    assert container_weight_g(ingredient, units) == 950.0
 
 
 def test_container_weight_zero_when_grams_unreachable(units):
@@ -381,7 +382,7 @@ def test_container_weight_zero_when_grams_unreachable(units):
     )
     ingredient = Ingredient.model_validate(payload)
     ingredient.get_conversion_graph(units)
-    assert ingredient.container_weight_g == 0.0
+    assert container_weight_g(ingredient, units) == 0.0
 
 
 def test_build_graph_is_pure_and_immutable():

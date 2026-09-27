@@ -5,7 +5,7 @@ models in ``meal_prep.models``. Models never construct themselves from files; th
 are always built by an adapter here. Adapters import models, never the reverse.
 """
 
-from meal_prep.adapters.units import get_default_units, load_units
+from meal_prep.adapters.units import load_units
 from meal_prep.adapters.equipment import load_equipment
 from meal_prep.adapters.aisles import load_aisles
 from meal_prep.adapters.ingredients import load_all_ingredients, load_ingredients_file
@@ -17,7 +17,6 @@ from meal_prep.adapters.recipes import (
 )
 
 __all__ = [
-    "get_default_units",
     "load_units",
     "load_equipment",
     "load_aisles",

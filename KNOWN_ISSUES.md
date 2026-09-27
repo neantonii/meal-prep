@@ -225,33 +225,29 @@ Key the cache by registry identity, e.g. `dict[int, ConversionGraph]` keyed on `
 ## KI-04 — CWD-coupled path resolution + fail-open validation
 
 **Severity:** High
-**Status:** Open
+**Status:** Open (partially resolved — singleton + fail-open validator removed)
 
 ### Symptom
 Every loader defaults to a **relative** path, so the package only works when the process is started
-from the repository root. Additionally, `Ingredient`'s validator reaches into the ambient filesystem
-for a default units registry and **swallows any failure**, disabling validation.
+from the repository root. (The former second half — `Ingredient`'s validator reaching into the ambient
+filesystem for a default units registry and **swallowing any failure** — is now resolved.)
 
 ### Evidence
 * `src/meal_prep/library.py:29-30` — `data_dir: Path | str = Path("data")`, `recipes_dir: Path | str = Path("recipes")`
 * `src/meal_prep/renderer.py:242` (in `render_all_recipe_cards`) — re-hardcodes `load_aisles(Path("data/aisles.yaml"))`
-* `src/meal_prep/models/units.py:139-143` — `get_default_units` falls back four directories up: `Path(__file__).resolve().parent.parent.parent.parent / "data" / "units.yaml"`
-* `src/meal_prep/models/ingredient.py:102-106` — `try: units_reg = get_default_units() ... except Exception: return self`
+
+*Resolved:* the `parent.parent.parent.parent` fallback in `get_default_units` and the fail-open
+`except Exception: return self` in the model validator are gone — the `global
+_DEFAULT_UNITS_REGISTRY` singleton was deleted (see KI-20) and the dimension cross-check now runs via
+`services/validation.validate_conversions` with an explicitly-passed registry.
 
 ### Impact
 * Tools, scripts, and tests behave differently depending on the invoking directory.
-* The fail-open branch means conversion-uniqueness validation can silently **not run**. Which
-  validation applies depends on the filesystem at import time. This also makes KI-02/KI-05-style
-  data errors more likely to slip through.
 
 ### Proposed fix
 1. Anchor resolution to the package/repo root: define one `PROJECT_ROOT` (or accept explicit
    `data_dir`/`recipes_dir` on every public entry point, which `MealPrepLibrary.load` already does).
-2. Remove the `parent.parent.parent.parent` fallback in `get_default_units`.
-3. Replace the fail-open `except Exception: return self` with an explicit failure — if the units
-   registry genuinely cannot be located, raise rather than skip validation. If a "no units required"
-   mode is needed, express it as an explicit optional argument instead of an exception swallow.
-4. Remove the hardcoded `data/aisles.yaml` from `render_all_recipe_cards`.
+2. Remove the hardcoded `data/aisles.yaml` from `render_all_recipe_cards`.
 
 ---
 
@@ -688,7 +684,7 @@ Consider stating the counts as "currently N" so they do not silently rot again. 
 ## KI-20 — Business logic and I/O live on Pydantic models
 
 **Severity:** High
-**Status:** In progress — `adapters/` extracted (I/O relocated); `services/` extraction pending
+**Status:** In progress — `adapters/` extracted (I/O relocated); `services/` extraction underway
 
 ### Symptom
 Pydantic models carry behaviour that needs collaborators (registries, the conversion graph, other
@@ -698,14 +694,16 @@ collaborators.
 
 ### Evidence (audit)
 
-**Needs a collaborator → should be a service (still pending):**
+**Needs a collaborator → should be a service:**
 
-| member | needs | note |
-| :--- | :--- | :--- |
-| `Ingredient.price_per_100g/price_per_kg/price_per_unit` (`ingredient.py:177-190`) | conversion graph, price | lazily builds a graph |
-| `Ingredient.get_conversion_graph/can_convert/convert/container_weight_g` (`ingredient.py:191-229`) | `UnitsRegistry`, graph | orchestration + cache |
-| `_build_ingredient_graph` / `_authored_endpoints` (`ingredient.py:232-286`) | `UnitsRegistry` | domain adapter, not a model |
-| `Recipe.portion_cooked_weight_g` + `compute_*` (`recipe.py:77-187`) | `catalog`, `UnitsRegistry` | KI-01 duplicate of `calculator` |
+| member | status |
+| :--- | :--- |
+| `Ingredient.price_per_100g/price_per_kg/price_per_unit` | ✅ moved to `services/pricing.py` (`price_per_100g`, `price_per_kg`, `price_per_unit`) |
+| `Ingredient.container_weight_g` | ✅ moved to `services/pricing.py` (`container_weight_g`) |
+| `Ingredient.validate_conversions_uniqueness_and_dimensions` (dimension cross-check) | ✅ moved to `services/validation.py` (`validate_conversions`) |
+| `Ingredient.get_conversion_graph/can_convert/convert` | ⏳ still on the model (pure orchestration over own fields + graph; shape TBD in the services pass) |
+| `_build_ingredient_graph` / `_authored_endpoints` (`ingredient.py`) | ⏳ still on the model (domain adapter, not a model) |
+| `Recipe.portion_cooked_weight_g` + `compute_*` (`recipe.py`) | ⏳ KI-01 duplicate of `calculator`; deletion pending |
 
 **Does I/O → should be an adapter (resolved — moved to `adapters/`):**
 
@@ -713,35 +711,26 @@ collaborators.
 | :--- | :--- |
 | `load_ingredients_file` / `load_all_ingredients` | `adapters/ingredients.py` |
 | `parse_cooklang_body` / `split_recipe_file` / `load_recipe_file` / `load_all_recipes` | `adapters/recipes.py` |
-| `load_units` / `get_default_units` | `adapters/units.py` |
+| `load_units` | `adapters/units.py` |
 | `load_aisles` | `adapters/aisles.py` |
 | `load_equipment` | `adapters/equipment.py` |
 
-**Known temporary edges (to be removed in the `services/` pass):**
+**The `global _DEFAULT_UNITS_REGISTRY` singleton (user item 3) is removed.**
 
-Two lazy `from meal_prep.adapters.units import get_default_units` calls remain inside
-`models/ingredient.py` (the dimension cross-check in `validate_conversions_uniqueness_and_dimensions`,
-and the `container_weight_g` property). They are flagged `TODO(services)` and are the only two
-`models → adapters` references in the codebase. Both are deleted when their call sites move behind a
-conversion service.
+`get_default_units()` existed solely so model properties could self-load a `UnitsRegistry` without
+receiving it as an argument. That self-loading was the whole smell: the registry is already in scope
+at every call site (`prepare_recipe`, `Recipe.compute_*`, `load_all_ingredients`, `load_recipe_file`
+all receive `units`). The fix was to delete the singleton and thread the already-present registry into
+plain service functions (`services/pricing.py`, `services/validation.py`) that take the ingredient and
+registry as arguments.
 
-**Presentation on models → should be presentation layer:**
+**Known temporary edge (to be removed in the services/KI-01 pass):**
 
-| member | note |
-| :--- | :--- |
-| `PreparedRecipe.review_math()` / `IngredientBreakdown.detail_text` (`calculator.py`) | text formatting on a dataclass |
-| `AislesConfig.to_cooklang_headers` (`aisle.py:54-56`) | Cooklang-specific output |
-| `StorageType/RecipeCategory.display_name/description` (`enums.py`) | accepted minor (display label on enum) |
-
-**Pure over own fields → OK to keep on the model:**
-
-| member | why it stays |
-| :--- | :--- |
-| all `@field_validator` / `@model_validator` | data-shape validation |
-| `AislesConfig.ordered_aisles/valid_ids/get` | pure lookup over own list |
-| `EquipmentRegistry.normalize/get/is_valid/canonical_ids` | pure lookup over own items |
-| `UnitsRegistry.normalize/dimension_of/to_base/convert/…` | pure function of `schema_data` (self-contained value object) |
-| `DimensionGroup.canonical_units` | pure |
+One lazy `from meal_prep.services.pricing import price_per_100g` remains inside
+`models/recipe.py` (`Recipe.compute_cost`). It is a `TODO(services/KI-01)` marker — that method is a
+duplicate of `calculator.prepare_recipe` and is deleted when KI-01 closes. It is the only
+`models → services` reference in the codebase, and it lives in a method body (tolerated by
+`tests/test_architecture.py`).
 
 ### Impact
 The model package is the de facto home for three distinct concerns (data shape, business logic, I/O),
@@ -755,10 +744,11 @@ Introduce `services/` (business logic) and `adapters/` (I/O) packages; move memb
 above, taking models as arguments. See the architecture section of `AGENTS.md`. Resolve KI-01 in the
 same pass (delete `Recipe.compute_*`; `calculator.prepare_recipe` is the single service).
 
-**Progress:** the `adapters/` half is complete — all I/O moved out of `models/`, `models/__init__.py`
-re-export surface trimmed to schemas, and the two flagged `models → adapters` lazy edges left as
-explicit `TODO(services)` markers. The `services/` half (conversion orchestration, the KI-01
-duplicate deletion, and presentation extraction) is the remaining work.
+**Progress:** the `adapters/` half is complete, and the first `services/` slice is in place
+(`pricing.py`, `validation.py`). The dimension cross-check moved out of model validation and is now
+called from `load_ingredients_file(units=…)` at load time. Remaining: settle the `services/` shape,
+relocate `get_conversion_graph/can_convert/convert` + `_build_ingredient_graph`, delete
+`Recipe.compute_*` (KI-01), and extract presentation formatting.
 
 ---
 

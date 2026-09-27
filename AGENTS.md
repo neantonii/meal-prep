@@ -15,11 +15,12 @@ The Meal Prep system uses a file-based, deterministic architecture with zero ext
 3. **Domain models** — `src/meal_prep/models/` (Pydantic v2): `Ingredient`, `Recipe`, `UnitsRegistry`, `EquipmentRegistry`. May depend on `engines`, never the reverse.
 4. **Adapters (I/O)** — `src/meal_prep/adapters/`: the only code that reads files or parses formats (YAML taxonomies, `.cook` recipes). Adapters construct models; models never construct themselves from files.
 5. **Calculation** — `src/meal_prep/calculator.py` (`prepare_recipe` → `PreparedRecipe`) computes batch weights, moisture loss, per-serving macros, and retail costs.
-6. **Library/gateway** — `src/meal_prep/library.py` (`MealPrepLibrary`) loads + cross-validates everything via adapters and exposes `prepare()`.
-7. **Presentation** — `src/meal_prep/renderer.py` (HTML cards) and `PreparedRecipe.review_math()` (text audit). **Rounding belongs only here.**
+6. **Services (business logic)** — `src/meal_prep/services/`: behaviour that needs collaborators (registries, the conversion graph). Models never import services at module level. Currently `pricing.py` (derived `container_weight_g` / unit prices) and `validation.py` (conversion dimension cross-check, run at load time from the ingredients adapter).
+7. **Library/gateway** — `src/meal_prep/library.py` (`MealPrepLibrary`) loads + cross-validates everything via adapters and exposes `prepare()`.
+8. **Presentation** — `src/meal_prep/renderer.py` (HTML cards) and `PreparedRecipe.review_math()` (text audit). **Rounding belongs only here.**
 
 Dependency direction (a layer may depend on anything below it, never above):
-`engines ← models ← adapters ← library ← renderer`, with `calculator` a service over `models`/`engines` composed by `library`. `services/` (business logic) slots in beside `calculator` once extracted.
+`engines ← models ← adapters/services ← library ← renderer`, with `calculator` a service over `models`/`engines` composed by `library`.
 
 ### Model purity rule
 

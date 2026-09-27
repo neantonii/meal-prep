@@ -15,13 +15,16 @@ from meal_prep.models.ingredient import (
     UnitConversion,
 )
 from meal_prep.adapters.ingredients import load_ingredients_file, load_all_ingredients
+from meal_prep.services.pricing import container_weight_g, price_per_100g, price_per_kg, price_per_unit
+from meal_prep.services.validation import validate_conversions
 
 
 def test_load_meat_yaml():
-    ingredients = load_ingredients_file(Path("data/ingredients/meat.yaml"))
+    ingredients = load_ingredients_file(Path("data/ingredients/meat.yaml"), units=load_units(Path("data/units.yaml")))
     assert len(ingredients) >= 1
 
     chicken = ingredients[0]
+    units = load_units(Path("data/units.yaml"))
     assert chicken.id == "boneless-chicken-breast"
     assert chicken.name == "Boneless, Skinless Chicken Breast"
     assert chicken.aisle == "meat"
@@ -34,14 +37,14 @@ def test_load_meat_yaml():
     assert chicken.package.amount == 4
 
     # Container weight is derived from the conversion graph, not authored
-    assert chicken.container_weight_g == 950.0
+    assert container_weight_g(chicken, units) == 950.0
 
     # Pricing & Calculated unit prices
     assert chicken.reference.brand == "Compliments"
     assert chicken.reference.price == 22.60
-    assert chicken.price_per_100g == 2.38
-    assert chicken.price_per_kg == 23.80
-    assert chicken.price_per_unit == 5.65
+    assert price_per_100g(chicken, units) == 2.38
+    assert price_per_kg(chicken, units) == 23.80
+    assert price_per_unit(chicken) == 5.65
 
     # Macros
     assert chicken.macros_per_100g.calories_kcal == 110.0
@@ -53,7 +56,7 @@ def test_load_meat_yaml():
     assert chicken.macros_per_100g.potassium_mg == 350.0
 
     # Conversions
-    assert chicken.can_convert("piece", "g", units=load_units(Path("data/units.yaml")))
+    assert chicken.can_convert("piece", "g", units=units)
 
 
 def test_load_all_ingredients_catalog():
@@ -265,9 +268,9 @@ def test_all_ingredient_yaml_files_exist_and_validate_against_schema():
             )
 
             # Check computed prices
-            assert item.price_per_100g > 0
-            assert item.price_per_kg > 0
-            assert item.price_per_unit > 0
+            assert price_per_100g(item, units_reg) > 0
+            assert price_per_kg(item, units_reg) > 0
+            assert price_per_unit(item) > 0
 
             # Check conversions (empty is valid when the package unit is already a mass unit)
             for conv in item.conversions:
@@ -315,121 +318,127 @@ def test_schema_rejects_invalid_yaml():
 
 def test_redundant_same_dimension_conversions_raises_error():
     """Test that specifying double conversions across the same dimension pair fails validation."""
+    units = load_units(Path("data/units.yaml"))
+
     # Issue 1: Butter with both tbsp and tsp (same volume <-> mass dimension pair)
-    with pytest.raises(ValidationError, match="Double conversion across dimension pair 'mass' <-> 'volume'"):
-        Ingredient.model_validate(
-            {
-                "id": "bad-butter",
-                "name": "Bad Butter",
-                "aisle": "dairy",
-                "storage": "refrigerated",
-                "shelf_life_days": 90,
-                "package": {
-                    "container": "pack",
-                    "unit": "g",
-                    "amount": 454,
-                },
-                "reference": {"brand": "Test", "product": "Test", "price": 5.0},
-                "macros_per_100g": {
-                    "calories_kcal": 700,
-                    "protein_g": 1,
-                    "fat_g": 80,
-                    "carbs_g": 0,
-                    "fiber_g": 0,
-                },
-                "conversions": [
-                    {"from": "tbsp", "to": "g", "factor": 14.2},
-                    {"from": "tsp", "to": "g", "factor": 5.0},
-                ],
-            }
-        )
+    bad_butter = Ingredient.model_validate(
+        {
+            "id": "bad-butter",
+            "name": "Bad Butter",
+            "aisle": "dairy",
+            "storage": "refrigerated",
+            "shelf_life_days": 90,
+            "package": {
+                "container": "pack",
+                "unit": "g",
+                "amount": 454,
+            },
+            "reference": {"brand": "Test", "product": "Test", "price": 5.0},
+            "macros_per_100g": {
+                "calories_kcal": 700,
+                "protein_g": 1,
+                "fat_g": 80,
+                "carbs_g": 0,
+                "fiber_g": 0,
+            },
+            "conversions": [
+                {"from": "tbsp", "to": "g", "factor": 14.2},
+                {"from": "tsp", "to": "g", "factor": 5.0},
+            ],
+        }
+    )
+    with pytest.raises(ValueError, match="Double conversion across dimension pair 'mass' <-> 'volume'"):
+        validate_conversions(bad_butter, units)
 
     # Issue 2: Olive oil with ml -> g and flipped direction g -> tbsp
-    with pytest.raises(ValidationError, match="Double conversion across dimension pair 'mass' <-> 'volume'"):
-        Ingredient.model_validate(
-            {
-                "id": "bad-oil",
-                "name": "Bad Oil",
-                "aisle": "pantry",
-                "storage": "ambient",
-                "shelf_life_days": 365,
-                "package": {
-                    "container": "bottle",
-                    "unit": "ml",
-                    "amount": 1000,
-                },
-                "reference": {"brand": "Test", "product": "Test", "price": 10.0},
-                "macros_per_100g": {
-                    "calories_kcal": 884,
-                    "protein_g": 0,
-                    "fat_g": 100,
-                    "carbs_g": 0,
-                    "fiber_g": 0,
-                },
-                "conversions": [
-                    {"from": "ml", "to": "g", "factor": 0.92},
-                    {"from": "g", "to": "tbsp", "factor": 0.072},
-                ],
-            }
-        )
+    bad_oil = Ingredient.model_validate(
+        {
+            "id": "bad-oil",
+            "name": "Bad Oil",
+            "aisle": "pantry",
+            "storage": "ambient",
+            "shelf_life_days": 365,
+            "package": {
+                "container": "bottle",
+                "unit": "ml",
+                "amount": 1000,
+            },
+            "reference": {"brand": "Test", "product": "Test", "price": 10.0},
+            "macros_per_100g": {
+                "calories_kcal": 884,
+                "protein_g": 0,
+                "fat_g": 100,
+                "carbs_g": 0,
+                "fiber_g": 0,
+            },
+            "conversions": [
+                {"from": "ml", "to": "g", "factor": 0.92},
+                {"from": "g", "to": "tbsp", "factor": 0.072},
+            ],
+        }
+    )
+    with pytest.raises(ValueError, match="Double conversion across dimension pair 'mass' <-> 'volume'"):
+        validate_conversions(bad_oil, units)
 
     # Issue 3: Intra-dimension conversion for mass (e.g. 'kg' -> 'g')
-    with pytest.raises(ValidationError, match="Redundant intra-dimension conversion between 'kg' and 'g' for dimension 'mass'"):
-        Ingredient.model_validate(
-            {
-                "id": "bad-mass",
-                "name": "Bad Mass",
-                "aisle": "pantry",
-                "storage": "ambient",
-                "shelf_life_days": 365,
-                "package": {
-                    "container": "bag",
-                    "unit": "g",
-                    "amount": 500,
-                },
-                "reference": {"brand": "Test", "product": "Test", "price": 5.0},
-                "macros_per_100g": {
-                    "calories_kcal": 100,
-                    "protein_g": 0,
-                    "fat_g": 0,
-                    "carbs_g": 20,
-                    "fiber_g": 0,
-                },
-                "conversions": [
-                    {"from": "kg", "to": "g", "factor": 1000.0},
-                ],
-            }
-        )
+    bad_mass = Ingredient.model_validate(
+        {
+            "id": "bad-mass",
+            "name": "Bad Mass",
+            "aisle": "pantry",
+            "storage": "ambient",
+            "shelf_life_days": 365,
+            "package": {
+                "container": "bag",
+                "unit": "g",
+                "amount": 500,
+            },
+            "reference": {"brand": "Test", "product": "Test", "price": 5.0},
+            "macros_per_100g": {
+                "calories_kcal": 100,
+                "protein_g": 0,
+                "fat_g": 0,
+                "carbs_g": 20,
+                "fiber_g": 0,
+            },
+            "conversions": [
+                {"from": "kg", "to": "g", "factor": 1000.0},
+            ],
+        }
+    )
+    with pytest.raises(ValueError, match="Redundant intra-dimension conversion between 'kg' and 'g' for dimension 'mass'"):
+        validate_conversions(bad_mass, units)
 
     # Issue 4: Intra-dimension conversion for volume (e.g. 'tbsp' -> 'tsp')
-    with pytest.raises(ValidationError, match="Redundant intra-dimension conversion between 'tbsp' and 'tsp' for dimension 'volume'"):
-        Ingredient.model_validate(
-            {
-                "id": "bad-vol",
-                "name": "Bad Vol",
-                "aisle": "pantry",
-                "storage": "ambient",
-                "shelf_life_days": 365,
-                "package": {
-                    "container": "bottle",
-                    "unit": "ml",
-                    "amount": 500,
-                },
-                "reference": {"brand": "Test", "product": "Test", "price": 5.0},
-                "macros_per_100g": {
-                    "calories_kcal": 100,
-                    "protein_g": 0,
-                    "fat_g": 0,
-                    "carbs_g": 20,
-                    "fiber_g": 0,
-                },
-                "conversions": [
-                    {"from": "tbsp", "to": "tsp", "factor": 3.0},
-                ],
-            }
-        )
+    bad_vol = Ingredient.model_validate(
+        {
+            "id": "bad-vol",
+            "name": "Bad Vol",
+            "aisle": "pantry",
+            "storage": "ambient",
+            "shelf_life_days": 365,
+            "package": {
+                "container": "bottle",
+                "unit": "ml",
+                "amount": 500,
+            },
+            "reference": {"brand": "Test", "product": "Test", "price": 5.0},
+            "macros_per_100g": {
+                "calories_kcal": 100,
+                "protein_g": 0,
+                "fat_g": 0,
+                "carbs_g": 20,
+                "fiber_g": 0,
+            },
+            "conversions": [
+                {"from": "tbsp", "to": "tsp", "factor": 3.0},
+            ],
+        }
+    )
+    with pytest.raises(ValueError, match="Redundant intra-dimension conversion between 'tbsp' and 'tsp' for dimension 'volume'"):
+        validate_conversions(bad_vol, units)
 
-    # Issue 5: Conversion to self
+    # Issue 5: Conversion to self (still a pure model-level check on UnitConversion)
     with pytest.raises(ValidationError, match="Conversion from unit 'piece' to itself is redundant"):
         Ingredient.model_validate(
             {

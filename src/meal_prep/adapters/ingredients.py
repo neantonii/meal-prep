@@ -5,10 +5,16 @@ from pathlib import Path
 from meal_prep.adapters._yaml import read_yaml
 from meal_prep.models.ingredient import Ingredient
 from meal_prep.models.units import UnitsRegistry
+from meal_prep.services.pricing import container_weight_g
+from meal_prep.services.validation import validate_conversions
 
 
-def load_ingredients_file(path: Path | str) -> list[Ingredient]:
-    """Load and validate all ingredients from an aisle YAML file."""
+def load_ingredients_file(path: Path | str, units: UnitsRegistry | None = None) -> list[Ingredient]:
+    """Load and validate all ingredients from an aisle YAML file.
+
+    When ``units`` is provided, runs the collaborative conversion cross-checks
+    (which need the registry) for each ingredient.
+    """
     file_path = Path(path)
     data = read_yaml(file_path, what="Ingredients")
 
@@ -24,6 +30,8 @@ def load_ingredients_file(path: Path | str) -> list[Ingredient]:
                 f"Ingredient '{ingredient.id}' declares aisle '{ingredient.aisle}', "
                 f"which does not match file stem '{expected_aisle}' in {file_path}"
             )
+        if units is not None:
+            validate_conversions(ingredient, units)
         ingredients.append(ingredient)
 
     return ingredients
@@ -43,7 +51,7 @@ def load_all_ingredients(
 
     all_ingredients: dict[str, Ingredient] = {}
     for yaml_file in sorted(directory.glob("*.yaml")):
-        items = load_ingredients_file(yaml_file)
+        items = load_ingredients_file(yaml_file, units=units)
         for item in items:
             if item.id in all_ingredients:
                 raise ValueError(
@@ -52,7 +60,7 @@ def load_all_ingredients(
                 )
             if units is not None:
                 item.get_conversion_graph(units)  # build + validate; caches on the ingredient
-                if item.container_weight_g <= 0:
+                if container_weight_g(item, units) <= 0:
                     raise ValueError(
                         f"Ingredient '{item.id}' package container '{item.package.container}' cannot "
                         f"be resolved to grams, so its net weight is not derivable. Bridge the "

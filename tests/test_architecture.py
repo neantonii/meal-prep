@@ -12,11 +12,12 @@ _FORBIDDEN_MODULES = ("meal_prep.adapters", "meal_prep.services")
 def test_models_package_has_no_module_level_adapter_imports():
     """Models must not import adapters (or services) at module level.
 
-    Adapters construct models; models never reach into adapters. The only two
-    permitted cross-references are the in-function lazy imports in
-    ``models/ingredient.py`` marked ``TODO(services)``; those live inside method
-    bodies, not at module scope, so this top-level-import check tolerates them
-    while flagging any ``models -> adapters`` import statement.
+    Adapters construct models; models never reach into adapters or services. The
+    only permitted cross-reference is the in-function lazy import in
+    ``models/recipe.py`` (a ``TODO(services)`` duplicate slated for deletion);
+    it lives inside a method body, not at module scope, so this top-level-import
+    check tolerates it while flagging any ``models -> adapters/services`` import
+    statement.
     """
     for module in pkgutil.iter_modules(models.__path__):
         mod = __import__(f"meal_prep.models.{module.name}", fromlist=["x"])

@@ -166,12 +166,16 @@ class Recipe(BaseModel):
             (batch_cost, serving_cost)
         """
         total_cost = 0.0
+        # TODO(services/KI-01): `compute_*` on Recipe is a duplicate of the
+        # calculator service and is slated for deletion; the lazy import below is
+        # a temporary, flagged models -> services edge.
+        from meal_prep.services.pricing import price_per_100g
         for item in self.ingredients:
             if item.id not in catalog:
                 raise ValueError(f"Ingredient '{item.id}' in recipe '{self.id}' not found in ingredients catalog")
             ing = catalog[item.id]
             grams = ing.convert(item.quantity, item.unit, "g", units=units)
-            item_cost = (grams / 100.0) * ing.price_per_100g
+            item_cost = (grams / 100.0) * price_per_100g(ing, units)
             total_cost += item_cost
 
         batch_cost = round(total_cost, 2)
