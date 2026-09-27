@@ -14,16 +14,19 @@ derived automatically at build time.
 
 Invariants — enforced by :func:`build_graph`
 --------------------------------------------
-1. **Positive finite factors.** Every ``factor`` must be a finite number > 0.
-2. **No self-loop.** ``source != target``; a token is equal to itself by a
-   factor of exactly 1, which needs no edge.
-3. **One edge per pair.** Each unordered pair of tokens may be connected in at
-   most one direction. Re-adding a directed edge, or adding its reverse, is
-   redundant (the reverse is derived) and is rejected rather than silently
-   merged. This is what keeps contradictory authoring from producing silently
-   wrong numbers.
-4. **Acyclic.** The directed edge set contains no cycle; otherwise some token
-   would be equal to itself by a non-unit factor.
+1. **Positive finite real factors.** Every ``factor`` must be a finite real
+   number > 0. ``bool`` is rejected explicitly (it is an ``int`` subclass, and
+   YAML ``yes``/``no`` decode to it).
+2. **Non-empty, non-whitespace endpoints.** ``source`` and ``target`` must be
+   distinct, non-empty strings with at least one non-whitespace character.
+3. **At most one directed edge per ordered pair.** A second ``A -> B`` is
+   rejected even when the factor is identical; the reverse ``B -> A`` is
+   rejected too, because it is derived automatically.
+4. **Acyclic in the undirected sense.** The *unordered* edge set must be a
+   forest: an undirected cycle (which the directed acyclicity check would miss,
+   e.g. the diamond ``a -> b, b -> c, a -> c``) would give ``c`` two conflicting
+   values — the authored shortcut and the derived path — so it is rejected
+   rather than silently keeping one.
 5. **Immutable.** A built graph cannot be mutated and exposes read-only views;
    factor lookups are O(1).
 
@@ -37,13 +40,35 @@ from __future__ import annotations
 
 import math
 from collections import deque
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
 
 
 class ConversionError(ValueError):
     """Raised when a conversion is requested that the graph cannot express."""
+
+
+def _check_edge(source: str, target: str, factor: float) -> None:
+    """Validate a single edge's endpoints and factor.
+
+    Called from both ``ConversionEdge.__post_init__`` (so a malformed edge can
+    never be constructed) and ``build_graph`` (so the public builder is
+    self-contained and does not trust its input to have been pre-validated).
+    """
+    if not source or not source.strip() or not target or not target.strip():
+        raise ValueError("Conversion edge endpoints must be non-empty, non-whitespace tokens.")
+    if source == target:
+        raise ValueError(
+            f"Conversion self-reference '{source}' -> '{target}' is not allowed; "
+            "a token is equal to itself by a factor of 1 and needs no edge."
+        )
+    # ``bool`` is a subclass of ``int`` and YAML ``yes``/``no`` decode to it, so
+    # it must be rejected explicitly before the finite/positive check.
+    if isinstance(factor, bool) or not math.isfinite(factor) or factor <= 0:
+        raise ValueError(
+            f"Conversion factor must be a positive finite number, got {factor!r}."
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,17 +85,7 @@ class ConversionEdge:
     factor: float
 
     def __post_init__(self) -> None:
-        if not self.source or not self.target:
-            raise ValueError("Conversion edge endpoints must be non-empty tokens.")
-        if self.source == self.target:
-            raise ValueError(
-                f"Conversion self-reference '{self.source}' -> '{self.target}' is not allowed; "
-                "a token is equal to itself by a factor of 1 and needs no edge."
-            )
-        if not math.isfinite(self.factor) or self.factor <= 0:
-            raise ValueError(
-                f"Conversion factor must be a positive finite number, got {self.factor!r}."
-            )
+        _check_edge(self.source, self.target, self.factor)
 
 
 class ConversionGraph:
@@ -125,35 +140,35 @@ def build_graph(edges: Sequence[ConversionEdge]) -> ConversionGraph:
     Raises :class:`ValueError` on any invariant violation (see the module
     docstring). Reciprocals are added only after validation: validating the
     augmented graph would make every edge a two-cycle, which is why the
-    duplicate, self-loop and cycle checks all run on the directed set first.
+    duplicate and cycle checks all run on the authored set first.
     """
     adjacency: dict[str, dict[str, float]] = {}
-    seen: dict[tuple[str, str], float] = {}
+    seen: set[tuple[str, str]] = set()
 
     for edge in edges:
         u, v, factor = edge.source, edge.target, edge.factor
-        # Per-edge validity (positive finite factor, distinct endpoints) is
-        # already guaranteed by ConversionEdge.__post_init__.
+        # Validate per-edge invariants here too, so build_graph is a
+        # self-contained public builder that does not trust its inputs to have
+        # been pre-validated by ConversionEdge.
+        _check_edge(u, v, factor)
 
         if (u, v) in seen:
-            prev = seen[(u, v)]
             raise ValueError(
-                f"'{u}' -> '{v}' = {factor} redefines '{u}' -> '{v}' = {prev}, which is already "
+                f"'{u}' -> '{v}' = {factor} redefines '{u}' -> '{v}', which is already "
                 f"present. Re-adding an edge is a no-op; remove the redundant definition."
             )
         if (v, u) in seen:
-            prev = seen[(v, u)]
             raise ValueError(
-                f"'{u}' -> '{v}' = {factor} defines both '{u}' -> '{v}' and '{v}' -> '{u}' = "
-                f"{prev}. Authoring both directions of one conversion is redundant; the reverse is "
-                f"derived automatically."
+                f"'{u}' -> '{v}' = {factor} defines both '{u}' -> '{v}' and '{v}' -> '{u}', "
+                f"which is already present. Authoring both directions of one conversion is "
+                f"redundant; the reverse is derived automatically."
             )
 
-        seen[(u, v)] = factor
+        seen.add((u, v))
         adjacency.setdefault(u, {})[v] = factor
         adjacency.setdefault(v, {})
 
-    _reject_cycles(adjacency)
+    _reject_cycles(seen)
 
     for u, neighbors in list(adjacency.items()):
         for v, factor in list(neighbors.items()):
@@ -175,34 +190,34 @@ def build_graph(edges: Sequence[ConversionEdge]) -> ConversionGraph:
     return ConversionGraph(closure)
 
 
-def _reject_cycles(adjacency: Mapping[str, Mapping[str, float]]) -> None:
-    """Raise if the directed adjacency contains a cycle (iterative DFS, three-colour marking)."""
-    WHITE, GREY, BLACK = 0, 1, 2
-    colour: dict[str, int] = {}
+def _reject_cycles(edges: set[tuple[str, str]]) -> None:
+    """Raise if the *unordered* edge set contains a cycle (union-find).
 
-    for start in adjacency:
-        if colour.get(start, WHITE) != WHITE:
-            continue
-        colour[start] = GREY
-        path: list[str] = [start]
-        stack: list[tuple[str, Iterator[str]]] = [(start, iter(adjacency.get(start, {})))]
-        while stack:
-            node, children = stack[-1]
-            advanced = False
-            for child in children:
-                state = colour.get(child, WHITE)
-                if state == GREY:
-                    raise ValueError(
-                        f"Detected a conversion cycle: "
-                        f"{' -> '.join(path[path.index(child):] + [child])}."
-                    )
-                if state == WHITE:
-                    colour[child] = GREY
-                    path.append(child)
-                    stack.append((child, iter(adjacency.get(child, {}))))
-                    advanced = True
-                    break
-            if not advanced:
-                colour[node] = BLACK
-                stack.pop()
-                path.pop()
+    The directed graph is always acyclic when there is at most one edge per
+    ordered pair, but an undirected cycle (e.g. ``a -> b, b -> c, a -> c``) is a
+    genuine error: it gives one token two conflicting values — the authored
+    shortcut and the derived path. Union-find over unordered pairs rejects such
+    cycles.
+    """
+    parent: dict[str, str] = {}
+
+    def find(x: str) -> str:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for u, v in edges:
+        if u not in parent:
+            parent[u] = u
+        if v not in parent:
+            parent[v] = v
+
+        ru, rv = find(u), find(v)
+        if ru == rv:
+            raise ValueError(
+                f"Detected a conversion cycle: adding '{u}' -> '{v}' would create a "
+                f"loop in the undirected conversion graph."
+            )
+        parent[ru] = rv
+
