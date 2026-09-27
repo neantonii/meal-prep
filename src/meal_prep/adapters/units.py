@@ -1,24 +1,16 @@
 """YAML adapter for the units taxonomy (``data/units.yaml``)."""
 
 from pathlib import Path
-import yaml
 
+from meal_prep.adapters._yaml import read_yaml, require_root_key
 from meal_prep.models.units import UnitsFileSchema, UnitsRegistry
 
 
 def load_units(path: Path | str = Path("data/units.yaml")) -> UnitsRegistry:
     """Load and validate the units configuration from a YAML file."""
     file_path = Path(path)
-    if not file_path.exists():
-        raise FileNotFoundError(f"Units configuration file not found at: {file_path}")
-
-    with file_path.open("r", encoding="utf-8") as f:
-        raw = yaml.safe_load(f)
-
-    if not isinstance(raw, dict) or "units" not in raw:
-        raise ValueError(f"Invalid YAML structure in {file_path}: expected 'units' root key")
-
-    schema = UnitsFileSchema.model_validate(raw["units"])
+    raw = read_yaml(file_path, what="Units configuration")
+    schema = UnitsFileSchema.model_validate(require_root_key(raw, "units", file_path))
     return UnitsRegistry(schema_data=schema)
 
 

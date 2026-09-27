@@ -1,8 +1,8 @@
 """YAML adapter for the ingredient catalog (``data/ingredients/<aisle>.yaml``)."""
 
 from pathlib import Path
-import yaml
 
+from meal_prep.adapters._yaml import read_yaml
 from meal_prep.models.ingredient import Ingredient
 from meal_prep.models.units import UnitsRegistry
 
@@ -10,11 +10,7 @@ from meal_prep.models.units import UnitsRegistry
 def load_ingredients_file(path: Path | str) -> list[Ingredient]:
     """Load and validate all ingredients from an aisle YAML file."""
     file_path = Path(path)
-    if not file_path.exists():
-        raise FileNotFoundError(f"Ingredients file not found at: {file_path}")
-
-    with file_path.open("r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
+    data = read_yaml(file_path, what="Ingredients")
 
     if not isinstance(data, list):
         raise ValueError(f"Invalid YAML structure in {file_path}: expected a list of ingredients")
