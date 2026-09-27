@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import renderer
 from meal_prep.adapters.ingredients import load_all_ingredients
 from meal_prep.adapters.units import load_units
 from meal_prep.library import MealPrepLibrary
@@ -46,3 +47,23 @@ def test_all_recipes_prepare_without_error():
     # without raising (unknown ingredient, unregistered unit, unknown
     # equipment, ...). This guard only prevents a vacuous pass on an empty set.
     assert prepared
+
+
+def test_render_all_recipe_cards():
+    library = MealPrepLibrary.load(
+        data_dir=_REPO_ROOT / "data",
+        recipes_dir=_REPO_ROOT / "recipes",
+    )
+
+    out_dir = _REPO_ROOT / "recipe_cards"
+    generated = renderer.render_all_recipe_cards(library, out_dir)
+
+    # One card per authored recipe.
+    assert len(generated) == len(library.recipes)
+
+    # Every card landed at <category>/<slug>.html and is a non-empty HTML doc.
+    for path in generated:
+        assert path.is_relative_to(out_dir)
+        content = path.read_text(encoding="utf-8")
+        assert content.startswith("<!DOCTYPE html>")
+        assert "Cooking Loss" not in content

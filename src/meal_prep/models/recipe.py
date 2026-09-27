@@ -14,6 +14,7 @@ floats with no rounding — presentation is the renderer's concern.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import reduce
 from pathlib import Path
@@ -51,6 +52,7 @@ class Recipe:
     fridge_days: int
     freezer_friendly: bool
     equipment: tuple[str, ...]  # resolved display names, in authored order
+    equipment_by_id: Mapping[str, str]  # canonical id -> display name
     ingredients: tuple[RecipeIngredient, ...]
     instructions: str
     source_path: Path | None = None

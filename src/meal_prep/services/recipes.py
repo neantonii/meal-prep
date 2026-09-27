@@ -16,6 +16,7 @@ known equipment.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from types import MappingProxyType
 
 from meal_prep.dtos.recipe import Recipe as RecipeDTO
 from meal_prep.dtos.equipment import EquipmentItem
@@ -30,7 +31,8 @@ def prepare_recipe(
 ) -> Recipe:
     """Resolve and validate one authored recipe into its frozen enriched value."""
     # Resolve equipment ids to display names, preserving authored order and
-    # rejecting ids that are not in the registry.
+    # rejecting ids that are not in the registry. The id -> name map is retained
+    # on the recipe so the renderer can resolve body ``#cookware`` tokens.
     names_by_id = {item.id: item.name for item in equipment}
     resolved_equipment = []
     for equip_id in recipe.equipment:
@@ -74,6 +76,7 @@ def prepare_recipe(
         fridge_days=recipe.storage_info.fridge_days,
         freezer_friendly=recipe.storage_info.freezer_friendly,
         equipment=tuple(resolved_equipment),
+        equipment_by_id=MappingProxyType(names_by_id),
         ingredients=tuple(resolved_ingredients),
         instructions=recipe.instructions,
         source_path=recipe.source_path,
