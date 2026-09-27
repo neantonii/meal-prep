@@ -6,7 +6,6 @@ registry.
 """
 
 from pathlib import Path
-import re
 from typing import Any
 import yaml
 
@@ -20,77 +19,26 @@ from meal_prep.models.recipe import (
 from meal_prep.models.ingredient import Ingredient
 from meal_prep.models.units import UnitsRegistry
 from meal_prep.models.equipment import EquipmentRegistry
-
-
-# Regex patterns for Cooklang elements
-_INGREDIENT_PATTERN = re.compile(
-    r"@(?:([a-zA-Z0-9_-]+|\b[a-zA-Z0-9_ -]+?)\s*\{\s*([^}%]*?)\s*(?:%\s*([^}]+?)\s*)?\}|([a-zA-Z0-9_-]+))"
-)
-_COOKWARE_PATTERN = re.compile(
-    r"#([a-zA-Z0-9_-]+|\b[a-zA-Z0-9_ -]+?)\s*\{\}|#([a-zA-Z0-9_-]+)"
-)
-_TIMER_PATTERN = re.compile(
-    r"~([a-zA-Z0-9_-]+)?\s*\{\s*([^}%]+)\s*%\s*([^}]+)\s*\}"
-)
+from meal_prep.engines.cooklang import parse_cooklang
 
 
 def parse_cooklang_body(text: str) -> tuple[list[RecipeIngredientRef], list[RecipeCookwareRef], list[RecipeTimerRef]]:
-    """Extract ingredients, cookware, and timers from Cooklang instructions text."""
-    ingredients: list[RecipeIngredientRef] = []
-    cookware: list[RecipeCookwareRef] = []
-    timers: list[RecipeTimerRef] = []
+    """Extract ingredients, cookware, and timers from Cooklang instructions text.
 
-    # 1. Parse Ingredients
-    for match in _INGREDIENT_PATTERN.finditer(text):
-        if match.group(1):
-            name = match.group(1).strip().lower()
-            qty_raw = match.group(2).strip() if match.group(2) else None
-            unit_raw = match.group(3).strip().lower() if match.group(3) else None
-        else:
-            name = match.group(4).strip().lower()
-            qty_raw = None
-            unit_raw = None
-
-        if not qty_raw or not unit_raw:
-            raise ValueError(
-                f"Ingredient '@{name}' in recipe missing quantity or unit. "
-                "All ingredients must specify '{quantity%unit}' for deterministic macro and cost tracking."
-            )
-
-        try:
-            qty = float(qty_raw)
-        except ValueError:
-            raise ValueError(f"Invalid quantity '{qty_raw}' for ingredient '@{name}'. Must be a numeric value.")
-
-        if qty <= 0:
-            raise ValueError(f"Quantity for ingredient '@{name}' must be positive, got {qty}.")
-
-        ingredients.append(RecipeIngredientRef(id=name, quantity=qty, unit=unit_raw))
-
-    # 2. Parse Cookware
-    seen_cookware = set()
-    for match in _COOKWARE_PATTERN.finditer(text):
-        item_id = (match.group(1) or match.group(2)).strip().lower()
-        if item_id not in seen_cookware:
-            seen_cookware.add(item_id)
-            cookware.append(RecipeCookwareRef(id=item_id))
-
-    # 3. Parse Timers
-    for match in _TIMER_PATTERN.finditer(text):
-        name = (match.group(1) or "timer").strip()
-        duration_raw = match.group(2).strip()
-        unit_raw = match.group(3).strip().lower()
-
-        try:
-            duration = float(duration_raw)
-        except ValueError:
-            raise ValueError(f"Invalid timer duration '{duration_raw}' for timer '{name}'. Must be a numeric value.")
-
-        if duration <= 0:
-            raise ValueError(f"Timer duration for '{name}' must be positive, got {duration}.")
-
-        timers.append(RecipeTimerRef(name=name, duration=duration, unit=unit_raw))
-
+    Tokenization and syntax validation live in the pure ``engines.cooklang``
+    engine; this adapter maps the resulting records onto the recipe reference
+    models.
+    """
+    doc = parse_cooklang(text)
+    ingredients = [
+        RecipeIngredientRef(id=i.name, quantity=i.quantity, unit=i.unit)
+        for i in doc.ingredients
+    ]
+    cookware = [RecipeCookwareRef(id=c.id) for c in doc.cookware]
+    timers = [
+        RecipeTimerRef(name=t.name, duration=t.duration, unit=t.unit)
+        for t in doc.timers
+    ]
     return ingredients, cookware, timers
 
 

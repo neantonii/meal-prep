@@ -1,0 +1,118 @@
+"""Pure Cooklang tokenizer and parser.
+
+This module is a dependency-free engine. It owns the Cooklang micro-syntax
+(the ``@ingredient``, ``#cookware`` and ``~timer`` markup) and turns raw
+instruction text into plain data records. It imports nothing from the rest of
+the codebase (stdlib only) and must stay that way — enforced by
+``test_engines_package_has_no_domain_imports``.
+
+The compiled patterns are the single source of truth for Cooklang syntax,
+shared by the recipe adapter (parsing into models) and the renderer
+(formatting instructions back to HTML).
+"""
+
+from dataclasses import dataclass
+import re
+
+# Cooklang element patterns. Kept at module scope so the renderer can reuse the
+# exact same compiled objects rather than re-declaring them.
+INGREDIENT_PATTERN = re.compile(
+    r"@(?:([a-zA-Z0-9_-]+|\b[a-zA-Z0-9_ -]+?)\s*\{\s*([^}%]*?)\s*(?:%\s*([^}]+?)\s*)?\}|([a-zA-Z0-9_-]+))"
+)
+COOKWARE_PATTERN = re.compile(
+    r"#([a-zA-Z0-9_-]+|\b[a-zA-Z0-9_ -]+?)\s*\{\}|#([a-zA-Z0-9_-]+)"
+)
+TIMER_PATTERN = re.compile(
+    r"~([a-zA-Z0-9_-]+)?\s*\{\s*([^}%]+)\s*%\s*([^}]+)\s*\}"
+)
+
+
+@dataclass(frozen=True)
+class CooklangIngredient:
+    name: str
+    quantity: float
+    unit: str
+
+
+@dataclass(frozen=True)
+class CooklangCookware:
+    id: str
+
+
+@dataclass(frozen=True)
+class CooklangTimer:
+    name: str
+    duration: float
+    unit: str
+
+
+@dataclass(frozen=True)
+class CooklangDocument:
+    ingredients: tuple[CooklangIngredient, ...]
+    cookware: tuple[CooklangCookware, ...]
+    timers: tuple[CooklangTimer, ...]
+
+
+def parse_cooklang(text: str) -> CooklangDocument:
+    """Tokenize Cooklang instruction text into ingredient, cookware and timer records.
+
+    Raises ``ValueError`` on syntax errors: a missing quantity or unit, a
+    non-numeric quantity/duration, or a non-positive quantity/duration.
+    """
+    ingredients: list[CooklangIngredient] = []
+
+    for match in INGREDIENT_PATTERN.finditer(text):
+        if match.group(1):
+            name = match.group(1).strip().lower()
+            qty_raw = match.group(2).strip() if match.group(2) else None
+            unit_raw = match.group(3).strip().lower() if match.group(3) else None
+        else:
+            name = match.group(4).strip().lower()
+            qty_raw = None
+            unit_raw = None
+
+        if not qty_raw or not unit_raw:
+            raise ValueError(
+                f"Ingredient '@{name}' in recipe missing quantity or unit. "
+                "All ingredients must specify '{quantity%unit}' for deterministic macro and cost tracking."
+            )
+
+        try:
+            qty = float(qty_raw)
+        except ValueError:
+            raise ValueError(f"Invalid quantity '{qty_raw}' for ingredient '@{name}'. Must be a numeric value.")
+
+        if qty <= 0:
+            raise ValueError(f"Quantity for ingredient '@{name}' must be positive, got {qty}.")
+
+        ingredients.append(CooklangIngredient(name=name, quantity=qty, unit=unit_raw))
+
+    cookware: list[CooklangCookware] = []
+    seen_cookware: set[str] = set()
+    for match in COOKWARE_PATTERN.finditer(text):
+        item_id = (match.group(1) or match.group(2)).strip().lower()
+        if item_id not in seen_cookware:
+            seen_cookware.add(item_id)
+            cookware.append(CooklangCookware(id=item_id))
+
+    timers: list[CooklangTimer] = []
+    for match in TIMER_PATTERN.finditer(text):
+        name = (match.group(1) or "timer").strip()
+        duration_raw = match.group(2).strip()
+        unit_raw = match.group(3).strip().lower()
+
+        try:
+            duration = float(duration_raw)
+        except ValueError:
+            raise ValueError(f"Invalid timer duration '{duration_raw}' for timer '{name}'. Must be a numeric value.")
+
+        if duration <= 0:
+            raise ValueError(f"Timer duration for '{name}' must be positive, got {duration}.")
+
+        timers.append(CooklangTimer(name=name, duration=duration, unit=unit_raw))
+
+    return CooklangDocument(
+        ingredients=tuple(ingredients),
+        cookware=tuple(cookware),
+        timers=tuple(timers),
+    )

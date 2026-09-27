@@ -5,11 +5,11 @@ inline badges, ingredient checklists, macro summaries, yield, storage, and equip
 """
 
 from pathlib import Path
-import re
 from typing import Any, TYPE_CHECKING
 from meal_prep.models.recipe import Recipe
 from meal_prep.models.ingredient import Ingredient
 from meal_prep.models.equipment import EquipmentRegistry
+from meal_prep.engines.cooklang import COOKWARE_PATTERN, INGREDIENT_PATTERN, TIMER_PATTERN
 from meal_prep.models.units import UnitsRegistry
 from meal_prep.calculator import PreparedRecipe
 
@@ -41,9 +41,7 @@ def _format_step_text(
             display_name = item.name if hasattr(item, "name") else (item or raw_id)
             return f'<span class="badge badge-ingredient">{display_name}</span>'
 
-    ing_pattern = re.compile(
-        r"@(?:([a-zA-Z0-9_-]+|\b[a-zA-Z0-9_ -]+?)\s*\{\s*([^}%]*?)\s*(?:%\s*([^}]+?)\s*)?\}|([a-zA-Z0-9_-]+))"
-    )
+    ing_pattern = INGREDIENT_PATTERN
     formatted = ing_pattern.sub(replace_ing, text)
 
     # Format cookware: #id{} or #id
@@ -53,7 +51,7 @@ def _format_step_text(
         display_name = eq_item.name if eq_item else raw_id.replace("-", " ").title()
         return f'<span class="badge badge-cookware" title="Equipment: {display_name}">{display_name}</span>'
 
-    cw_pattern = re.compile(r"#([a-zA-Z0-9_-]+|\b[a-zA-Z0-9_ -]+?)\s*\{\}|#([a-zA-Z0-9_-]+)")
+    cw_pattern = COOKWARE_PATTERN
     formatted = cw_pattern.sub(replace_cw, formatted)
 
     # Format timers: ~name{duration%unit} or ~{duration%unit}
@@ -66,7 +64,7 @@ def _format_step_text(
             label = f"{label} ({name.replace('-', ' ')})"
         return f'<span class="badge badge-timer" title="Timer: {label}">⏱️ {label}</span>'
 
-    timer_pattern = re.compile(r"~([a-zA-Z0-9_-]+)?\s*\{\s*([^}%]+)\s*%\s*([^}]+)\s*\}")
+    timer_pattern = TIMER_PATTERN
     formatted = timer_pattern.sub(replace_timer, formatted)
 
     # Split into paragraphs / steps

@@ -42,7 +42,7 @@ All findings below were verified by executing code against the real data, not by
 | KI-11 | Medium | `bunch` is simultaneously a count unit and a packaging container | Open |
 | KI-12 | Medium | `fresh-lemon` declares two aliases of the same count unit | Resolved |
 | KI-13 | Medium | "Cooking loss" sign is misleading for water-absorbing grain recipes | Open |
-| KI-14 | Medium | Renderer re-declares Cooklang regexes instead of importing them | Open |
+| KI-14 | Medium | Renderer re-declares Cooklang regexes instead of importing them | Resolved |
 | KI-15 | Medium | No schema-generation pipeline; JSON schemas drift from models | Open |
 | KI-16 | Low | Dead variables in `renderer.py`; loss/batch totals never rendered | Open |
 | KI-17 | Low | No `pyproject.toml` / dependency manifest | Open |
@@ -556,7 +556,7 @@ Recommendation: expose a signed **weight change** plus an unsigned **cooked yiel
 ## KI-14 — Renderer re-declares Cooklang regexes instead of importing them
 
 **Severity:** Medium
-**Status:** Open
+**Status:** Resolved — Cooklang tokenization extracted to a pure engine, shared by parser and renderer
 
 ### Symptom
 The three Cooklang parsing patterns are duplicated verbatim in the renderer rather than shared with
@@ -574,6 +574,12 @@ The two definitions are identical today purely by maintenance discipline.
 ### Proposed fix
 Export the compiled patterns from `models/recipe.py` and import them in `renderer.py`. The
 substitution callbacks differ, so only the patterns need sharing.
+
+### Implemented fix — `engines/cooklang.py`
+The tokenizer and the three compiled patterns were moved into a pure, stdlib-only engine
+(`engines/cooklang.py`) alongside the conversion graph. The recipe adapter maps the engine's records
+onto the reference models, and the renderer imports the shared patterns directly. There is now a
+single source of truth for Cooklang syntax.
 
 ---
 
