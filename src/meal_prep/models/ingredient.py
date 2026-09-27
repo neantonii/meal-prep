@@ -39,6 +39,39 @@ class MacrosInfo:
     sodium_mg: float
     potassium_mg: float
 
+    @classmethod
+    def zero(cls) -> "MacrosInfo":
+        """The additive identity — every nutrient at 0.0."""
+        return cls(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+
+    def scaled(self, factor: float) -> "MacrosInfo":
+        """Multiply every nutrient by ``factor`` (raw, unrounded)."""
+        return MacrosInfo(
+            calories_kcal=self.calories_kcal * factor,
+            protein_g=self.protein_g * factor,
+            fat_g=self.fat_g * factor,
+            carbs_g=self.carbs_g * factor,
+            fiber_g=self.fiber_g * factor,
+            saturated_fat_g=self.saturated_fat_g * factor,
+            sugars_g=self.sugars_g * factor,
+            sodium_mg=self.sodium_mg * factor,
+            potassium_mg=self.potassium_mg * factor,
+        )
+
+    def added(self, other: "MacrosInfo") -> "MacrosInfo":
+        """Element-wise sum with ``other`` (raw, unrounded)."""
+        return MacrosInfo(
+            calories_kcal=self.calories_kcal + other.calories_kcal,
+            protein_g=self.protein_g + other.protein_g,
+            fat_g=self.fat_g + other.fat_g,
+            carbs_g=self.carbs_g + other.carbs_g,
+            fiber_g=self.fiber_g + other.fiber_g,
+            saturated_fat_g=self.saturated_fat_g + other.saturated_fat_g,
+            sugars_g=self.sugars_g + other.sugars_g,
+            sodium_mg=self.sodium_mg + other.sodium_mg,
+            potassium_mg=self.potassium_mg + other.potassium_mg,
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class Ingredient:

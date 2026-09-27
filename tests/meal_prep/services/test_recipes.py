@@ -1,0 +1,112 @@
+"""Tests for the recipe enrichment service (``services/recipes.py``).
+
+Happy paths against the real catalog, plus the service's own validation errors
+(unknown ingredient, unknown equipment, unregistered unit). Ingredient-level
+gram reachability is already guaranteed by ingredient enrichment and is not
+re-tested here.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from meal_prep.dtos.recipe import Recipe as RecipeDTO
+from meal_prep.dtos.recipe import RecipeIngredientRef
+from meal_prep.library import MealPrepLibrary
+from meal_prep.models.recipe import Recipe
+from meal_prep.services.recipes import prepare_recipe
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+@pytest.fixture(scope="module")
+def library() -> MealPrepLibrary:
+    return MealPrepLibrary.load(
+        data_dir=_REPO_ROOT / "data",
+        recipes_dir=_REPO_ROOT / "recipes",
+    )
+
+
+@pytest.fixture(scope="module")
+def chicken_recipe(library: MealPrepLibrary) -> RecipeDTO:
+    return library.recipes["air-fried-chicken-breast"]
+
+
+# ---------------------------------------------------------------------------
+# happy paths
+# ---------------------------------------------------------------------------
+
+
+def test_prepare_recipe_resolves_everything(library, chicken_recipe):
+    prepared = prepare_recipe(chicken_recipe, library.catalog, library.equipment)
+    assert isinstance(prepared, Recipe)
+    assert prepared.id == "air-fried-chicken-breast"
+    assert prepared.servings == 4.0
+    assert prepared.cooked_g == 660.0
+    assert len(prepared.ingredients) == 6
+
+
+def test_prepare_recipe_equipment_names_are_resolved(library, chicken_recipe):
+    prepared = prepare_recipe(chicken_recipe, library.catalog, library.equipment)
+    assert prepared.equipment == ("Air Fryer", "Meat Thermometer")
+
+
+def test_prepare_recipe_computes_batch_g(library, chicken_recipe):
+    prepared = prepare_recipe(chicken_recipe, library.catalog, library.equipment)
+    # Chicken 4 piece @ 237.5g + seasonings; must exceed the chicken alone.
+    assert prepared.batch_g > 950.0
+    assert prepared.batch_g == sum(i.grams for i in prepared.ingredients)
+
+
+def test_prepare_recipe_computes_cost_and_macros(library, chicken_recipe):
+    prepared = prepare_recipe(chicken_recipe, library.catalog, library.equipment)
+    assert prepared.total_cost > 0.0
+    assert prepared.cost_per_portion == prepared.total_cost / prepared.servings
+    assert prepared.batch_macros.calories_kcal > 0.0
+    assert prepared.per_serving_macros.calories_kcal > 0.0
+
+
+def test_prepare_recipe_merges_duplicate_ingredient_references(library):
+    # Oil appears once in this recipe; reference it twice to force a merge.
+    recipe = library.recipes["air-fried-chicken-breast"].model_copy(
+        update={
+            "ingredients": [
+                RecipeIngredientRef(id="olive-oil", quantity=1, unit="tbsp"),
+                RecipeIngredientRef(id="olive-oil", quantity=0.5, unit="tbsp"),
+            ]
+        }
+    )
+    prepared = prepare_recipe(recipe, library.catalog, library.equipment)
+    assert [i.id for i in prepared.ingredients] == ["olive-oil"]
+    assert prepared.ingredients[0].grams == pytest.approx(
+        library.catalog["olive-oil"].convert(1.5, "tbsp", "g")
+    )
+
+
+# ---------------------------------------------------------------------------
+# validation errors
+# ---------------------------------------------------------------------------
+
+
+def test_prepare_recipe_rejects_unknown_ingredient(library, chicken_recipe):
+    recipe = chicken_recipe.model_copy(
+        update={"ingredients": [RecipeIngredientRef(id="not-an-ingredient", quantity=1, unit="g")]}
+    )
+    with pytest.raises(ValueError, match="unknown ingredient 'not-an-ingredient'"):
+        prepare_recipe(recipe, library.catalog, library.equipment)
+
+
+def test_prepare_recipe_rejects_unknown_equipment(library, chicken_recipe):
+    recipe = chicken_recipe.model_copy(update={"equipment": ["not-equipment"]})
+    with pytest.raises(ValueError, match="unknown equipment 'not-equipment'"):
+        prepare_recipe(recipe, library.catalog, library.equipment)
+
+
+def test_prepare_recipe_rejects_unregistered_unit(library, chicken_recipe):
+    recipe = chicken_recipe.model_copy(
+        update={"ingredients": [RecipeIngredientRef(id="olive-oil", quantity=1, unit="furlong")]}
+    )
+    with pytest.raises(ValueError, match="No conversion path"):
+        prepare_recipe(recipe, library.catalog, library.equipment)
