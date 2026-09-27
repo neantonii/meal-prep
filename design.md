@@ -54,17 +54,24 @@ the graph they need is already a frozen field.
 
 ## Conversion graph
 
-Every enriched `Ingredient` carries its own full, frozen conversion graph.
+Every enriched `Ingredient` carries its own full, frozen conversion graph, plus
+a **synonym map** (`noun -> canonical`) used to resolve Cooklang tokens.
 
-Edges come from four sources:
+Edges come from three sources:
 
 1. the package edge: `package -> <unit> = <amount>` (authored in `conversions`)
 2. authored `conversions`: `from -> to = factor`
 3. universal physics: mass -> `g`, volume -> `ml`
-4. synonyms: `alias -> canonical = 1.0`, from the YAML that owns them
 
-- **Synonyms are edges, not a lookup function.** `units.yaml` registers aliases
-  explicitly; ingredient-specific aliases are registered in the ingredient YAML.
+- **Synonyms are a map, not edges.** The complete map merges default nouns from
+  `units.yaml` with the ingredient's `custom_units`; a noun must be unique across
+  both (rejecting overlap). It exists only to resolve authored tokens to
+  canonical units before edges are built; it never enters the graph.
+- **Resolution happens once, at enrichment.** Conversion endpoints are resolved
+  from synonym noun to canonical unit, then the *resolved* edges are handed to
+  `build_graph`. The graph therefore validates against canonical tokens and
+  enforces: no self-loops, no duplicate edges, no reverse edges, no cycles —
+  then derives reverse edges and returns the frozen transitive closure.
 - **No runtime normalization.** `Ingredient.convert(amount, from, to)` is
   literally `graph.convert(...)`. Pure, no registry at call time.
 
@@ -97,9 +104,10 @@ Rules:
   legal only until it fails this check.
 - The centralized `count` dimension is removed; its units become
   ingredient-local custom units (`piece`, `item`, `head`, `clove`).
-- `package` is a **reserved retail node** with no universal conversions — its
-  `package -> *` edge is authored per ingredient (one per ingredient, only ever
-  as a `from`). It must never be shadowed by a custom unit.
+- `package` is a **reserved retail node** with no universal conversions — it is
+  a normal registered token whose `package -> *` edge is authored per ingredient.
+  It must never be shadowed by a custom unit, and like every other unit it must
+  be gram-reachable.
 
 ## Macros basis
 

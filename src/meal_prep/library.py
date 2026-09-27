@@ -1,8 +1,9 @@
 """Meal Prep Library Loader & Gateway.
 
 Loads and validates all domain standards, ingredient catalogs, and recipes in a
-single call, returning raw DTO collections. Enrichment (registries, prepared
-values) is performed later by services.
+single call. Ingredients are enriched (resolved into frozen values) via the
+ingredient service; recipes remain authored documents until a later service
+prepares them.
 """
 
 from dataclasses import dataclass
@@ -10,13 +11,14 @@ from pathlib import Path
 from meal_prep.dtos.units import UnitsFileSchema
 from meal_prep.dtos.equipment import EquipmentItem
 from meal_prep.dtos.aisle import Aisle
-from meal_prep.dtos.ingredient import Ingredient
+from meal_prep.models.ingredient import Ingredient
 from meal_prep.dtos.recipe import Recipe
 from meal_prep.adapters.units import load_units
 from meal_prep.adapters.equipment import load_equipment
 from meal_prep.adapters.aisles import load_aisles
 from meal_prep.adapters.ingredients import load_all_ingredients
 from meal_prep.adapters.recipes import load_all_recipes
+from meal_prep.services.ingredients import prepare_catalog
 
 
 @dataclass
@@ -49,7 +51,7 @@ class MealPrepLibrary:
         units = load_units(data_path / "units.yaml")
         equipment = load_equipment(data_path / "equipment.yaml")
         aisles = load_aisles(data_path / "aisles.yaml")
-        catalog = load_all_ingredients(data_path / "ingredients")
+        catalog = prepare_catalog(load_all_ingredients(data_path / "ingredients"), units)
 
         recipes: dict[str, Recipe] = {}
         if recipes_path.exists():
