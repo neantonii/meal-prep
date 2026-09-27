@@ -1,7 +1,8 @@
 from pathlib import Path
 import pytest
-from meal_prep.models.units import load_units
-from meal_prep.models.ingredient import load_all_ingredients, Ingredient
+from meal_prep.adapters.units import load_units
+from meal_prep.adapters.ingredients import load_all_ingredients
+from meal_prep.models.ingredient import Ingredient
 from meal_prep.engines.conversion_graph import ConversionEdge, ConversionError, build_graph
 
 

@@ -1,6 +1,4 @@
-from pathlib import Path
 from typing import Any, TYPE_CHECKING
-import yaml
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator, model_validator
 from meal_prep.models.enums import StorageType
 
@@ -102,7 +100,10 @@ class Ingredient(BaseModel):
         3. No double conversion across the same pair of dimensions (e.g. defining both tbsp -> g
            and tsp -> g, or defining ml -> g and g -> tbsp).
         """
-        from meal_prep.models.units import get_default_units
+        # TODO(services): move this dimension cross-check out of model validation
+        # to load time (KI-04/KI-20). The lazy adapter import below is a temporary,
+        # flagged violation of the models -> adapters dependency rule.
+        from meal_prep.adapters.units import get_default_units
         try:
             units_reg = get_default_units()
         except Exception:
@@ -219,7 +220,10 @@ class Ingredient(BaseModel):
         validation reports as an error.
         """
         if self._conversion_graph is None:
-            from meal_prep.models.units import get_default_units
+            # TODO(services): this lazy adapter import is a temporary, flagged
+            # violation of the models -> adapters rule; it is removed when
+            # container_weight_g moves behind a conversion service.
+            from meal_prep.adapters.units import get_default_units
             self.get_conversion_graph(get_default_units())
         factor = self._conversion_graph.factor(self.package.container, "g")
         return factor if factor is not None else 0.0
@@ -282,62 +286,3 @@ def _build_ingredient_graph(ingredient: "Ingredient", units: "UnitsRegistry") ->
 
     return build_graph(edges)
 
-
-def load_ingredients_file(path: Path | str) -> list[Ingredient]:
-    """Load and validate all ingredients from an aisle YAML file."""
-    file_path = Path(path)
-    if not file_path.exists():
-        raise FileNotFoundError(f"Ingredients file not found at: {file_path}")
-
-    with file_path.open("r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-
-    if not isinstance(data, list):
-        raise ValueError(f"Invalid YAML structure in {file_path}: expected a list of ingredients")
-
-    expected_aisle = file_path.stem
-    ingredients = []
-    for item_data in data:
-        ingredient = Ingredient.model_validate(item_data)
-        if ingredient.aisle != expected_aisle:
-            raise ValueError(
-                f"Ingredient '{ingredient.id}' declares aisle '{ingredient.aisle}', "
-                f"which does not match file stem '{expected_aisle}' in {file_path}"
-            )
-        ingredients.append(ingredient)
-
-    return ingredients
-
-
-def load_all_ingredients(
-    dir_path: Path | str = Path("data/ingredients"),
-    units: "UnitsRegistry | None" = None,
-) -> dict[str, Ingredient]:
-    """Load all ingredients across all aisle YAML files and ensure global ID uniqueness.
-    
-    If units is provided, precomputes and caches the conversion graph for all ingredients at load time.
-    """
-    directory = Path(dir_path)
-    if not directory.exists() or not directory.is_dir():
-        raise FileNotFoundError(f"Ingredients directory not found: {directory}")
-
-    all_ingredients: dict[str, Ingredient] = {}
-    for yaml_file in sorted(directory.glob("*.yaml")):
-        items = load_ingredients_file(yaml_file)
-        for item in items:
-            if item.id in all_ingredients:
-                raise ValueError(
-                    f"Duplicate ingredient ID '{item.id}' found across multiple files! "
-                    f"Already loaded from {all_ingredients[item.id].aisle}.yaml, duplicate in {yaml_file.name}"
-                )
-            if units is not None:
-                item.get_conversion_graph(units)  # build + validate; caches on the ingredient
-                if item.container_weight_g <= 0:
-                    raise ValueError(
-                        f"Ingredient '{item.id}' package container '{item.package.container}' cannot "
-                        f"be resolved to grams, so its net weight is not derivable. Bridge the "
-                        f"package unit '{item.package.unit}' to a mass unit."
-                    )
-            all_ingredients[item.id] = item
-
-    return all_ingredients

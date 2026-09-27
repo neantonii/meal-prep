@@ -6,11 +6,16 @@ Provides direct access to prepared mathematical data without invoking HTML rende
 
 from dataclasses import dataclass
 from pathlib import Path
-from meal_prep.models.units import UnitsRegistry, load_units
-from meal_prep.models.equipment import EquipmentRegistry, load_equipment
-from meal_prep.models.aisle import AislesConfig, load_aisles
-from meal_prep.models.ingredient import Ingredient, load_all_ingredients
-from meal_prep.models.recipe import Recipe, load_all_recipes
+from meal_prep.models.units import UnitsRegistry
+from meal_prep.models.equipment import EquipmentRegistry
+from meal_prep.models.aisle import AislesConfig
+from meal_prep.models.ingredient import Ingredient
+from meal_prep.models.recipe import Recipe
+from meal_prep.adapters.units import load_units
+from meal_prep.adapters.equipment import load_equipment
+from meal_prep.adapters.aisles import load_aisles
+from meal_prep.adapters.ingredients import load_all_ingredients
+from meal_prep.adapters.recipes import load_all_recipes
 from meal_prep.calculator import PreparedRecipe, prepare_recipe
 
 

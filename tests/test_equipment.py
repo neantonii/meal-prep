@@ -1,7 +1,8 @@
 from pathlib import Path
 import pytest
 from pydantic import ValidationError
-from meal_prep.models.equipment import EquipmentItem, EquipmentRegistry, load_equipment
+from meal_prep.models.equipment import EquipmentItem, EquipmentRegistry
+from meal_prep.adapters.equipment import load_equipment
 
 
 @pytest.fixture

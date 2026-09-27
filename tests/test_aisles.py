@@ -1,7 +1,8 @@
 from pathlib import Path
 import pytest
 from pydantic import ValidationError
-from meal_prep.models.aisle import Aisle, AislesConfig, load_aisles
+from meal_prep.models.aisle import Aisle, AislesConfig
+from meal_prep.adapters.aisles import load_aisles
 
 
 def test_load_real_aisles_yaml():

@@ -48,7 +48,7 @@ All findings below were verified by executing code against the real data, not by
 | KI-17 | Low | No `pyproject.toml` / dependency manifest | Open |
 | KI-18 | Low | Documentation drift on file/aisle/category counts | Open |
 | KI-19 | Low | Unused public API surface | Open |
-| KI-20 | High | Business logic and I/O live on Pydantic models (violates model-purity rule) | Open |
+| KI-20 | High | Business logic and I/O live on Pydantic models (violates model-purity rule) | In progress |
 
 ---
 
@@ -682,7 +682,7 @@ Consider stating the counts as "currently N" so they do not silently rot again. 
 ## KI-20 — Business logic and I/O live on Pydantic models
 
 **Severity:** High
-**Status:** Open
+**Status:** In progress — `adapters/` extracted (I/O relocated); `services/` extraction pending
 
 ### Symptom
 Pydantic models carry behaviour that needs collaborators (registries, the conversion graph, other
@@ -692,23 +692,32 @@ collaborators.
 
 ### Evidence (audit)
 
-**Needs a collaborator → should be a service:**
+**Needs a collaborator → should be a service (still pending):**
 
 | member | needs | note |
 | :--- | :--- | :--- |
-| `Ingredient.price_per_100g/price_per_kg/price_per_unit` (`ingredient.py:175-188`) | conversion graph, price | lazily builds a graph |
-| `Ingredient.get_conversion_graph/can_convert/convert/container_weight_g` (`ingredient.py:190-225`) | `UnitsRegistry`, graph | orchestration + cache |
-| `_build_ingredient_graph` / `_authored_endpoints` (`ingredient.py:228-283`) | `UnitsRegistry` | domain adapter, not a model |
-| `Recipe.portion_cooked_weight_g` + `compute_*` (`recipe.py:79-190`) | `catalog`, `UnitsRegistry` | KI-01 duplicate of `calculator` |
+| `Ingredient.price_per_100g/price_per_kg/price_per_unit` (`ingredient.py:177-190`) | conversion graph, price | lazily builds a graph |
+| `Ingredient.get_conversion_graph/can_convert/convert/container_weight_g` (`ingredient.py:191-229`) | `UnitsRegistry`, graph | orchestration + cache |
+| `_build_ingredient_graph` / `_authored_endpoints` (`ingredient.py:232-286`) | `UnitsRegistry` | domain adapter, not a model |
+| `Recipe.portion_cooked_weight_g` + `compute_*` (`recipe.py:77-187`) | `catalog`, `UnitsRegistry` | KI-01 duplicate of `calculator` |
 
-**Does I/O → should be an adapter (repository):**
+**Does I/O → should be an adapter (resolved — moved to `adapters/`):**
 
-| member | reads/writes |
+| member | now lives at |
 | :--- | :--- |
-| `load_ingredients_file` / `load_all_ingredients` (`ingredient.py:286-343`) | `data/ingredients/*.yaml` |
-| `parse_cooklang_body` / `split_recipe_file` / `load_recipe_file` / `load_all_recipes` (`recipe.py:205-414`) | `recipes/*.cook` |
-| `load_units` / `get_default_units` (`units.py:133-163`) | `data/units.yaml` |
-| `load_aisles` (`aisle.py:59-71`), `load_equipment` (`equipment.py:71-84`) | `data/*.yaml` |
+| `load_ingredients_file` / `load_all_ingredients` | `adapters/ingredients.py` |
+| `parse_cooklang_body` / `split_recipe_file` / `load_recipe_file` / `load_all_recipes` | `adapters/recipes.py` |
+| `load_units` / `get_default_units` | `adapters/units.py` |
+| `load_aisles` | `adapters/aisles.py` |
+| `load_equipment` | `adapters/equipment.py` |
+
+**Known temporary edges (to be removed in the `services/` pass):**
+
+Two lazy `from meal_prep.adapters.units import get_default_units` calls remain inside
+`models/ingredient.py` (the dimension cross-check in `validate_conversions_uniqueness_and_dimensions`,
+and the `container_weight_g` property). They are flagged `TODO(services)` and are the only two
+`models → adapters` references in the codebase. Both are deleted when their call sites move behind a
+conversion service.
 
 **Presentation on models → should be presentation layer:**
 
@@ -739,6 +748,11 @@ models.
 Introduce `services/` (business logic) and `adapters/` (I/O) packages; move members per the tables
 above, taking models as arguments. See the architecture section of `AGENTS.md`. Resolve KI-01 in the
 same pass (delete `Recipe.compute_*`; `calculator.prepare_recipe` is the single service).
+
+**Progress:** the `adapters/` half is complete — all I/O moved out of `models/`, `models/__init__.py`
+re-export surface trimmed to schemas, and the two flagged `models → adapters` lazy edges left as
+explicit `TODO(services)` markers. The `services/` half (conversion orchestration, the KI-01
+duplicate deletion, and presentation extraction) is the remaining work.
 
 ---
 

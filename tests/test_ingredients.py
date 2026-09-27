@@ -5,17 +5,16 @@ import yaml
 import jsonschema
 from pydantic import ValidationError
 from meal_prep.models.enums import StorageType
-from meal_prep.models.aisle import load_aisles
-from meal_prep.models.units import load_units
+from meal_prep.adapters.aisles import load_aisles
+from meal_prep.adapters.units import load_units
 from meal_prep.models.ingredient import (
     Ingredient,
     PackageInfo,
     ReferenceInfo,
     MacrosInfo,
     UnitConversion,
-    load_ingredients_file,
-    load_all_ingredients,
 )
+from meal_prep.adapters.ingredients import load_ingredients_file, load_all_ingredients
 
 
 def test_load_meat_yaml():

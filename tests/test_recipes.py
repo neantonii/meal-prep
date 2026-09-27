@@ -3,14 +3,17 @@ from pathlib import Path
 import pytest
 import jsonschema
 from meal_prep.models.enums import RecipeCategory, StorageType
-from meal_prep.models.units import load_units
-from meal_prep.models.equipment import load_equipment
-from meal_prep.models.ingredient import Ingredient, load_all_ingredients
+from meal_prep.adapters.units import load_units
+from meal_prep.adapters.equipment import load_equipment
+from meal_prep.adapters.ingredients import load_all_ingredients
+from meal_prep.models.ingredient import Ingredient
 from meal_prep.models.recipe import (
     Recipe,
     RecipeFrontmatter,
     RecipeYield,
     RecipeStorage,
+)
+from meal_prep.adapters.recipes import (
     parse_cooklang_body,
     split_recipe_file,
     load_recipe_file,

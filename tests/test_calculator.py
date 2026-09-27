@@ -1,9 +1,9 @@
 from pathlib import Path
 import pytest
-from meal_prep.models.units import load_units
-from meal_prep.models.equipment import load_equipment
-from meal_prep.models.ingredient import load_all_ingredients
-from meal_prep.models.recipe import load_recipe_file
+from meal_prep.adapters.units import load_units
+from meal_prep.adapters.equipment import load_equipment
+from meal_prep.adapters.ingredients import load_all_ingredients
+from meal_prep.adapters.recipes import load_recipe_file
 from meal_prep.calculator import prepare_recipe, PreparedRecipe, IngredientBreakdown
 
 

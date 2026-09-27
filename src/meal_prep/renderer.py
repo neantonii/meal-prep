@@ -634,9 +634,9 @@ def render_all_recipe_cards(
     if library is None:
         if catalog is not None and equipment is not None and units is not None:
             from meal_prep.library import MealPrepLibrary
-            from meal_prep.models.aisle import load_aisles
+            from meal_prep.adapters.aisles import load_aisles
             aisles = load_aisles(Path("data/aisles.yaml"))
-            from meal_prep.models.recipe import load_all_recipes
+            from meal_prep.adapters.recipes import load_all_recipes
             recipes = load_all_recipes(recipes_path, catalog=catalog, equipment_reg=equipment, units_reg=units)
             library = MealPrepLibrary(units=units, equipment=equipment, aisles=aisles, catalog=catalog, recipes=recipes)
         else:

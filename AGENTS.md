@@ -13,11 +13,13 @@ The Meal Prep system uses a file-based, deterministic architecture with zero ext
 1. **Data** — YAML standards and catalogs: `data/units.yaml` (unit taxonomy), `data/aisles.yaml`, `data/equipment.yaml`, `data/ingredients/<aisle>.yaml`, `recipes/<category>/<slug>.cook`.
 2. **Engines (pure kernels)** — `src/meal_prep/engines/` (stdlib-only, no domain imports): the conversion graph, and future pure kernels such as the LP planner's solver.
 3. **Domain models** — `src/meal_prep/models/` (Pydantic v2): `Ingredient`, `Recipe`, `UnitsRegistry`, `EquipmentRegistry`. May depend on `engines`, never the reverse.
-4. **Calculation** — `src/meal_prep/calculator.py` (`prepare_recipe` → `PreparedRecipe`) computes batch weights, moisture loss, per-serving macros, and retail costs.
-5. **Library/gateway** — `src/meal_prep/library.py` (`MealPrepLibrary`) loads + cross-validates everything and exposes `prepare()`.
-6. **Presentation** — `src/meal_prep/renderer.py` (HTML cards) and `PreparedRecipe.review_math()` (text audit). **Rounding belongs only here.**
+4. **Adapters (I/O)** — `src/meal_prep/adapters/`: the only code that reads files or parses formats (YAML taxonomies, `.cook` recipes). Adapters construct models; models never construct themselves from files.
+5. **Calculation** — `src/meal_prep/calculator.py` (`prepare_recipe` → `PreparedRecipe`) computes batch weights, moisture loss, per-serving macros, and retail costs.
+6. **Library/gateway** — `src/meal_prep/library.py` (`MealPrepLibrary`) loads + cross-validates everything via adapters and exposes `prepare()`.
+7. **Presentation** — `src/meal_prep/renderer.py` (HTML cards) and `PreparedRecipe.review_math()` (text audit). **Rounding belongs only here.**
 
-Dependency direction: `engines ← models ← calculator ← library ← renderer`.
+Dependency direction (a layer may depend on anything below it, never above):
+`engines ← models ← adapters ← library ← renderer`, with `calculator` a service over `models`/`engines` composed by `library`. `services/` (business logic) slots in beside `calculator` once extracted.
 
 ### Model purity rule
 

@@ -1,6 +1,6 @@
 from pathlib import Path
 import pytest
-from meal_prep.models.units import load_units
+from meal_prep.adapters.units import load_units
 
 
 @pytest.fixture
