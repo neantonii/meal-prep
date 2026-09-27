@@ -10,7 +10,6 @@
     container: pack
     unit: head
     amount: 3
-    container_weight_g: 150
 
   reference:
     brand: Voilà by Sobeys
@@ -46,7 +45,6 @@
     container: pack
     unit: item
     amount: 1
-    container_weight_g: 110
 
   reference:
     brand: Voilà by Sobeys
@@ -65,12 +63,13 @@
     potassium_mg: 136.0
 
   conversions:
+    # One lemon = 2 retail label servings of 55 g each (label basis: 15 kcal / 55 g).
     - from: item
+      to: serving
+      factor: 2.0
+    - from: serving
       to: g
-      factor: 50.0
-    - from: piece
-      to: g
-      factor: 50.0
+      factor: 55.0
 
 
 - id: frozen-sweet-corn
@@ -83,7 +82,6 @@
     container: bag
     unit: g
     amount: 750
-    container_weight_g: 750
 
   reference:
     brand: Longo's
@@ -116,7 +114,6 @@
     container: bag
     unit: g
     amount: 750
-    container_weight_g: 750
 
   reference:
     brand: Best Buy

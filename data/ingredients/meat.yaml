@@ -10,7 +10,6 @@
     container: pack
     unit: piece
     amount: 4
-    container_weight_g: 950
 
   reference:
     brand: Compliments
@@ -43,7 +42,6 @@
     container: pack
     unit: g
     amount: 450
-    container_weight_g: 450
 
   reference:
     brand: Compliments
@@ -62,9 +60,7 @@
     potassium_mg: 250.0
 
   conversions:
-    - from: pack
-      to: g
-      factor: 450.0
+    []
 
 
 - id: extra-lean-ground-beef
@@ -77,7 +73,6 @@
     container: pack
     unit: g
     amount: 454
-    container_weight_g: 454
 
   reference:
     brand: Voilà by Sobeys
@@ -96,9 +91,7 @@
     potassium_mg: 340.0
 
   conversions:
-    - from: pack
-      to: g
-      factor: 454.0
+    []
 
 - id: pork-tenderloin
   name: Pork Tenderloin
@@ -110,7 +103,6 @@
     container: pack
     unit: piece
     amount: 2
-    container_weight_g: 1200
 
   reference:
     brand: Conestoga Meats

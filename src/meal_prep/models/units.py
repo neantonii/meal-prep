@@ -62,6 +62,24 @@ class UnitsRegistry(BaseModel):
         clean = container_name.strip().lower()
         return clean in [c.lower() for c in self.schema_data.packaging_containers]
 
+    def normalize_token(self, name: str) -> str:
+        """Return the canonical token for a unit alias, container noun, or custom token.
+
+        Registered units map to their canonical name; packaging container nouns map
+        to their lowercase form (a trailing plural ``s`` is stripped); anything else
+        is returned lowercased as an opaque token. This is the normalization boundary
+        between raw authored strings and the dependency-free conversion graph.
+        """
+        clean = name.strip().lower()
+        if self.is_valid_unit(clean):
+            return self.normalize(clean)
+        containers = {c.lower() for c in self.schema_data.packaging_containers}
+        if clean in containers:
+            return clean
+        if clean.endswith("s") and clean[:-1] in containers:
+            return clean[:-1]
+        return clean
+
     def is_valid_time_unit(self, unit_name: str) -> bool:
         """Check if unit is a registered time duration unit (s, min, hr, etc.)."""
         clean = unit_name.strip().lower()

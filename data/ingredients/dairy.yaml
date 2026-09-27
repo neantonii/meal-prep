@@ -10,7 +10,6 @@
     container: pack
     unit: g
     amount: 454
-    container_weight_g: 454
 
   reference:
     brand: Compliments

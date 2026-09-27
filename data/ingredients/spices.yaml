@@ -10,7 +10,6 @@
     container: box
     unit: g
     amount: 1000
-    container_weight_g: 1000
 
   reference:
     brand: Windsor
@@ -43,7 +42,6 @@
     container: bottle
     unit: g
     amount: 150
-    container_weight_g: 150
 
   reference:
     brand: Club House
@@ -76,7 +74,6 @@
     container: bottle
     unit: g
     amount: 165
-    container_weight_g: 165
 
   reference:
     brand: Club House
@@ -109,7 +106,6 @@
     container: bottle
     unit: g
     amount: 130
-    container_weight_g: 130
 
   reference:
     brand: Club House
@@ -142,7 +138,6 @@
     container: bag
     unit: g
     amount: 155
-    container_weight_g: 155
 
   reference:
     brand: Compliments
@@ -175,7 +170,6 @@
     container: bag
     unit: g
     amount: 55
-    container_weight_g: 55
 
   reference:
     brand: Compliments
@@ -208,7 +202,6 @@
     container: bag
     unit: g
     amount: 45
-    container_weight_g: 45
 
   reference:
     brand: Compliments

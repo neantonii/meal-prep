@@ -42,7 +42,6 @@ def mock_catalog(units):
                 "container": "pack",
                 "unit": "piece",
                 "amount": 4,
-                "container_weight_g": 950.0,
             },
             "reference": {
                 "brand": "Compliments",
@@ -74,7 +73,6 @@ def mock_catalog(units):
                 "container": "bottle",
                 "unit": "ml",
                 "amount": 1000,
-                "container_weight_g": 920.0,
             },
             "reference": {
                 "brand": "Longo's Essentials",
@@ -102,7 +100,6 @@ def mock_catalog(units):
                 "container": "box",
                 "unit": "g",
                 "amount": 1000,
-                "container_weight_g": 1000.0,
             },
             "reference": {
                 "brand": "Windsor",

@@ -10,7 +10,6 @@
     container: bottle
     unit: ml
     amount: 1000
-    container_weight_g: 920
 
   reference:
     brand: Longo's Essentials
@@ -43,7 +42,6 @@
     container: bottle
     unit: ml
     amount: 500
-    container_weight_g: 458
 
   reference:
     brand: Compliments
@@ -76,7 +74,6 @@
     container: carton
     unit: ml
     amount: 946
-    container_weight_g: 946
 
   reference:
     brand: Longo's Essentials
@@ -109,7 +106,6 @@
     container: bottle
     unit: ml
     amount: 325
-    container_weight_g: 341
 
   reference:
     brand: Compliments
@@ -143,7 +139,6 @@
     container: bag
     unit: g
     amount: 908
-    container_weight_g: 908
 
   reference:
     brand: R&S
@@ -176,7 +171,6 @@
     container: bag
     unit: g
     amount: 4540
-    container_weight_g: 4540
 
   reference:
     brand: India Gate
@@ -209,7 +203,6 @@
     container: bag
     unit: g
     amount: 454
-    container_weight_g: 454
 
   reference:
     brand: Eight Treasures
@@ -228,7 +221,5 @@
     potassium_mg: 11.8
 
   conversions:
-    - from: bag
-      to: g
-      factor: 454.0
+    []
 

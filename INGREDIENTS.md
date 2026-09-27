@@ -48,7 +48,6 @@ Ingredients are strictly partitioned by their physical grocery aisle into one of
     container: pack
     unit: piece
     amount: 4
-    container_weight_g: 950
 
   reference:
     brand: Compliments
@@ -98,10 +97,14 @@ Represents the physical retail package purchased at the grocery store:
 
 | Field | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| **`container`** | string | Yes | Valid container noun from `data/units.yaml` (`pack`, `bag`, `carton`, `bottle`, `tub`, `can`, `clamshell`, `loaf`, `bunch`). |
-| **`unit`** | string | Yes | Unit noun of items inside the package (`piece`, `slice`, `item`, `clove`, `g`, `ml`). |
+| **`container`** | string | Yes | Valid container noun from `data/units.yaml` (`pack`, `bag`, `carton`, `bottle`, `tub`, `can`, `clamshell`, `loaf`, `bunch`). Validated at load time against `packaging_containers`. |
+| **`unit`** | string | Yes | Unit noun of items inside the package (`piece`, `slice`, `item`, `clove`, `g`, `ml`). Must be a registered taxonomy unit, or a custom unit explicitly bridged by an authored conversion. |
 | **`amount`** | float | Yes | Count or quantity of units inside the package (e.g. `4` pieces, `12` eggs, `908` g). |
-| **`container_weight_g`** | float | Yes | Total net weight of the container in grams (e.g. `950`, `454`, `908`). |
+
+> **Net weight is derived, never declared.** There is no `container_weight_g` field. The container's
+> net weight in grams is computed from the conversion graph: it is the container noun's factor to `g`,
+> reached through `amount` and the authored conversions. `package.container` must be able to reach
+> grams or loading fails. See §5 rule 5.
 
 ---
 
@@ -139,7 +142,8 @@ All macronutrient and micronutrient values are standardized to **100 g of raw, u
 
 ### `conversions` Schema
 
-Directed unit conversion edges bridging non-gram culinary units to grams:
+Directed unit conversion edges bridging non-gram culinary units to grams. Optional: **may be
+omitted or empty** when `package.unit` is already a mass unit (see §5 rule 9).
 
 | Field | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
@@ -159,8 +163,43 @@ The system dynamically builds a `ConversionGraph` per ingredient. To ensure math
    * **Intra-dimension conversions are strictly forbidden:** Do not define `tbsp -> tsp` or `kg -> g` in an ingredient; they are already universal.
    * **Inter-dimension conversions must have at most one edge:** Defining both `tbsp -> g` and `tsp -> g`, or defining `ml -> g` and `g -> tbsp`, creates a double conversion across `{volume, mass}` and is rejected by model validation. Choose ONE canonical volume bridge (e.g. `cup -> g` or `tbsp -> g`).
 3. **Discrete Count Bridges:** Discrete units (`clove`, `head`, `piece`, `slice`) represent independent physical items. Multiple discrete units may each define their own bridge to mass (e.g. both `clove -> g` and `head -> g` on `fresh-garlic`).
-4. **Self-Conversions Forbidden:** Conversions from a unit to itself (e.g. `piece -> piece`) are invalid.
-5. **Container Derived Automatically:** Container nouns (`pack`, `bag`, `carton`) are derived automatically from the `package:` block and must NOT be duplicated in `conversions`.
+4. **Self-Conversions Forbidden:** Conversions from a unit to itself (e.g. `piece -> piece`) are invalid. This also covers the implicit package edge: `package.container` and `package.unit` must not be the same noun.
+5. **No Directed Cycles:** The directed edge set (implicit package edge + authored conversions + universal defaults) must be acyclic. A cycle such as `bag -> g`, `g -> cup`, `cup -> bag` is rejected. Reciprocals are added only *after* this check, so ordinary ingredients are unaffected.
+6. **No Redundant Edges:** Re-adding an edge that already exists is a no-op, so it is rejected rather than silently ignored — a conversion map holds one factor per pair, and a second definition would otherwise vanish without trace. This covers the implicit `container -> unit` edge: if `package.unit` is `g` and `package.amount` is `454`, authoring `container -> g = 454` restates the implicit edge and is an error. Authoring *either* direction of an existing pair is likewise redundant, since the reverse is derived automatically.
+7. **Container Derived Automatically:** Container nouns (`pack`, `bag`, `carton`) are derived automatically from the `package:` block and must NOT be duplicated in `conversions` if that would restate the implicit edge.
+8. **Taxonomy Validation:** `package.container` must be a registered packaging container. `package.unit` must be a registered unit, or an explicitly bridged custom unit (see below).
+9. **`conversions` May Be Empty:** When `package.unit` is already a mass unit (`g`, `kg`), no authored conversion is needed and `conversions` may be omitted or empty.
+
+---
+
+### Multi-Tier Bridges (Serving Chains)
+
+A `conversions` entry may target an intermediate unit instead of `g`. This is the idiomatic way to
+record a product whose retail label discloses a *serving size* rather than a whole-item mass, and it
+keeps one authoritative number per physical concept:
+
+```yaml
+# A large lemon retails as "1 Count" and its label declares nutrition per 55 g serving.
+package:
+  container: pack
+  unit: item
+  amount: 1
+
+conversions:
+  - from: item       # one whole lemon
+    to: serving      # = 2 label servings
+    factor: 2.0
+  - from: serving    # one label serving
+    to: g            # = 55 g
+    factor: 55.0
+```
+
+This yields `1 item = 110 g` and `1 serving = 55 g`, so a recipe's `0.5 item` resolves to exactly one
+label serving. Declaring `item -> g` directly would bake the yield into a single opaque number and
+lose the serving basis the label actually documents.
+
+Note that `serving` is not a taxonomy unit — it is legal here precisely because it is an endpoint of an
+authored conversion, which is what "explicitly bridged" means in rule 8.
 
 ---
 
@@ -168,10 +207,10 @@ The system dynamically builds a `ConversionGraph` per ingredient. To ensure math
 
 When an ingredient is loaded into the `MealPrepLibrary`, Python calculates:
 
-* **Price per 100g:** `(price / container_weight_g) * 100`
-* **Price per kg:** `(price / container_weight_g) * 1000`
+* **Price per 100g:** `(price / derived_container_weight_g) * 100`
+* **Price per kg:** `(price / derived_container_weight_g) * 1000`
 * **Price per discrete unit:** `price / amount`
-* **Shortest Path Conversion:** Using Dijkstra's algorithm over the `ConversionGraph`, Python automatically converts any valid unit (e.g. `tsp`, `tbsp`, `cup`, `piece`) to grams.
+* **Shortest Path Conversion:** Using breadth-first search over the `ConversionGraph`, Python automatically converts any valid unit (e.g. `tsp`, `tbsp`, `cup`, `piece`) to grams.
 
 ---
 

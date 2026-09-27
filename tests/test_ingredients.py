@@ -33,7 +33,9 @@ def test_load_meat_yaml():
     assert chicken.package.container == "pack"
     assert chicken.package.unit == "piece"
     assert chicken.package.amount == 4
-    assert chicken.package.container_weight_g == 950.0
+
+    # Container weight is derived from the conversion graph, not authored
+    assert chicken.container_weight_g == 950.0
 
     # Pricing & Calculated unit prices
     assert chicken.reference.brand == "Compliments"
@@ -52,8 +54,7 @@ def test_load_meat_yaml():
     assert chicken.macros_per_100g.potassium_mg == 350.0
 
     # Conversions
-    assert chicken.get_conversion_factor("piece") == 237.5
-    assert chicken.get_conversion_factor("unknown_unit") is None
+    assert chicken.can_convert("piece", "g", units=load_units(Path("data/units.yaml")))
 
 
 def test_load_all_ingredients_catalog():
@@ -75,7 +76,6 @@ def test_aisle_file_mismatch_raises_error(tmp_path):
     container: pack
     unit: piece
     amount: 1
-    container_weight_g: 500
   reference:
     brand: Test
     product: Test Product
@@ -109,7 +109,6 @@ def test_invalid_storage_type_raises_error():
                     "container": "pack",
                     "unit": "piece",
                     "amount": 1,
-                    "container_weight_g": 500,
                 },
                 "reference": {"brand": "Test", "product": "Test", "price": 5.0},
                 "macros_per_100g": {
@@ -136,7 +135,6 @@ def test_missing_mandatory_shelf_life_raises_error():
                     "container": "pack",
                     "unit": "piece",
                     "amount": 1,
-                    "container_weight_g": 500,
                 },
                 "reference": {"brand": "Test", "product": "Test", "price": 5.0},
                 "macros_per_100g": {
@@ -151,32 +149,55 @@ def test_missing_mandatory_shelf_life_raises_error():
         )
 
 
-def test_missing_mandatory_conversions_raises_error():
-    with pytest.raises(ValidationError):
-        Ingredient.model_validate(
-            {
-                "id": "test-item",
-                "name": "Test Item",
-                "aisle": "meat",
-                "storage": "refrigerated",
-                "shelf_life_days": 3,
-                "package": {
-                    "container": "pack",
-                    "unit": "piece",
-                    "amount": 1,
-                    "container_weight_g": 500,
-                },
-                "reference": {"brand": "Test", "product": "Test", "price": 5.0},
-                "macros_per_100g": {
-                    "calories_kcal": 100,
-                    "protein_g": 20,
-                    "fat_g": 1,
-                    "carbs_g": 0,
-                    "fiber_g": 0,
-                },
-                "conversions": [],  # empty list rejected by min_length=1
-            }
-        )
+def test_empty_conversions_is_allowed_when_package_unit_is_mass():
+    """A 500 g box of raisins is expressible without inventing a conversion."""
+    ingredient = Ingredient.model_validate(
+        {
+            "id": "raisins",
+            "name": "Raisins",
+            "aisle": "pantry",
+            "storage": "ambient",
+            "shelf_life_days": 365,
+            "package": {
+                "container": "box",
+                "unit": "g",
+                "amount": 500,
+            },
+            "reference": {"brand": "Test", "product": "Raisins 500 g", "price": 5.0},
+            "macros_per_100g": {
+                "calories_kcal": 299,
+                "protein_g": 3.1,
+                "fat_g": 0.5,
+                "carbs_g": 79.0,
+                "fiber_g": 3.7,
+            },
+            "conversions": [],
+        }
+    )
+    assert ingredient.conversions == []
+
+
+def test_omitted_conversions_defaults_to_empty():
+    """The field is optional; omitting it means no authored bridges."""
+    ingredient = Ingredient.model_validate(
+        {
+            "id": "raisins",
+            "name": "Raisins",
+            "aisle": "pantry",
+            "storage": "ambient",
+            "shelf_life_days": 365,
+            "package": {"container": "box", "unit": "g", "amount": 500},
+            "reference": {"brand": "Test", "product": "Raisins 500 g", "price": 5.0},
+            "macros_per_100g": {
+                "calories_kcal": 299,
+                "protein_g": 3.1,
+                "fat_g": 0.5,
+                "carbs_g": 79.0,
+                "fiber_g": 3.7,
+            },
+        }
+    )
+    assert ingredient.conversions == []
 
 
 def test_ingredients_schema_file_valid():
@@ -249,8 +270,7 @@ def test_all_ingredient_yaml_files_exist_and_validate_against_schema():
             assert item.price_per_kg > 0
             assert item.price_per_unit > 0
 
-            # Check conversions
-            assert len(item.conversions) >= 1
+            # Check conversions (empty is valid when the package unit is already a mass unit)
             for conv in item.conversions:
                 assert conv.factor > 0
 
@@ -272,7 +292,6 @@ def test_schema_rejects_invalid_yaml():
                 "container": "pack",
                 "unit": "piece",
                 "amount": 1,
-                "container_weight_g": 500,
             },
             "reference": {
                 "brand": "Test",
@@ -310,7 +329,6 @@ def test_redundant_same_dimension_conversions_raises_error():
                     "container": "pack",
                     "unit": "g",
                     "amount": 454,
-                    "container_weight_g": 454,
                 },
                 "reference": {"brand": "Test", "product": "Test", "price": 5.0},
                 "macros_per_100g": {
@@ -340,7 +358,6 @@ def test_redundant_same_dimension_conversions_raises_error():
                     "container": "bottle",
                     "unit": "ml",
                     "amount": 1000,
-                    "container_weight_g": 920,
                 },
                 "reference": {"brand": "Test", "product": "Test", "price": 10.0},
                 "macros_per_100g": {
@@ -370,7 +387,6 @@ def test_redundant_same_dimension_conversions_raises_error():
                     "container": "bag",
                     "unit": "g",
                     "amount": 500,
-                    "container_weight_g": 500,
                 },
                 "reference": {"brand": "Test", "product": "Test", "price": 5.0},
                 "macros_per_100g": {
@@ -399,7 +415,6 @@ def test_redundant_same_dimension_conversions_raises_error():
                     "container": "bottle",
                     "unit": "ml",
                     "amount": 500,
-                    "container_weight_g": 500,
                 },
                 "reference": {"brand": "Test", "product": "Test", "price": 5.0},
                 "macros_per_100g": {
@@ -428,7 +443,6 @@ def test_redundant_same_dimension_conversions_raises_error():
                     "container": "bag",
                     "unit": "piece",
                     "amount": 1,
-                    "container_weight_g": 100,
                 },
                 "reference": {"brand": "Test", "product": "Test", "price": 5.0},
                 "macros_per_100g": {

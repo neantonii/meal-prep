@@ -3,7 +3,12 @@ from meal_prep.models.aisle import Aisle, AislesConfig, load_aisles
 from meal_prep.models.units import UnitsRegistry, load_units
 from meal_prep.models.equipment import EquipmentItem, EquipmentRegistry, load_equipment
 from meal_prep.models.enums import StorageType, RecipeCategory
-from meal_prep.models.conversion_graph import ConversionGraph, build_conversion_graph
+from meal_prep.engines.conversion_graph import (
+    ConversionEdge,
+    ConversionError,
+    ConversionGraph,
+    build_graph,
+)
 from meal_prep.models.recipe import (
     Recipe,
     RecipeFrontmatter,
@@ -44,7 +49,9 @@ __all__ = [
     "load_ingredients_file",
     "load_all_ingredients",
     "ConversionGraph",
-    "build_conversion_graph",
+    "ConversionEdge",
+    "ConversionError",
+    "build_graph",
     "Recipe",
     "RecipeFrontmatter",
     "RecipeYield",

@@ -37,11 +37,10 @@
           "$ref": "#/$defs/MacrosInfo"
         },
         "conversions": {
-          "description": "Mandatory list of unit conversions",
+          "description": "Unit conversions bridging culinary units to grams. May be empty when the package unit is already a mass unit.",
           "items": {
             "$ref": "#/$defs/UnitConversion"
           },
-          "minItems": 1,
           "title": "Conversions",
           "type": "array"
         }
@@ -54,8 +53,7 @@
         "shelf_life_days",
         "package",
         "reference",
-        "macros_per_100g",
-        "conversions"
+        "macros_per_100g"
       ],
       "title": "Ingredient",
       "type": "object"
@@ -176,19 +174,12 @@
           "exclusiveMinimum": 0,
           "title": "Amount",
           "type": "number"
-        },
-        "container_weight_g": {
-          "description": "Total container net weight in grams",
-          "exclusiveMinimum": 0,
-          "title": "Container Weight G",
-          "type": "number"
         }
       },
       "required": [
         "container",
         "unit",
-        "amount",
-        "container_weight_g"
+        "amount"
       ],
       "title": "PackageInfo",
       "type": "object"

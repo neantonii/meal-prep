@@ -367,8 +367,7 @@ def load_recipe_file(
                     f"Recipe '{frontmatter.id}' uses ingredient '@{item.id}' which does not exist in ingredients catalog!"
                 )
             ing = catalog[item.id]
-            graph = ing.get_conversion_graph(units_reg)
-            if not graph.can_convert(item.unit, "g"):
+            if not ing.can_convert(item.unit, "g", units_reg):
                 raise ValueError(
                     f"Recipe '{frontmatter.id}' calls for '@{item.id}{{{item.quantity}%{item.unit}}}', "
                     f"but unit '{item.unit}' cannot be converted to grams for this ingredient."

@@ -2,7 +2,7 @@ from pathlib import Path
 import pytest
 from meal_prep.models.units import load_units
 from meal_prep.models.ingredient import load_all_ingredients, Ingredient
-from meal_prep.models.conversion_graph import build_conversion_graph
+from meal_prep.engines.conversion_graph import ConversionEdge, ConversionError, build_graph
 
 
 @pytest.fixture
@@ -24,7 +24,7 @@ def test_chicken_breast_discrete_and_mass_conversions(chicken, units):
     assert graph.convert(2, "piece", "g") == 475.0
 
     # 1 piece to kg (transitive: piece -> g -> kg)
-    assert graph.convert(1, "piece", "kg") == 0.2375
+    assert graph.convert(1, "piece", "kg") == pytest.approx(0.2375)
 
     # Reverse: 475 g to pieces
     assert graph.convert(475, "g", "piece") == 2.0
@@ -43,7 +43,7 @@ def test_chicken_breast_packaging_conversions(chicken, units):
     assert graph.convert(1900, "g", "pack") == 2.0
 
     # 1 pack to kg
-    assert graph.convert(1, "pack", "kg") == 0.95
+    assert graph.convert(1, "pack", "kg") == pytest.approx(0.95)
 
 
 def test_unreachable_conversion_raises_error(chicken, units):
@@ -79,7 +79,6 @@ def test_ingredient_with_density_bridge(units):
                 "container": "bottle",
                 "unit": "ml",
                 "amount": 1000,
-                "container_weight_g": 920,
             },
             "reference": {
                 "brand": "Compliments",
@@ -128,7 +127,6 @@ def test_conversion_for_tsp_works_with_only_tbsp_supplied(units):
                 "container": "pack",
                 "unit": "g",
                 "amount": 454,
-                "container_weight_g": 454,
             },
             "reference": {
                 "brand": "Compliments",
@@ -177,7 +175,6 @@ def test_arbitrary_edges_and_reverse_transformations(units):
                 "container": "tub",
                 "unit": "scoop",
                 "amount": 30,
-                "container_weight_g": 900,
             },
             "reference": {
                 "brand": "Optimum Nutrition",
@@ -213,3 +210,241 @@ def test_arbitrary_edges_and_reverse_transformations(units):
     # 1 scoop = 6 tsp
     assert graph.convert(1, "scoop", "tsp") == 6.0
     assert graph.convert(6, "tsp", "scoop") == 1.0
+
+
+def make_ingredient(**overrides):
+    """Build a valid ingredient payload, overridable per test."""
+    data = {
+        "id": "test-item",
+        "name": "Test Item",
+        "aisle": "pantry",
+        "storage": "ambient",
+        "shelf_life_days": 30,
+        "package": {"container": "pack", "unit": "piece", "amount": 4},
+        "reference": {"brand": "Test", "product": "Test", "price": 5.0},
+        "macros_per_100g": {
+            "calories_kcal": 100,
+            "protein_g": 20,
+            "fat_g": 1,
+            "carbs_g": 0,
+            "fiber_g": 0,
+        },
+        "conversions": [{"from": "piece", "to": "g", "factor": 237.5}],
+    }
+    data.update(overrides)
+    return data
+
+
+def test_container_equal_to_unit_is_rejected(units):
+    """The KI-02 corruption: container == unit must fail loudly, not silently overwrite.
+
+    'bunch' is the taxonomy's only noun that is both a container and a count unit (KI-11),
+    so it is the collision this guard exists for.
+    """
+    payload = make_ingredient(
+        package={"container": "bunch", "unit": "bunch", "amount": 1},
+        conversions=[{"from": "piece", "to": "g", "factor": 237.5}],
+    )
+    ingredient = Ingredient.model_validate(payload)
+    with pytest.raises(ValueError, match="self-reference"):
+        ingredient.get_conversion_graph(units)
+
+
+def test_implicit_package_edge_conflicting_with_authored_conversion_is_rejected(units):
+    """The implicit container -> unit edge must not silently clash with an authored conversion.
+
+    This is the KI-02 failure mode: the package edge implies 1 bunch = 3 piece while the
+    authored data says 1 bunch = 5 piece. Before the fix the implicit edge overwrote the
+    authored one with no error.
+    """
+    payload = make_ingredient(
+        package={"container": "bunch", "unit": "piece", "amount": 3},
+        conversions=[
+            {"from": "bunch", "to": "piece", "factor": 5.0},
+            {"from": "piece", "to": "g", "factor": 237.5},
+        ],
+    )
+    ingredient = Ingredient.model_validate(payload)
+    with pytest.raises(ValueError, match="redefines 'bunch' -> 'piece'"):
+        ingredient.get_conversion_graph(units)
+
+
+def test_authored_conversion_restating_the_package_edge_is_rejected(units):
+    """Re-adding an edge that already exists is a no-op, so it is an error, not tolerated.
+
+    The package block already yields `bunch -> piece = 3`, so authoring the identical
+    conversion changes nothing and must be reported.
+    """
+    payload = make_ingredient(
+        package={"container": "bunch", "unit": "piece", "amount": 3},
+        conversions=[
+            {"from": "bunch", "to": "piece", "factor": 3.0},
+            {"from": "piece", "to": "g", "factor": 237.5},
+        ],
+    )
+    ingredient = Ingredient.model_validate(payload)
+    with pytest.raises(ValueError, match="redefines 'bunch' -> 'piece'"):
+        ingredient.get_conversion_graph(units)
+
+
+def test_authoring_the_reverse_of_the_package_edge_is_rejected(units):
+    """Authoring the reverse of the implicit package edge is redundant, so it is an error.
+
+    The package block already yields `bunch -> piece = 3` and the reverse is derived
+    automatically, so authoring `piece -> bunch` adds nothing.
+    """
+    payload = make_ingredient(
+        package={"container": "bunch", "unit": "piece", "amount": 3},
+        conversions=[{"from": "piece", "to": "bunch", "factor": 1 / 3.0}],
+    )
+    ingredient = Ingredient.model_validate(payload)
+    with pytest.raises(ValueError, match="defines both 'piece' -> 'bunch'"):
+        ingredient.get_conversion_graph(units)
+
+
+def test_package_unit_grams_needs_no_authored_conversions(units):
+    """When the package unit IS grams, an empty conversions list is sufficient."""
+    payload = make_ingredient(
+        package={"container": "bag", "unit": "g", "amount": 454},
+        conversions=[],
+    )
+    ingredient = Ingredient.model_validate(payload)
+    graph = ingredient.get_conversion_graph(units)
+    assert ingredient.container_weight_g == 454.0
+    assert graph.convert(1, "bag", "g") == 454.0
+
+
+def test_directed_cycle_is_rejected(units):
+    """A three-node cycle that the pair and dimension checks cannot see is caught."""
+    payload = make_ingredient(
+        package={"container": "bag", "unit": "cup", "amount": 8},
+        conversions=[
+            {"from": "cup", "to": "g", "factor": 240.0},
+            {"from": "g", "to": "bag", "factor": 0.001},
+        ],
+    )
+    ingredient = Ingredient.model_validate(payload)
+    with pytest.raises(ValueError, match="conversion cycle"):
+        ingredient.get_conversion_graph(units)
+
+
+def test_unregistered_container_is_rejected(units):
+    payload = make_ingredient(package={"container": "sack", "unit": "piece", "amount": 4})
+    ingredient = Ingredient.model_validate(payload)
+    with pytest.raises(ValueError, match="not a registered packaging container"):
+        ingredient.get_conversion_graph(units)
+
+
+def test_unbridged_custom_unit_is_rejected(units):
+    """A package unit outside the taxonomy is only legal when an authored conversion bridges it."""
+    payload = make_ingredient(
+        package={"container": "tub", "unit": "scoop", "amount": 30},
+        conversions=[{"from": "piece", "to": "g", "factor": 237.5}],
+    )
+    ingredient = Ingredient.model_validate(payload)
+    with pytest.raises(ValueError, match="neither a registered unit"):
+        ingredient.get_conversion_graph(units)
+
+
+def test_bridged_custom_unit_is_accepted(units):
+    payload = make_ingredient(
+        package={"container": "tub", "unit": "scoop", "amount": 30},
+        conversions=[
+            {"from": "scoop", "to": "tbsp", "factor": 2.0},
+            {"from": "tbsp", "to": "g", "factor": 8.0},
+        ],
+    )
+    ingredient = Ingredient.model_validate(payload)
+    ingredient.get_conversion_graph(units)
+    assert ingredient.container_weight_g == 480.0
+
+
+def test_container_weight_derived_from_conversions(units):
+    """Net weight is derived from the container reaching grams, not declared."""
+    payload = make_ingredient(
+        package={"container": "pack", "unit": "piece", "amount": 4},
+        conversions=[{"from": "piece", "to": "g", "factor": 237.5}],
+    )
+    ingredient = Ingredient.model_validate(payload)
+    ingredient.get_conversion_graph(units)
+    assert ingredient.container_weight_g == 950.0
+
+
+def test_container_weight_zero_when_grams_unreachable(units):
+    """An unbridgeable container yields 0.0 so the loader can report it."""
+    payload = make_ingredient(
+        package={"container": "pack", "unit": "item", "amount": 1},
+        conversions=[
+            {"from": "item", "to": "serving", "factor": 2.0},
+        ],
+    )
+    ingredient = Ingredient.model_validate(payload)
+    ingredient.get_conversion_graph(units)
+    assert ingredient.container_weight_g == 0.0
+
+
+def test_build_graph_is_pure_and_immutable():
+    """The graph is constructible from raw edges alone and exposes no mutable state."""
+    g = build_graph([
+        ConversionEdge("bag", "piece", 4.0),
+        ConversionEdge("piece", "g", 237.5),
+    ])
+    assert g.convert(1, "bag", "g") == 950.0
+    assert g.factor("piece", "g") == 237.5
+    assert g.factor("g", "piece") == pytest.approx(1 / 237.5)
+
+    # `factors` is a read-only view; mutation must fail loudly.
+    with pytest.raises(TypeError):
+        g.factors[("bag", "piece")] = 999.0  # type: ignore[index]
+
+    # `units` is an immutable frozenset.
+    assert isinstance(g.units, frozenset)
+    assert g.units == {"bag", "piece", "g"}
+
+    assert g.reachable("bag") == {"bag", "piece", "g"}
+
+
+def test_convert_does_not_round():
+    """The graph returns the raw product; rounding is the presentation layer's job."""
+    g = build_graph([ConversionEdge("a", "b", 3.0)])
+    raw = g.convert(1.0, "b", "a")  # reverse edge: 1/3
+    assert raw == 1.0 / 3.0
+    assert raw != round(1.0 / 3.0, 6)  # the old engine rounded to 6 dp
+
+
+def test_build_graph_enforces_invariants_without_domain():
+    """Duplicate, reverse, and cycle rules are enforced by the graph alone."""
+    with pytest.raises(ValueError, match="redefines"):
+        build_graph([ConversionEdge("a", "b", 2.0), ConversionEdge("a", "b", 3.0)])
+    with pytest.raises(ValueError, match="defines both"):
+        build_graph([ConversionEdge("a", "b", 2.0), ConversionEdge("b", "a", 0.5)])
+    with pytest.raises(ValueError, match="conversion cycle"):
+        build_graph([
+            ConversionEdge("a", "b", 2.0),
+            ConversionEdge("b", "c", 3.0),
+            ConversionEdge("c", "a", 4.0),
+        ])
+
+
+def test_conversion_edge_validates_at_construction():
+    with pytest.raises(ValueError, match="self-reference"):
+        ConversionEdge("x", "x", 1.0)
+    with pytest.raises(ValueError, match="positive finite"):
+        ConversionEdge("x", "y", 0.0)
+    with pytest.raises(ValueError, match="positive finite"):
+        ConversionEdge("x", "y", float("inf"))
+    with pytest.raises(ValueError, match="non-empty"):
+        ConversionEdge("", "y", 1.0)
+
+
+def test_engines_package_has_no_domain_imports():
+    """Drift guard: every ``engines`` module must stay 100% independent of the rest of the codebase."""
+    import inspect
+    import pkgutil
+    import meal_prep.engines as engines
+
+    for module in pkgutil.iter_modules(engines.__path__):
+        mod = __import__(f"meal_prep.engines.{module.name}", fromlist=["x"])
+        src = inspect.getsource(mod)
+        assert "meal_prep" not in src, f"engines.{module.name} must not import from meal_prep"
+

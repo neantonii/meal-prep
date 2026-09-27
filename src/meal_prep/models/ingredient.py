@@ -6,14 +6,13 @@ from meal_prep.models.enums import StorageType
 
 if TYPE_CHECKING:
     from meal_prep.models.units import UnitsRegistry
-    from meal_prep.models.conversion_graph import ConversionGraph
+    from meal_prep.engines.conversion_graph import ConversionGraph
 
 
 class PackageInfo(BaseModel):
     container: str = Field(..., description="Container noun, e.g. pack, bag, carton, bottle, loaf")
     unit: str = Field(..., description="Unit noun of items in container, e.g. piece, slice, item, g, ml")
     amount: float = Field(..., gt=0, description="Amount of units in the container")
-    container_weight_g: float = Field(..., gt=0, description="Total container net weight in grams")
 
     @field_validator("container", "unit")
     @classmethod
@@ -76,7 +75,11 @@ class Ingredient(BaseModel):
     package: PackageInfo
     reference: ReferenceInfo
     macros_per_100g: MacrosInfo
-    conversions: list[UnitConversion] = Field(..., min_length=1, description="Mandatory list of unit conversions")
+    conversions: list[UnitConversion] = Field(
+        default_factory=list,
+        description="Unit conversions bridging culinary units to grams. May be empty when the "
+        "package unit is already a mass unit.",
+    )
 
     @field_validator("id")
     @classmethod
@@ -172,7 +175,7 @@ class Ingredient(BaseModel):
     @property
     def price_per_100g(self) -> float:
         """Calculated retail unit price per 100g in CAD."""
-        return round((self.reference.price / self.package.container_weight_g) * 100, 2)
+        return round((self.reference.price / self.container_weight_g) * 100, 2)
 
     @property
     def price_per_kg(self) -> float:
@@ -184,29 +187,100 @@ class Ingredient(BaseModel):
         """Calculated price per individual package unit (e.g. per piece, slice, egg, ml, or g)."""
         return round(self.reference.price / self.package.amount, 4)
 
-    def get_conversion_factor(self, from_unit: str, to_unit: str = "g") -> float | None:
-        """Returns the conversion factor from from_unit to to_unit, or None."""
-        u_from = from_unit.strip().lower()
-        u_to = to_unit.strip().lower()
-        for conv in self.conversions:
-            c_from = conv.from_unit.strip().lower()
-            c_to = conv.to_unit.strip().lower()
-            if c_from == u_from and c_to == u_to:
-                return conv.factor
-            if c_to == u_from and c_from == u_to:
-                return round(1.0 / conv.factor, 6)
-        return None
-
     def get_conversion_graph(self, units: "UnitsRegistry") -> "ConversionGraph":
-        """Returns the precomputed conversion graph, building and caching it if not already done."""
+        """Return the precomputed conversion graph, building and caching it if needed."""
         if self._conversion_graph is None:
-            from meal_prep.models.conversion_graph import build_conversion_graph
-            self._conversion_graph = build_conversion_graph(self, units)
+            self._conversion_graph = _build_ingredient_graph(self, units)
         return self._conversion_graph
 
+    def can_convert(self, from_unit: str, to_unit: str, units: "UnitsRegistry") -> bool:
+        """Return True when ``from_unit`` can be converted to ``to_unit`` for this ingredient."""
+        graph = self.get_conversion_graph(units)
+        return graph.can_convert(
+            units.normalize_token(from_unit),
+            units.normalize_token(to_unit),
+        )
+
     def convert(self, amount: float, from_unit: str, to_unit: str, units: "UnitsRegistry") -> float:
-        """Convert amount from from_unit to to_unit for this ingredient."""
-        return self.get_conversion_graph(units).convert(amount, from_unit, to_unit)
+        """Convert ``amount`` from ``from_unit`` to ``to_unit`` for this ingredient."""
+        graph = self.get_conversion_graph(units)
+        return graph.convert(
+            amount,
+            units.normalize_token(from_unit),
+            units.normalize_token(to_unit),
+        )
+
+    @property
+    def container_weight_g(self) -> float:
+        """Container net weight in grams, derived from the conversion graph.
+
+        Single source of truth — there is no authored field to disagree with it.
+        Returns 0.0 when the container cannot reach grams, which post-load
+        validation reports as an error.
+        """
+        if self._conversion_graph is None:
+            from meal_prep.models.units import get_default_units
+            self.get_conversion_graph(get_default_units())
+        factor = self._conversion_graph.factor(self.package.container, "g")
+        return factor if factor is not None else 0.0
+
+
+def _authored_endpoints(ingredient: "Ingredient") -> set[str]:
+    """Return the raw (lowercased) unit names named by the ingredient's authored conversions."""
+    endpoints: set[str] = set()
+    for conv in ingredient.conversions:
+        endpoints.add(conv.from_unit.strip().lower())
+        endpoints.add(conv.to_unit.strip().lower())
+    return endpoints
+
+
+def _build_ingredient_graph(ingredient: "Ingredient", units: "UnitsRegistry") -> "ConversionGraph":
+    """Validate an ingredient's unit vocabulary and build its pure conversion graph.
+
+    This is the domain-specific half of conversion construction: it knows about
+    packages, containers, authored conversions and the universal mass/volume
+    conversions, and reduces them all to a list of directed edges handed to the
+    dependency-free :func:`build_graph`.
+    """
+    from meal_prep.engines.conversion_graph import ConversionEdge, build_graph
+
+    pkg = ingredient.package
+    container = pkg.container  # already stripped + lowercased by PackageInfo
+    pkg_unit = units.normalize_token(pkg.unit)
+
+    if not units.is_valid_container(container):
+        valid = ", ".join(sorted(units.schema_data.packaging_containers))
+        raise ValueError(
+            f"Ingredient '{ingredient.id}' declares container '{pkg.container}', which is not a "
+            f"registered packaging container. Valid containers: {valid}."
+        )
+    if not units.is_valid_unit(pkg_unit) and pkg_unit not in _authored_endpoints(ingredient):
+        raise ValueError(
+            f"Ingredient '{ingredient.id}' declares package unit '{pkg.unit}', which is neither a "
+            f"registered unit nor an endpoint of an authored conversion. Custom units must be "
+            f"bridged explicitly."
+        )
+
+    edges: list[ConversionEdge] = [ConversionEdge(container, pkg_unit, pkg.amount)]
+    edges.extend(
+        ConversionEdge(
+            units.normalize_token(conv.from_unit),
+            units.normalize_token(conv.to_unit),
+            conv.factor,
+        )
+        for conv in ingredient.conversions
+    )
+
+    for canonical in units.schema_data.mass.canonical_units:
+        if canonical != "g":
+            factor_to_g, _ = units.to_base(1.0, canonical)
+            edges.append(ConversionEdge(canonical, "g", factor_to_g))
+    for canonical in units.schema_data.volume.canonical_units:
+        if canonical != "ml":
+            factor_to_ml, _ = units.to_base(1.0, canonical)
+            edges.append(ConversionEdge(canonical, "ml", factor_to_ml))
+
+    return build_graph(edges)
 
 
 def load_ingredients_file(path: Path | str) -> list[Ingredient]:
@@ -257,7 +331,13 @@ def load_all_ingredients(
                     f"Already loaded from {all_ingredients[item.id].aisle}.yaml, duplicate in {yaml_file.name}"
                 )
             if units is not None:
-                item.get_conversion_graph(units)
+                item.get_conversion_graph(units)  # build + validate; caches on the ingredient
+                if item.container_weight_g <= 0:
+                    raise ValueError(
+                        f"Ingredient '{item.id}' package container '{item.package.container}' cannot "
+                        f"be resolved to grams, so its net weight is not derivable. Bridge the "
+                        f"package unit '{item.package.unit}' to a mass unit."
+                    )
             all_ingredients[item.id] = item
 
     return all_ingredients
