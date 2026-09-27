@@ -10,17 +10,32 @@ class ReferenceInfo(BaseModel):
 
 
 class MacrosInfo(BaseModel):
-    calories_kcal: float = Field(..., ge=0, description="Calories (kcal) per 100g")
-    protein_g: float = Field(..., ge=0, description="Protein in grams per 100g")
-    fat_g: float = Field(..., ge=0, description="Total fat in grams per 100g")
-    carbs_g: float = Field(..., ge=0, description="Total carbohydrates in grams per 100g")
-    fiber_g: float = Field(..., ge=0, description="Dietary fiber in grams per 100g")
+    """Authored nutrition values, expressed *per* a serving basis.
+
+    The nutrients are not necessarily per 100g: Canadian labels usually print
+    "per <amount> <unit>" (e.g. "per 55 g", "per 1/3 cup"). The ``unit`` and
+    ``amount`` fields record that basis; enrichment scales the values to a
+    per-100g standard using the conversion graph.
+    """
+    unit: str = Field(..., min_length=1, description="Serving basis unit, e.g. 'g' or 'cup'")
+    amount: float = Field(..., gt=0, description="Serving basis quantity, e.g. 100 or 0.333")
+
+    calories_kcal: float = Field(..., ge=0, description="Calories (kcal) per the basis amount")
+    protein_g: float = Field(..., ge=0, description="Protein in grams per the basis amount")
+    fat_g: float = Field(..., ge=0, description="Total fat in grams per the basis amount")
+    carbs_g: float = Field(..., ge=0, description="Total carbohydrates in grams per the basis amount")
+    fiber_g: float = Field(..., ge=0, description="Dietary fiber in grams per the basis amount")
 
     # Optional detailed nutrients
-    saturated_fat_g: float | None = Field(None, ge=0, description="Saturated fat in grams per 100g")
-    sugars_g: float | None = Field(None, ge=0, description="Total sugars in grams per 100g")
-    sodium_mg: float | None = Field(None, ge=0, description="Sodium in milligrams per 100g")
-    potassium_mg: float | None = Field(None, ge=0, description="Potassium in milligrams per 100g")
+    saturated_fat_g: float | None = Field(None, ge=0, description="Saturated fat in grams per the basis amount")
+    sugars_g: float | None = Field(None, ge=0, description="Total sugars in grams per the basis amount")
+    sodium_mg: float | None = Field(None, ge=0, description="Sodium in milligrams per the basis amount")
+    potassium_mg: float | None = Field(None, ge=0, description="Potassium in milligrams per the basis amount")
+
+    @field_validator("unit")
+    @classmethod
+    def clean_unit(cls, v: str) -> str:
+        return clean_token(v, field="Macros basis unit")
 
 
 class UnitConversion(BaseModel):
@@ -57,7 +72,7 @@ class Ingredient(BaseModel):
     shelf_life_days: int = Field(..., gt=0, description="Mandatory shelf life in days under this storage mode")
 
     reference: ReferenceInfo
-    macros_per_100g: MacrosInfo
+    macros: MacrosInfo
     custom_units: dict[str, list[str]] = Field(
         default_factory=dict,
         description="Explicitly registered non-standard units (canonical -> aliases), in the "

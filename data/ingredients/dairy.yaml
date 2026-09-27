@@ -10,7 +10,9 @@
     product: Compliments Butter Unsalted 454 g
     price: 6.69
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 700.0
     protein_g: 1.0
     fat_g: 80.0

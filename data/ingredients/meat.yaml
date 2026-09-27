@@ -10,7 +10,9 @@
     product: Compliments Chicken Breasts Boneless Skinless Value Pack
     price: 22.60
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 110.0
     protein_g: 23.0
     fat_g: 2.5
@@ -43,7 +45,9 @@
     product: Compliments Minced Turkey Extra Lean 450 g
     price: 7.49
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 140.0
     protein_g: 19.0
     fat_g: 7.0
@@ -71,7 +75,9 @@
     product: Extra Lean Ground Beef 454 g
     price: 10.99
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 176.0
     protein_g: 20.0
     fat_g: 10.0
@@ -98,7 +104,9 @@
     product: Conestoga Meats Pork Tenderloins 2 Pack
     price: 23.78
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 109.0
     protein_g: 21.0
     fat_g: 2.2

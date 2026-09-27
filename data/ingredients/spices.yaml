@@ -10,7 +10,9 @@
     product: Coarse Kosher Salt 1kg
     price: 4.49
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 0.0
     protein_g: 0.0
     fat_g: 0.0
@@ -40,7 +42,9 @@
     product: Pure Ground Black Pepper 150g
     price: 5.99
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 251.0
     protein_g: 10.4
     fat_g: 3.3
@@ -70,7 +74,9 @@
     product: Garlic Powder 165g
     price: 5.49
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 331.0
     protein_g: 16.6
     fat_g: 0.7
@@ -100,7 +106,9 @@
     product: Smoked Paprika 130g
     price: 5.99
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 282.0
     protein_g: 14.1
     fat_g: 12.9
@@ -130,7 +138,9 @@
     product: Compliments Spice Onion Powder 155 g
     price: 5.29
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 341.0
     protein_g: 10.4
     fat_g: 1.0
@@ -160,7 +170,9 @@
     product: Compliments Spice Dill Weed 55 g
     price: 3.79
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 253.0
     protein_g: 19.9
     fat_g: 4.4
@@ -190,7 +202,9 @@
     product: Compliments Spice Thyme Leaves 45 g
     price: 2.79
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 276.0
     protein_g: 9.1
     fat_g: 7.4

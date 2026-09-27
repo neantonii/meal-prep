@@ -10,7 +10,9 @@
     product: Extra Virgin Olive Oil 1L
     price: 11.99
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 884.0
     protein_g: 0.0
     fat_g: 100.0
@@ -40,7 +42,9 @@
     product: Compliments Avocado Oil 500 ml
     price: 11.99
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 884.0
     protein_g: 0.0
     fat_g: 100.0
@@ -70,7 +74,9 @@
     product: Longo's Essentials Chicken Broth No Salt Added 946 ml
     price: 1.99
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 5.0
     protein_g: 0.8
     fat_g: 0.0
@@ -100,7 +106,9 @@
     product: Compliments Prepared Dijon Mustard Original 325 ml
     price: 3.19
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 100.0
     protein_g: 6.0
     fat_g: 6.0
@@ -131,7 +139,9 @@
     product: R&S Roasted Buckwheat 908 g
     price: 5.29
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 346.0
     protein_g: 11.7
     fat_g: 2.7
@@ -161,7 +171,9 @@
     product: India Gate Rice Basmati Feast Rozzana Value Size 4.54 kg
     price: 17.99
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 355.6
     protein_g: 8.9
     fat_g: 0.0
@@ -191,7 +203,9 @@
     product: Eight Treasures Rice Stick Noodles Medium 454 g
     price: 3.19
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 352.9
     protein_g: 7.1
     fat_g: 0.2

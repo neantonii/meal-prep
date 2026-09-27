@@ -10,7 +10,9 @@
     product: Fresh Garlic 3-Pack
     price: 1.99
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 149.0
     protein_g: 6.4
     fat_g: 0.5
@@ -47,7 +49,9 @@
     product: Lemon Large 1 Count
     price: 1.49
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 27.3
     protein_g: 1.8
     fat_g: 0.4
@@ -86,7 +90,9 @@
     product: Longo's Frozen Whole Kernel Corn Peaches & Cream 750 g
     price: 3.49
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 94.1
     protein_g: 2.4
     fat_g: 1.2
@@ -116,7 +122,9 @@
     product: Best Buy Frozen Green Peas 750 g
     price: 3.69
 
-  macros_per_100g:
+  macros:
+    unit: g
+    amount: 100
     calories_kcal: 82.4
     protein_g: 5.9
     fat_g: 0.6

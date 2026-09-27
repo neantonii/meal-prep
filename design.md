@@ -101,6 +101,26 @@ Rules:
   `package -> *` edge is authored per ingredient (one per ingredient, only ever
   as a `from`). It must never be shadowed by a custom unit.
 
+## Macros basis
+
+Authored nutrition values are expressed *per* an explicit serving basis, not
+assumed per-100g — Canadian labels usually print "per 55 g" or "per 1/3 cup".
+
+```yaml
+macros:
+  unit: g
+  amount: 55
+  calories_kcal: 15.0
+  protein_g: 2.4
+  # ...
+```
+
+`unit` + `amount` are the label basis; the nutrient values are per that basis.
+The `unit` may be a standard unit (`cup`) or a declared custom unit (`serving`).
+Enrichment scales every nutrient to a **per-100g standard** via the conversion
+graph (``factor = 100 / grams(basis)``), so consumers always see per-100g
+values. The basis unit must be gram-reachable like any other registered token.
+
 ## Validation strategy: fail fast
 
 - **DTO validation** runs at YAML/parse time (shape only).
