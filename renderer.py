@@ -546,10 +546,20 @@ def render_recipe_card(recipe: Recipe) -> str:
 
 
 def render_all_recipe_cards(library: "MealPrepLibrary", output_dir: Path | str) -> list[Path]:
-    """Render every recipe in ``library`` into ``output_dir/<category>/<slug>.html``."""
+    """Render every recipe in ``library`` into ``output_dir/<category>/<slug>.html``.
+
+    The output directory is force-cleaned first: any pre-existing ``*.html`` file
+    under ``output_dir`` is removed before regeneration, so stale cards for
+    recipes that no longer exist (e.g. a deleted ``.cook`` file) never linger.
+    """
     from meal_prep.services.recipes import prepare_recipe
 
     target_root = Path(output_dir)
+
+    # Force cleanup: drop every stale card before regenerating.
+    for stale in target_root.rglob("*.html"):
+        stale.unlink()
+
     written: list[Path] = []
     for recipe_id, dto in library.recipes.items():
         prepared = prepare_recipe(dto, library.catalog, library.equipment)

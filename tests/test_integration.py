@@ -56,10 +56,18 @@ def test_render_all_recipe_cards():
     )
 
     out_dir = _REPO_ROOT / "recipe_cards"
+
+    # Plant a stale card that corresponds to no authored recipe; it must be
+    # removed by the regeneration's force cleanup.
+    stale = out_dir / "modular_carb" / "stale-deleted-recipe.html"
+    stale.parent.mkdir(parents=True, exist_ok=True)
+    stale.write_text("<html>stale</html>", encoding="utf-8")
+
     generated = renderer.render_all_recipe_cards(library, out_dir)
 
-    # One card per authored recipe.
+    # One card per authored recipe, and the stale card is gone.
     assert len(generated) == len(library.recipes)
+    assert not stale.exists()
 
     # Every card landed at <category>/<slug>.html and is a non-empty HTML doc.
     for path in generated:
