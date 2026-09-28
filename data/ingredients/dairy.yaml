@@ -1,6 +1,7 @@
 
 - id: unsalted-butter
   name: Unsalted Butter
+  step_name: butter
   aisle: dairy
   storage: refrigerated
   shelf_life_days: 90

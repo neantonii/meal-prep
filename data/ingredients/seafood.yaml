@@ -35,7 +35,7 @@
 
 - id: argentine-red-shrimp
   name: Wild Argentine Red Shrimp
-  step_name: Argentine red shrimp
+  step_name: argentine red shrimp
   aisle: seafood
   storage: frozen
   shelf_life_days: 3
@@ -65,7 +65,7 @@
 
 - id: wild-pollock-fillet
   name: Wild Pollock Fillets
-  step_name: wild pollock fillets
+  step_name: wild pollock fillet
   aisle: seafood
   storage: frozen
   shelf_life_days: 3

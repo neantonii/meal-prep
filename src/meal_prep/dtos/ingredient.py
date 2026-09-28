@@ -94,6 +94,22 @@ class Ingredient(BaseModel):
     def validate_id(cls, v: str) -> str:
         return normalize_slug(v, field="Ingredient id")
 
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        # First character must be a capital letter.
+        if not (v and v[0].isalpha() and v[0].isupper()):
+            raise ValueError(f"Ingredient name must start with a capital letter, got '{v}'.")
+        return v
+
+    @field_validator("step_name")
+    @classmethod
+    def validate_step_name(cls, v: str | None) -> str | None:
+        # Optional; when present, first character must be a lowercase letter.
+        if v is not None and not (v and v[0].isalpha() and v[0].islower()):
+            raise ValueError(f"Ingredient step_name must start with a lowercase letter, got '{v}'.")
+        return v
+
     @field_validator("custom_units")
     @classmethod
     def validate_custom_units(cls, v: dict[str, list[str]]) -> dict[str, list[str]]:

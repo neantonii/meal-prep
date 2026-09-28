@@ -1,6 +1,7 @@
 
 - id: fresh-garlic
   name: Fresh Garlic
+  step_name: garlic
   aisle: produce
   storage: ambient
   shelf_life_days: 30
@@ -40,6 +41,7 @@
 
 - id: fresh-lemon
   name: Fresh Lemon
+  step_name: lemon
   aisle: produce
   storage: ambient
   shelf_life_days: 14
@@ -79,6 +81,7 @@
 
 - id: frozen-sweet-corn
   name: Frozen Sweet Corn
+  step_name: sweet corn
   aisle: produce
   storage: frozen
   shelf_life_days: 365
@@ -111,6 +114,7 @@
 
 - id: frozen-green-peas
   name: Frozen Green Peas
+  step_name: green pea
   aisle: produce
   storage: frozen
   shelf_life_days: 365

@@ -5,6 +5,8 @@ constraints (``gt``, ``min_length``, enum/type coercion) are not re-tested here.
 
 Our custom validation in this module:
 - ``Ingredient.validate_id`` -> ``normalize_slug``
+- ``Ingredient.validate_name`` -> first character must be a capital letter
+- ``Ingredient.validate_step_name`` -> first character must be a lowercase letter
 - ``MacrosInfo.clean_unit`` / ``UnitConversion.clean_units`` -> ``clean_token``
 - ``UnitConversion.validate_different_units`` -> reject self-conversion
 - ``Ingredient.validate_custom_units`` -> slug keys, cleaned aliases, dedup
@@ -158,6 +160,52 @@ def test_ingredient_id_is_normalized():
 def test_ingredient_id_invalid_slug_is_rejected():
     with pytest.raises(ValidationError, match="kebab-case slug"):
         Ingredient.model_validate(_ingredient(id="boneless_chicken"))
+
+
+# ---------------------------------------------------------------------------
+# Ingredient — name / step_name casing
+# ---------------------------------------------------------------------------
+
+
+def test_name_must_start_with_capital_letter():
+    assert Ingredient.model_validate(_ingredient(name="Boneless Chicken Breast")).name == (
+        "Boneless Chicken Breast"
+    )
+
+
+def test_name_starting_lowercase_is_rejected():
+    with pytest.raises(ValidationError, match="must start with a capital letter"):
+        Ingredient.model_validate(_ingredient(name="boneless chicken breast"))
+
+
+def test_name_starting_with_digit_is_rejected():
+    with pytest.raises(ValidationError, match="must start with a capital letter"):
+        Ingredient.model_validate(_ingredient(name="100% Pure Avocado Oil"))
+
+
+def test_name_empty_is_rejected():
+    with pytest.raises(ValidationError, match="must start with a capital letter"):
+        Ingredient.model_validate(_ingredient(name=""))
+
+
+def test_step_name_must_start_with_lowercase_letter():
+    assert Ingredient.model_validate(_ingredient(step_name="chicken breast")).step_name == (
+        "chicken breast"
+    )
+
+
+def test_step_name_starting_uppercase_is_rejected():
+    with pytest.raises(ValidationError, match="must start with a lowercase letter"):
+        Ingredient.model_validate(_ingredient(step_name="Chicken breast"))
+
+
+def test_step_name_none_is_allowed():
+    assert Ingredient.model_validate(_ingredient(step_name=None)).step_name is None
+
+
+def test_step_name_empty_is_rejected():
+    with pytest.raises(ValidationError, match="must start with a lowercase letter"):
+        Ingredient.model_validate(_ingredient(step_name=""))
 
 
 # ---------------------------------------------------------------------------

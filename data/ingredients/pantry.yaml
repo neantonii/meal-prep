@@ -33,7 +33,7 @@
       factor: 0.92
 
 - id: avocado-oil
-  name: 100% Pure Avocado Oil
+  name: Pure Avocado Oil
   step_name: avocado oil
   aisle: pantry
   storage: ambient
@@ -100,7 +100,7 @@
 
 - id: dijon-mustard
   name: Prepared Dijon Mustard
-  step_name: Dijon mustard
+  step_name: dijon mustard
   aisle: pantry
   storage: ambient
   shelf_life_days: 180
@@ -167,6 +167,7 @@
 
 - id: basmati-rice
   name: Basmati Rice
+  step_name: basmati rice
   aisle: pantry
   storage: ambient
   shelf_life_days: 365
@@ -199,6 +200,7 @@
 
 - id: rice-stick-noodles
   name: Rice Stick Noodles
+  step_name: rice stick noodle
   aisle: pantry
   storage: ambient
   shelf_life_days: 730

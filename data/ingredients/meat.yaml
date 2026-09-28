@@ -1,7 +1,7 @@
 
 - id: boneless-chicken-breast
   name: Boneless, Skinless Chicken Breast
-  step_name: chicken breasts
+  step_name: chicken breast
   aisle: meat
   storage: refrigerated
   shelf_life_days: 3
@@ -95,6 +95,7 @@
 
 - id: pork-tenderloin
   name: Pork Tenderloin
+  step_name: pork tenderloin
   aisle: meat
   storage: refrigerated
   shelf_life_days: 3
