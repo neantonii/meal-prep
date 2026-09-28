@@ -1,6 +1,7 @@
 
 - id: kosher-salt
   name: Coarse Kosher Salt
+  step_name: kosher salt
   aisle: spices
   storage: ambient
   shelf_life_days: 1095
@@ -33,6 +34,7 @@
 
 - id: black-pepper
   name: Ground Black Pepper
+  step_name: black pepper
   aisle: spices
   storage: ambient
   shelf_life_days: 730
@@ -161,6 +163,7 @@
 
 - id: dried-dill
   name: Dried Dill Weed
+  step_name: dried dill
   aisle: spices
   storage: ambient
   shelf_life_days: 730
@@ -193,6 +196,7 @@
 
 - id: dried-thyme
   name: Dried Thyme Leaves
+  step_name: dried thyme
   aisle: spices
   storage: ambient
   shelf_life_days: 730

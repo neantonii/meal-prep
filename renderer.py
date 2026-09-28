@@ -335,20 +335,37 @@ _CSS = """
 """
 
 
-def _format_step_text(text: str, ingredient_names: dict[str, str], equipment_by_id: dict[str, str]) -> str:
-    """Render Cooklang instruction text into HTML with styled badges."""
+def _format_step_text(
+    text: str,
+    ingredient_step_names: dict[str, str],
+    ingredient_names: dict[str, str],
+    equipment_by_id: dict[str, str],
+) -> str:
+    """Render Cooklang instruction text into HTML with styled badges.
+
+    The visible badge text uses the ingredient's ``step_name`` (prose-friendly
+    short noun), while the ``title`` tooltip keeps the full canonical ``name``.
+    """
 
     def replace_ingredient(match) -> str:
         if match.group(1):
             raw_id = match.group(1).strip().lower()
             qty = (match.group(2) or "").strip()
             unit = (match.group(3) or "").strip()
-            name = ingredient_names.get(raw_id, raw_id)
-            label = f"{qty} {unit} {name}".strip()
-            return f'<span class="badge badge-ingredient" title="Ingredient: {name}">{label}</span>'
+            step_name = ingredient_step_names.get(raw_id, raw_id)
+            full_name = ingredient_names.get(raw_id, raw_id)
+            label = f"{qty} {unit} {step_name}".strip()
+            return (
+                f'<span class="badge badge-ingredient" title="Ingredient: {full_name}">'
+                f'{label}</span>'
+            )
         raw_id = match.group(4).strip().lower()
-        name = ingredient_names.get(raw_id, raw_id)
-        return f'<span class="badge badge-ingredient">{name}</span>'
+        step_name = ingredient_step_names.get(raw_id, raw_id)
+        full_name = ingredient_names.get(raw_id, raw_id)
+        return (
+            f'<span class="badge badge-ingredient" title="Ingredient: {full_name}">'
+            f'{step_name}</span>'
+        )
 
     formatted = INGREDIENT_PATTERN.sub(replace_ingredient, text)
 
@@ -420,6 +437,7 @@ def render_recipe_card(recipe: Recipe) -> str:
     batch_macros = recipe.batch_macros
 
     ingredient_names = {item.id: item.name for item in recipe.ingredients}
+    ingredient_step_names = {item.id: item.step_name for item in recipe.ingredients}
 
     ingredient_rows = []
     for item in recipe.ingredients:
@@ -442,7 +460,9 @@ def render_recipe_card(recipe: Recipe) -> str:
         f'<span class="badge badge-cookware">{name}</span>' for name in recipe.equipment
     )
 
-    steps_html = _format_step_text(recipe.instructions, ingredient_names, dict(recipe.equipment_by_id))
+    steps_html = _format_step_text(
+        recipe.instructions, ingredient_step_names, ingredient_names, dict(recipe.equipment_by_id)
+    )
 
     freezer_badge = "❄️ Freezer Friendly" if recipe.freezer_friendly else "🚫 No Freezing"
 

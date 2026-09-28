@@ -114,6 +114,7 @@ def prepare_ingredient(dto: IngredientDTO, units: UnitsFileSchema) -> Ingredient
     return Ingredient(
         id=dto.id,
         name=dto.name,
+        step_name=dto.step_name or dto.name,
         aisle=dto.aisle,
         storage=dto.storage,
         shelf_life_days=dto.shelf_life_days,

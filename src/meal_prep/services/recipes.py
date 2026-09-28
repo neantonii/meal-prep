@@ -84,6 +84,7 @@ def prepare_recipe(
             RecipeIngredient(
                 id=ing_id,
                 name=ingredient.name,
+                step_name=ingredient.step_name,
                 quantity=entry["display_qty"],
                 unit=entry["display_unit"],
                 grams=grams,

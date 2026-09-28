@@ -38,8 +38,8 @@ def _recipe() -> Recipe:
         equipment=("Air Fryer",),
         equipment_by_id={"air-fryer": "Air Fryer"},
         ingredients=(
-            RecipeIngredient(id="a", name="A", quantity=200.0, unit="g", grams=200.0, cost=4.0, macros=_macros()),
-            RecipeIngredient(id="b", name="B", quantity=100.0, unit="g", grams=100.0, cost=1.0, macros=_macros(cal=50.0)),
+            RecipeIngredient(id="a", name="A", step_name="A", quantity=200.0, unit="g", grams=200.0, cost=4.0, macros=_macros()),
+            RecipeIngredient(id="b", name="B", step_name="B", quantity=100.0, unit="g", grams=100.0, cost=1.0, macros=_macros(cal=50.0)),
         ),
         instructions="Cook.",
     )
@@ -108,7 +108,7 @@ def test_source_path_defaults_to_none():
 
 
 def test_recipe_ingredient_is_frozen():
-    ing = RecipeIngredient(id="a", name="A", quantity=1.0, unit="g", grams=1.0, cost=1.0, macros=_macros())
+    ing = RecipeIngredient(id="a", name="A", step_name="A", quantity=1.0, unit="g", grams=1.0, cost=1.0, macros=_macros())
     try:
         ing.grams = 5.0  # type: ignore[misc]
     except Exception as exc:  # noqa: BLE001

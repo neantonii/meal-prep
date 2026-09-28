@@ -67,6 +67,11 @@ class Ingredient(BaseModel):
     """
     id: str = Field(..., description="Canonical unique slug, e.g. 'boneless-chicken-breast'")
     name: str = Field(..., description="Generic staple display name")
+    step_name: str | None = Field(
+        None,
+        description="Optional prose-friendly noun for instruction text (e.g. 'chicken "
+        "breasts'). Falls back to `name` when absent.",
+    )
     aisle: str = Field(..., description="Supermarket aisle slug")
     storage: StorageType = Field(..., description="Storage temperature classification")
     shelf_life_days: int = Field(..., gt=0, description="Mandatory shelf life in days under this storage mode")

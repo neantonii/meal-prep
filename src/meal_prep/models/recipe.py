@@ -36,6 +36,7 @@ class RecipeIngredient:
 
     id: str
     name: str
+    step_name: str
     quantity: float
     unit: str
     grams: float

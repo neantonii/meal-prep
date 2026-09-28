@@ -1,6 +1,7 @@
 
 - id: rainbow-trout-fillet
   name: Fresh Rainbow Trout Fillet
+  step_name: rainbow trout fillet
   aisle: seafood
   storage: refrigerated
   shelf_life_days: 2
@@ -37,6 +38,7 @@
 
 - id: argentine-red-shrimp
   name: Wild Argentine Red Shrimp
+  step_name: Argentine red shrimp
   aisle: seafood
   storage: frozen
   shelf_life_days: 3
@@ -72,6 +74,7 @@
 
 - id: wild-pollock-fillet
   name: Wild Pollock Fillets
+  step_name: wild pollock fillets
   aisle: seafood
   storage: frozen
   shelf_life_days: 3

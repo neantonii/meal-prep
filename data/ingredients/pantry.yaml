@@ -1,6 +1,7 @@
 
 - id: olive-oil
   name: Extra Virgin Olive Oil
+  step_name: olive oil
   aisle: pantry
   storage: ambient
   shelf_life_days: 365
@@ -33,6 +34,7 @@
 
 - id: avocado-oil
   name: 100% Pure Avocado Oil
+  step_name: avocado oil
   aisle: pantry
   storage: ambient
   shelf_life_days: 365
@@ -65,6 +67,7 @@
 
 - id: chicken-broth
   name: No Salt Added Chicken Broth
+  step_name: chicken broth
   aisle: pantry
   storage: ambient
   shelf_life_days: 365
@@ -97,6 +100,7 @@
 
 - id: dijon-mustard
   name: Prepared Dijon Mustard
+  step_name: Dijon mustard
   aisle: pantry
   storage: ambient
   shelf_life_days: 180
@@ -130,6 +134,7 @@
 
 - id: roasted-buckwheat
   name: Roasted Buckwheat Groats
+  step_name: roasted buckwheat
   aisle: pantry
   storage: ambient
   shelf_life_days: 365

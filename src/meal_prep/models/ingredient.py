@@ -79,6 +79,7 @@ class Ingredient:
 
     id: str
     name: str
+    step_name: str
     aisle: str
     storage: StorageType
     shelf_life_days: int

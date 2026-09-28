@@ -1,6 +1,7 @@
 
 - id: boneless-chicken-breast
   name: Boneless, Skinless Chicken Breast
+  step_name: chicken breasts
   aisle: meat
   storage: refrigerated
   shelf_life_days: 3
@@ -36,6 +37,7 @@
 
 - id: extra-lean-ground-turkey
   name: Extra Lean Ground Turkey
+  step_name: ground turkey
   aisle: meat
   storage: refrigerated
   shelf_life_days: 4
@@ -66,6 +68,7 @@
 
 - id: extra-lean-ground-beef
   name: Extra Lean Ground Beef
+  step_name: ground beef
   aisle: meat
   storage: refrigerated
   shelf_life_days: 4
