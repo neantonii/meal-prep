@@ -24,14 +24,11 @@
     sodium_mg: 40.0
     potassium_mg: 380.0
 
-  custom_units:
-    piece: [piece, pieces]
-
   conversions:
     - from: package
-      to: piece
+      to: count
       factor: 1
-    - from: piece
+    - from: count
       to: g
       factor: 250.0
 
@@ -61,16 +58,10 @@
     sodium_mg: 230.4
     potassium_mg: 291.2
 
-  custom_units:
-    piece: [piece, pieces]
-
   conversions:
     - from: package
       to: g
       factor: 454
-    - from: piece
-      to: g
-      factor: 31.25
 
 - id: wild-pollock-fillet
   name: Wild Pollock Fillets

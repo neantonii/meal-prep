@@ -24,14 +24,11 @@
     sodium_mg: 45.0
     potassium_mg: 350.0
 
-  custom_units:
-    piece: [piece, pieces]
-
   conversions:
     - from: package
-      to: piece
+      to: count
       factor: 4
-    - from: piece
+    - from: count
       to: g
       factor: 237.5
 
@@ -120,14 +117,11 @@
     sodium_mg: 53.0
     potassium_mg: 399.0
 
-  custom_units:
-    piece: [piece, pieces]
-
   conversions:
     - from: package
-      to: piece
+      to: count
       factor: 2
-    - from: piece
+    - from: count
       to: g
       factor: 600.0
 

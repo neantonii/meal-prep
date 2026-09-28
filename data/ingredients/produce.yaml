@@ -63,17 +63,15 @@
     potassium_mg: 136.0
 
   custom_units:
-    item: [item, items]
     serving: [serving, servings]
 
   conversions:
     - from: package
-      to: item
+      to: count
       factor: 1
-    # One lemon = 2 retail label servings of 55 g each (label basis: 15 kcal / 55 g).
-    - from: item
-      to: serving
-      factor: 2.0
+    - from: count
+      to: g
+      factor: 110.0
     - from: serving
       to: g
       factor: 55.0
