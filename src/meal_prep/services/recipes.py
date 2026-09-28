@@ -48,6 +48,12 @@ def prepare_recipe(
     # ingredient's first-authored unit (Cooklang's "fallback to first
     # occurrence"). Dict insertion order preserves first occurrence. An empty
     # unit means a count (the reserved 'count' node).
+    # Count declarations per ingredient: `repeated` is true when an ingredient
+    # is declared with an amount more than once (mentions are not declarations).
+    decl_count: dict[str, int] = {}
+    for ref in recipe.ingredients:
+        decl_count[ref.id] = decl_count.get(ref.id, 0) + 1
+
     merged: dict[str, dict] = {}
     for ref in recipe.ingredients:
         ingredient = catalog.get(ref.id)
@@ -109,6 +115,7 @@ def prepare_recipe(
                 grams=grams,
                 cost=ingredient.price_per_100g * grams / 100.0,
                 macros=ingredient.macros_per_100g.scaled(grams / 100.0),
+                repeated=decl_count[ing_id] > 1,
             )
         )
 

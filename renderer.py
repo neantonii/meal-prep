@@ -335,16 +335,33 @@ _CSS = """
 """
 
 
+def _format_display_amount(quantity: float, unit: str) -> str:
+    """Format a quantity + unit for display, dropping the reserved ``count`` noun.
+
+    A count is just a number; appending the word "count" would be noise. Every
+    other unit is shown verbatim (e.g. ``1 tbsp``).
+    """
+    if unit == "count":
+        return f"{quantity:g}"
+    return f"{quantity:g} {unit}"
+
+
 def _format_step_text(
     text: str,
     ingredient_step_names: dict[str, str],
     ingredient_names: dict[str, str],
+    ingredient_repeated: dict[str, bool],
     equipment_by_id: dict[str, str],
 ) -> str:
     """Render Cooklang instruction text into HTML with styled badges.
 
     The visible badge text uses the ingredient's ``step_name`` (prose-friendly
     short noun), while the ``title`` tooltip keeps the full canonical ``name``.
+
+    Amounts are omitted from step badges by default — the shopping checklist is
+    the single source of truth for quantities. The exception is an ingredient
+    declared with an amount more than once (``repeated``): there the inline
+    amount is needed to disambiguate the steps.
     """
 
     def replace_ingredient(match) -> str:
@@ -354,7 +371,11 @@ def _format_step_text(
             unit = (match.group(3) or "").strip()
             step_name = ingredient_step_names.get(raw_id, raw_id)
             full_name = ingredient_names.get(raw_id, raw_id)
-            label = f"{qty} {unit} {step_name}".strip()
+            if ingredient_repeated.get(raw_id, False):
+                amount = f"{qty} {unit}".strip()
+                label = f"{amount} {step_name}".strip()
+            else:
+                label = step_name
             return (
                 f'<span class="badge badge-ingredient" title="Ingredient: {full_name}">'
                 f'{label}</span>'
@@ -438,6 +459,7 @@ def render_recipe_card(recipe: Recipe) -> str:
 
     ingredient_names = {item.id: item.name for item in recipe.ingredients}
     ingredient_step_names = {item.id: item.step_name for item in recipe.ingredients}
+    ingredient_repeated = {item.id: item.repeated for item in recipe.ingredients}
 
     ingredient_rows = []
     for item in recipe.ingredients:
@@ -447,7 +469,7 @@ def render_recipe_card(recipe: Recipe) -> str:
             f'                <input type="checkbox" class="ingredient-checkbox">\n'
             f'                <span class="checkmark"></span>\n'
             f'                <span class="ingredient-text">\n'
-            f'                    <span class="ing-qty">{item.quantity:g} {item.unit}</span>\n'
+            f'                    <span class="ing-qty">{_format_display_amount(item.quantity, item.unit)}</span>\n'
             f'                    <span class="ing-name">{item.name}</span>\n'
             f'                </span>\n'
             f'            </label>\n'
@@ -461,7 +483,11 @@ def render_recipe_card(recipe: Recipe) -> str:
     )
 
     steps_html = _format_step_text(
-        recipe.instructions, ingredient_step_names, ingredient_names, dict(recipe.equipment_by_id)
+        recipe.instructions,
+        ingredient_step_names,
+        ingredient_names,
+        ingredient_repeated,
+        dict(recipe.equipment_by_id),
     )
 
     freezer_badge = "❄️ Freezer Friendly" if recipe.freezer_friendly else "🚫 No Freezing"

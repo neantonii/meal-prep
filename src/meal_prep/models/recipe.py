@@ -31,7 +31,10 @@ class RecipeIngredient:
     ``macros`` are derived from. ``quantity``/``unit`` are the display amount,
     using the ingredient's first-authored unit (Cooklang's "fallback to first
     occurrence"): a single reference is shown verbatim; duplicate references are
-    converted into that first unit and summed. All amounts are raw and unrounded.
+    converted into that first unit and summed. ``repeated`` is true when the
+    ingredient was declared with an amount more than once — the renderer uses it
+    to show an amount inline in the steps only when it is genuinely needed.
+    All amounts are raw and unrounded.
     """
 
     id: str
@@ -42,6 +45,7 @@ class RecipeIngredient:
     grams: float
     cost: float
     macros: MacrosInfo
+    repeated: bool = False
 
 
 @dataclass(frozen=True, slots=True)

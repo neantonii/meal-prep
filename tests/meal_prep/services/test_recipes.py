@@ -75,7 +75,8 @@ def test_prepare_recipe_merges_duplicate_ingredient_references(library):
             "ingredients": [
                 RecipeIngredientRef(id="olive-oil", quantity=1, unit="tbsp"),
                 RecipeIngredientRef(id="olive-oil", quantity=0.5, unit="tbsp"),
-            ]
+            ],
+            "mentions": [],
         }
     )
     prepared = prepare_recipe(recipe, library.catalog, library.equipment)
@@ -87,6 +88,7 @@ def test_prepare_recipe_merges_duplicate_ingredient_references(library):
     # Display uses the first-authored unit, summed into it.
     assert ingredient.unit == "tbsp"
     assert ingredient.quantity == pytest.approx(1.5)
+    assert ingredient.repeated is True
 
 
 def test_prepare_recipe_merges_mixed_units_into_first_unit(library):
@@ -96,7 +98,8 @@ def test_prepare_recipe_merges_mixed_units_into_first_unit(library):
             "ingredients": [
                 RecipeIngredientRef(id="olive-oil", quantity=1, unit="tsp"),
                 RecipeIngredientRef(id="olive-oil", quantity=1, unit="tbsp"),
-            ]
+            ],
+            "mentions": [],
         }
     )
     prepared = prepare_recipe(recipe, library.catalog, library.equipment)
@@ -107,6 +110,7 @@ def test_prepare_recipe_merges_mixed_units_into_first_unit(library):
     assert ingredient.grams == pytest.approx(
         library.catalog["olive-oil"].convert(4.0, "tsp", "g")
     )
+    assert ingredient.repeated is True
 
 
 # ---------------------------------------------------------------------------

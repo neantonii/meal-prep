@@ -56,11 +56,11 @@ def _recipe() -> Recipe:
 
 def test_step_badge_uses_step_name():
     html = renderer.render_recipe_card(_recipe())
-    # Visible badge text uses the prose-friendly short noun.
-    assert "4 piece chicken breasts" in html
-    # Full canonical name is not shown inline in the step.
-    assert "Boneless, Skinless Chicken Breast" in html  # present only as tooltip
-    assert 'title="Ingredient: Boneless, Skinless Chicken Breast">4 piece chicken breasts' in html
+    # Visible badge text uses the prose-friendly short noun (amount omitted:
+    # the ingredient is declared only once).
+    assert '>chicken breasts</span>' in html
+    # Full canonical name is present only as a tooltip.
+    assert 'title="Ingredient: Boneless, Skinless Chicken Breast">chicken breasts' in html
 
 
 def test_checklist_uses_full_name():
@@ -76,4 +76,26 @@ def test_step_name_falls_back_to_full_name():
     ing = replace(recipe.ingredients[0], step_name="Boneless, Skinless Chicken Breast")
     recipe = replace(recipe, ingredients=(ing,))
     html = renderer.render_recipe_card(recipe)
-    assert "4 piece Boneless, Skinless Chicken Breast" in html
+    assert '>Boneless, Skinless Chicken Breast</span>' in html
+
+
+def test_step_badge_shows_amount_when_repeated():
+    from dataclasses import replace
+
+    recipe = _recipe()
+    ing = replace(recipe.ingredients[0], repeated=True)
+    recipe = replace(recipe, ingredients=(ing,))
+    html = renderer.render_recipe_card(recipe)
+    # A repeated declaration keeps its inline amount to disambiguate steps.
+    assert '>4 piece chicken breasts</span>' in html
+
+
+def test_checklist_drops_count_unit():
+    from dataclasses import replace
+
+    recipe = _recipe()
+    ing = replace(recipe.ingredients[0], quantity=4.0, unit="count")
+    recipe = replace(recipe, ingredients=(ing,))
+    html = renderer.render_recipe_card(recipe)
+    assert '<span class="ing-qty">4</span>' in html
+    assert "<span class=\"ing-qty\">4 count</span>" not in html
