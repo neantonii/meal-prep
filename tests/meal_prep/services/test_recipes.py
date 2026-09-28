@@ -134,3 +134,29 @@ def test_prepare_recipe_rejects_unregistered_unit(library, chicken_recipe):
     )
     with pytest.raises(ValueError, match="unknown unit 'furlong'"):
         prepare_recipe(recipe, library.catalog, library.equipment)
+
+
+def test_prepare_recipe_rejects_mention_without_declaration(library, chicken_recipe):
+    from meal_prep.dtos.recipe import RecipeIngredientMention
+
+    recipe = chicken_recipe.model_copy(
+        update={
+            "ingredients": [RecipeIngredientRef(id="olive-oil", quantity=1, unit="tbsp")],
+            "mentions": [RecipeIngredientMention(id="kosher-salt")],
+        }
+    )
+    with pytest.raises(ValueError, match="mentions ingredient 'kosher-salt'"):
+        prepare_recipe(recipe, library.catalog, library.equipment)
+
+
+def test_prepare_recipe_allows_mention_with_declaration(library, chicken_recipe):
+    from meal_prep.dtos.recipe import RecipeIngredientMention
+
+    recipe = chicken_recipe.model_copy(
+        update={
+            "ingredients": [RecipeIngredientRef(id="olive-oil", quantity=1, unit="tbsp")],
+            "mentions": [RecipeIngredientMention(id="olive-oil")],
+        }
+    )
+    prepared = prepare_recipe(recipe, library.catalog, library.equipment)
+    assert [i.id for i in prepared.ingredients] == ["olive-oil"]

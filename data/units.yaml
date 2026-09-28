@@ -56,3 +56,12 @@ units:
     allowed:
       package: [package]
     conversions: {}
+
+  # Reserved count node. A count is what an omitted unit (`@apple{1}`) means:
+  # a unitless amount that still needs an ingredient-authored `count -> g` edge
+  # to participate in gram math. Like `package`, it has no universal conversions.
+  count:
+    base: count
+    allowed:
+      count: [count]
+    conversions: {}

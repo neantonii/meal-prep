@@ -24,3 +24,4 @@ class UnitsFileSchema(BaseModel):
     mass: DimensionGroup
     volume: DimensionGroup
     package: DimensionGroup
+    count: DimensionGroup = Field(default_factory=lambda: DimensionGroup(base="count"))

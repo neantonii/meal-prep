@@ -94,6 +94,15 @@ def test_load_recipe_file_valid(tmp_path):
     assert recipe.source_path == path
 
 
+def test_load_recipe_file_captures_mentions_and_counts(tmp_path):
+    body = "Add @turkey{1} then cook the @turkey{} through.\n"
+    path = _write_file(tmp_path, "modular_protein/pan-fried-ground-turkey.cook", _cook(body=body))
+    recipe = load_recipe_file(path)
+    assert recipe.ingredients[0].id == "turkey"
+    assert recipe.ingredients[0].unit == ""
+    assert [m.id for m in recipe.mentions] == ["turkey"]
+
+
 # ---------------------------------------------------------------------------
 # load_recipe_file — errors
 # ---------------------------------------------------------------------------

@@ -13,25 +13,30 @@ from meal_prep.dtos.recipe import (
     Recipe,
     RecipeCookwareRef,
     RecipeFrontmatter,
+    RecipeIngredientMention,
     RecipeIngredientRef,
 )
 from meal_prep.engines.cooklang import parse_cooklang
 
 
-def parse_cooklang_body(text: str) -> tuple[list[RecipeIngredientRef], list[RecipeCookwareRef]]:
-    """Extract ingredients and cookware from Cooklang instructions text.
+def parse_cooklang_body(
+    text: str,
+) -> tuple[list[RecipeIngredientRef], list[RecipeIngredientMention], list[RecipeCookwareRef]]:
+    """Extract ingredient declarations, mentions, and cookware from Cooklang text.
 
     Tokenization and syntax validation live in the pure ``engines.cooklang``
     engine; this adapter maps the resulting records onto the recipe reference
-    DTOs.
+    DTOs. An empty unit is preserved as the empty string on the DTO (the recipe
+    service interprets it as a count).
     """
     doc = parse_cooklang(text)
     ingredients = [
         RecipeIngredientRef(id=i.name, quantity=i.quantity, unit=i.unit)
         for i in doc.ingredients
     ]
+    mentions = [RecipeIngredientMention(id=m.name) for m in doc.mentions]
     cookware = [RecipeCookwareRef(id=c.id) for c in doc.cookware]
-    return ingredients, cookware
+    return ingredients, mentions, cookware
 
 
 def split_recipe_file(content: str) -> tuple[dict[str, Any], str]:
@@ -93,7 +98,7 @@ def load_recipe_file(path: Path | str) -> Recipe:
         )
 
     # Parse Cooklang body
-    ingredients, cookware = parse_cooklang_body(instructions)
+    ingredients, mentions, cookware = parse_cooklang_body(instructions)
 
     if not ingredients:
         raise ValueError(f"Recipe '{frontmatter.id}' has no ingredients declared in instructions body.")
@@ -106,6 +111,7 @@ def load_recipe_file(path: Path | str) -> Recipe:
         storage_info=frontmatter.storage_info,
         equipment=frontmatter.equipment,
         ingredients=ingredients,
+        mentions=mentions,
         cookware=cookware,
         instructions=instructions,
         source_path=file_path,

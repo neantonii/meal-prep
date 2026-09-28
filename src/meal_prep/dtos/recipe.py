@@ -39,7 +39,22 @@ class RecipeFrontmatter(BaseModel):
 class RecipeIngredientRef(BaseModel):
     id: str = Field(..., description="Ingredient identifier matching catalog id")
     quantity: float = Field(..., gt=0, description="Quantity used in recipe")
-    unit: str = Field(..., min_length=1, description="Measurement unit (must convert to grams)")
+    unit: str = Field(
+        "",
+        description="Measurement unit; empty string means a count (resolved to the "
+        "reserved 'count' node during enrichment).",
+    )
+
+
+class RecipeIngredientMention(BaseModel):
+    """An amount-less ingredient reference (``@name`` or ``@name{}``).
+
+    Carries only an id. A mention contributes nothing to quantity and must be
+    backed by a declaration elsewhere in the recipe; the recipe service enforces
+    that invariant.
+    """
+
+    id: str = Field(..., description="Ingredient identifier matching catalog id")
 
 
 class RecipeCookwareRef(BaseModel):
@@ -56,6 +71,9 @@ class Recipe(BaseModel):
     storage_info: RecipeStorage = Field(..., alias="storage")
     equipment: list[str]
     ingredients: list[RecipeIngredientRef]
+    mentions: list[RecipeIngredientMention] = Field(
+        default_factory=list, description="Amount-less ingredient references"
+    )
     cookware: list[RecipeCookwareRef]
     instructions: str
     source_path: Path | None = None

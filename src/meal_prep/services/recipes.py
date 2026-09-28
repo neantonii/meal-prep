@@ -20,6 +20,7 @@ from types import MappingProxyType
 
 from meal_prep.dtos.recipe import Recipe as RecipeDTO
 from meal_prep.dtos.equipment import EquipmentItem
+from meal_prep.engines.conversion_graph import ConversionError
 from meal_prep.models.ingredient import Ingredient
 from meal_prep.models.recipe import Recipe, RecipeIngredient
 
@@ -45,7 +46,8 @@ def prepare_recipe(
     # Merge duplicate ingredient references: same id across multiple lines sums
     # to grams (canonical) for cost/macros, and also to a display amount in the
     # ingredient's first-authored unit (Cooklang's "fallback to first
-    # occurrence"). Dict insertion order preserves first occurrence.
+    # occurrence"). Dict insertion order preserves first occurrence. An empty
+    # unit means a count (the reserved 'count' node).
     merged: dict[str, dict] = {}
     for ref in recipe.ingredients:
         ingredient = catalog.get(ref.id)
@@ -53,19 +55,27 @@ def prepare_recipe(
             raise ValueError(
                 f"Recipe '{recipe.id}' references unknown ingredient '{ref.id}'."
             )
+        unit = ref.unit or "count"
         try:
-            canonical = ingredient.resolve(ref.unit)
+            canonical = ingredient.resolve(unit)
         except KeyError:
             raise ValueError(
                 f"Recipe '{recipe.id}' references ingredient '{ref.id}' "
-                f"with unknown unit '{ref.unit}'."
+                f"with unknown unit '{unit}'."
             )
 
-        grams = ingredient.convert(ref.quantity, canonical, "g")
+        try:
+            grams = ingredient.convert(ref.quantity, canonical, "g")
+        except ConversionError:
+            raise ValueError(
+                f"Recipe '{recipe.id}' references ingredient '{ref.id}' "
+                f"with unit '{unit}' that has no gram conversion "
+                f"(author a '{canonical} -> g' edge on the ingredient)."
+            )
         entry = merged.get(ref.id)
         if entry is None:
             entry = {
-                "display_unit": ref.unit,
+                "display_unit": unit,
                 "display_canonical": canonical,
                 "display_qty": 0.0,
                 "grams": 0.0,
@@ -75,6 +85,15 @@ def prepare_recipe(
             ref.quantity, canonical, entry["display_canonical"]
         )
         entry["grams"] += grams
+
+    # Validate amount-less mentions: every mention must be backed by a
+    # declaration (an ingredient with an actual amount) elsewhere in the recipe.
+    for mention in recipe.mentions:
+        if mention.id not in merged:
+            raise ValueError(
+                f"Recipe '{recipe.id}' mentions ingredient '{mention.id}' "
+                f"but it has no amount declared in the instructions."
+            )
 
     resolved_ingredients = []
     for ing_id, entry in merged.items():

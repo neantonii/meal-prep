@@ -48,6 +48,17 @@ class CooklangIngredient:
 
 
 @dataclass(frozen=True)
+class CooklangMention:
+    """An ingredient reference without an amount (``@name`` or ``@name{}``).
+
+    A mention contributes nothing to quantity; it only triggers highlighting and
+    must be backed by a declaration elsewhere in the same recipe.
+    """
+
+    name: str
+
+
+@dataclass(frozen=True)
 class CooklangCookware:
     id: str
 
@@ -55,33 +66,45 @@ class CooklangCookware:
 @dataclass(frozen=True)
 class CooklangDocument:
     ingredients: tuple[CooklangIngredient, ...]
+    mentions: tuple[CooklangMention, ...]
     cookware: tuple[CooklangCookware, ...]
 
 
 def parse_cooklang(text: str) -> CooklangDocument:
-    """Tokenize Cooklang instruction text into ingredient and cookware records.
+    """Tokenize Cooklang instruction text into ingredient, mention, and cookware records.
 
-    Raises ``ValueError`` on syntax errors: a missing quantity or unit, a
-    non-numeric/non-positive quantity, or a malformed timer (non-numeric or
-    non-positive duration, or an unrecognized time unit). Timers are validated
-    but not returned.
+    An ingredient *declaration* carries a quantity and an optional unit: the
+    unit may be omitted (``@name{qty}``) and is recorded as the empty string,
+    which the recipe service later interprets as a count. A *mention*
+    (``@name`` or ``@name{}``) carries no amount and is returned separately so
+    callers can validate that every mention has a declaration.
+
+    Raises ``ValueError`` on syntax errors: a quantity-less declaration with a
+    unit (``@name{%unit}``), a non-numeric/non-positive quantity, or a malformed
+    timer (non-numeric or non-positive duration, or an unrecognized time unit).
+    Timers are validated but not returned.
     """
     ingredients: list[CooklangIngredient] = []
+    mentions: list[CooklangMention] = []
 
     for match in INGREDIENT_PATTERN.finditer(text):
         if match.group(1):
             name = match.group(1).strip().lower()
-            qty_raw = match.group(2).strip() if match.group(2) else None
-            unit_raw = match.group(3).strip().lower() if match.group(3) else None
+            qty_raw = match.group(2).strip() if match.group(2) else ""
+            unit_raw = match.group(3).strip().lower() if match.group(3) else ""
         else:
             name = match.group(4).strip().lower()
-            qty_raw = None
-            unit_raw = None
+            mentions.append(CooklangMention(name=name))
+            continue
 
-        if not qty_raw or not unit_raw:
+        if qty_raw == "" and unit_raw == "":
+            mentions.append(CooklangMention(name=name))
+            continue
+
+        if qty_raw == "":
             raise ValueError(
-                f"Ingredient '@{name}' in recipe missing quantity or unit. "
-                "All ingredients must specify '{quantity%unit}' for deterministic macro and cost tracking."
+                f"Ingredient '@{name}' in recipe missing quantity. "
+                "A unit requires a quantity, e.g. '{quantity%unit}'."
             )
 
         try:
@@ -106,6 +129,7 @@ def parse_cooklang(text: str) -> CooklangDocument:
 
     return CooklangDocument(
         ingredients=tuple(ingredients),
+        mentions=tuple(mentions),
         cookware=tuple(cookware),
     )
 

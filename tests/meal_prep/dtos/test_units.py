@@ -46,3 +46,14 @@ def test_units_file_schema_valid():
     assert schema.mass.base == "g"
     assert schema.volume.base == "ml"
     assert schema.package.base == "package"
+
+
+def test_units_file_schema_count_defaults_to_reserved_node():
+    schema = UnitsFileSchema.model_validate(
+        {
+            "mass": {"base": "g"},
+            "volume": {"base": "ml"},
+            "package": {"base": "package"},
+        }
+    )
+    assert schema.count.base == "count"

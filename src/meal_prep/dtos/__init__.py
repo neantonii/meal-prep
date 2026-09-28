@@ -21,6 +21,7 @@ from meal_prep.dtos.recipe import (
     RecipeYield,
     RecipeStorage,
     RecipeIngredientRef,
+    RecipeIngredientMention,
     RecipeCookwareRef,
 )
 from meal_prep.dtos.units import ConversionStep, DimensionGroup, UnitsFileSchema
@@ -39,6 +40,7 @@ __all__ = [
     "RecipeYield",
     "RecipeStorage",
     "RecipeIngredientRef",
+    "RecipeIngredientMention",
     "RecipeCookwareRef",
     "ConversionStep",
     "DimensionGroup",

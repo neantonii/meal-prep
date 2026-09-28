@@ -16,6 +16,7 @@ from meal_prep.dtos.recipe import (
     Recipe,
     RecipeCookwareRef,
     RecipeFrontmatter,
+    RecipeIngredientMention,
     RecipeIngredientRef,
     RecipeStorage,
     RecipeYield,
@@ -91,6 +92,16 @@ def test_recipe_ingredient_ref_valid():
     assert ref.id == "boneless-chicken-breast"
     assert ref.quantity == 2
     assert ref.unit == "piece"
+
+
+def test_recipe_ingredient_ref_empty_unit_means_count():
+    ref = RecipeIngredientRef.model_validate({"id": "apple", "quantity": 1})
+    assert ref.unit == ""
+
+
+def test_recipe_ingredient_mention_valid():
+    mention = RecipeIngredientMention.model_validate({"id": "boneless-chicken-breast"})
+    assert mention.id == "boneless-chicken-breast"
 
 
 def test_recipe_cookware_ref_valid():

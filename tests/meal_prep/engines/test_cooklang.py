@@ -12,6 +12,7 @@ import pytest
 from meal_prep.engines.cooklang import (
     CooklangCookware,
     CooklangIngredient,
+    CooklangMention,
     CooklangDocument,
     parse_cooklang,
 )
@@ -123,18 +124,25 @@ def test_plain_text_without_markup_yields_empty_document():
 # ---------------------------------------------------------------------------
 
 
-def test_bare_ingredient_without_quantity_or_unit_is_rejected():
-    with pytest.raises(ValueError, match="missing quantity or unit"):
-        parse_cooklang("@salt")
+def test_bare_ingredient_is_a_mention_not_an_error():
+    doc = parse_cooklang("@salt")
+    assert doc.ingredients == ()
+    assert doc.mentions == (CooklangMention(name="salt"),)
 
 
-def test_ingredient_without_unit_is_rejected():
-    with pytest.raises(ValueError, match="missing quantity or unit"):
-        parse_cooklang("@salt{1}")
+def test_empty_brace_ingredient_is_a_mention():
+    doc = parse_cooklang("@salt{}")
+    assert doc.ingredients == ()
+    assert doc.mentions == (CooklangMention(name="salt"),)
 
 
-def test_ingredient_without_quantity_is_rejected():
-    with pytest.raises(ValueError, match="missing quantity or unit"):
+def test_ingredient_without_unit_is_a_count():
+    doc = parse_cooklang("@salt{1}")
+    assert doc.ingredients == (CooklangIngredient(name="salt", quantity=1.0, unit=""),)
+
+
+def test_ingredient_with_unit_but_no_quantity_is_rejected():
+    with pytest.raises(ValueError, match="missing quantity"):
         parse_cooklang("@salt{%tsp}")
 
 

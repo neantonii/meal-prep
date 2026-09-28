@@ -33,7 +33,7 @@ from meal_prep.models.ingredient import Ingredient, MacrosInfo
 def _default_synonyms(units: UnitsFileSchema) -> dict[str, str]:
     """Every registered noun (canonical + aliases) -> canonical, across all dimensions."""
     synonyms: dict[str, str] = {}
-    for group in (units.mass, units.volume, units.package):
+    for group in (units.mass, units.volume, units.package, units.count):
         for canonical, aliases in group.allowed.items():
             synonyms[canonical] = canonical
             for alias in aliases:
@@ -42,9 +42,9 @@ def _default_synonyms(units: UnitsFileSchema) -> dict[str, str]:
 
 
 def _universal_edges(units: UnitsFileSchema) -> list[ConversionEdge]:
-    """Universal physics edges (mass -> g, volume -> ml); ``package`` has none."""
+    """Universal physics edges (mass -> g, volume -> ml); ``package``/``count`` have none."""
     edges: list[ConversionEdge] = []
-    for group in (units.mass, units.volume, units.package):
+    for group in (units.mass, units.volume, units.package, units.count):
         for canonical, step in group.conversions.items():
             edges.append(ConversionEdge(canonical, step.unit, step.amount))
     return edges
