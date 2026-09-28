@@ -146,6 +146,16 @@ def test_ingredient_with_unit_but_no_quantity_is_rejected():
         parse_cooklang("@salt{%tsp}")
 
 
+def test_ingredient_with_empty_unit_is_rejected():
+    with pytest.raises(ValueError, match="empty unit"):
+        parse_cooklang("@salt{1%}")
+
+
+def test_ingredient_with_whitespace_only_unit_is_rejected():
+    with pytest.raises(ValueError, match="empty unit"):
+        parse_cooklang("@salt{1%   }")
+
+
 def test_ingredient_non_numeric_quantity_is_rejected():
     with pytest.raises(ValueError, match="Invalid quantity 'abc'"):
         parse_cooklang("@salt{abc%tsp}")

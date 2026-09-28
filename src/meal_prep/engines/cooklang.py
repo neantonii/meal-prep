@@ -21,7 +21,7 @@ import re
 # Cooklang element patterns. Kept at module scope so the renderer can reuse the
 # exact same compiled objects rather than re-declaring them.
 INGREDIENT_PATTERN = re.compile(
-    r"@(?:([a-zA-Z0-9_-]+|\b[a-zA-Z0-9_ -]+?)\s*\{\s*([^}%]*?)\s*(?:%\s*([^}]+?)\s*)?\}|([a-zA-Z0-9_-]+))"
+    r"@(?:([a-zA-Z0-9_-]+|\b[a-zA-Z0-9_ -]+?)\s*\{\s*([^}%]*?)\s*(?:%\s*([^}]*?)\s*)?\}|([a-zA-Z0-9_-]+))"
 )
 COOKWARE_PATTERN = re.compile(
     r"#([a-zA-Z0-9_-]+|\b[a-zA-Z0-9_ -]+?)\s*\{\}|#([a-zA-Z0-9_-]+)"
@@ -92,6 +92,7 @@ def parse_cooklang(text: str) -> CooklangDocument:
             name = match.group(1).strip().lower()
             qty_raw = match.group(2).strip() if match.group(2) else ""
             unit_raw = match.group(3).strip().lower() if match.group(3) else ""
+            has_unit_separator = match.group(3) is not None
         else:
             name = match.group(4).strip().lower()
             mentions.append(CooklangMention(name=name))
@@ -105,6 +106,12 @@ def parse_cooklang(text: str) -> CooklangDocument:
             raise ValueError(
                 f"Ingredient '@{name}' in recipe missing quantity. "
                 "A unit requires a quantity, e.g. '{quantity%unit}'."
+            )
+
+        if has_unit_separator and unit_raw == "":
+            raise ValueError(
+                f"Ingredient '@{name}' in recipe has an empty unit. "
+                "Use '{quantity%unit}' or omit the unit for a count, e.g. '{quantity}'."
             )
 
         try:
