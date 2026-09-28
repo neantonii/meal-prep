@@ -25,16 +25,19 @@ from meal_prep.models.ingredient import MacrosInfo
 
 @dataclass(frozen=True, slots=True)
 class RecipeIngredient:
-    """One ingredient line, merged and resolved to grams.
+    """One ingredient line, merged and resolved.
 
-    Duplicate authored references to the same ingredient are summed into a
-    single ``grams`` value; ``cost`` and ``macros`` are derived from that. The
-    authored quantity/unit are deliberately not retained — the renderer chooses
-    a display unit later.
+    ``grams`` is the canonical internal amount (merged, raw) that ``cost`` and
+    ``macros`` are derived from. ``quantity``/``unit`` are the display amount,
+    using the ingredient's first-authored unit (Cooklang's "fallback to first
+    occurrence"): a single reference is shown verbatim; duplicate references are
+    converted into that first unit and summed. All amounts are raw and unrounded.
     """
 
     id: str
     name: str
+    quantity: float
+    unit: str
     grams: float
     cost: float
     macros: MacrosInfo

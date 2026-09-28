@@ -43,24 +43,49 @@ def prepare_recipe(
         resolved_equipment.append(names_by_id[equip_id])
 
     # Merge duplicate ingredient references: same id across multiple lines sums
-    # to grams, then macros and cost derive from that single value.
-    merged: dict[str, float] = {}
+    # to grams (canonical) for cost/macros, and also to a display amount in the
+    # ingredient's first-authored unit (Cooklang's "fallback to first
+    # occurrence"). Dict insertion order preserves first occurrence.
+    merged: dict[str, dict] = {}
     for ref in recipe.ingredients:
         ingredient = catalog.get(ref.id)
         if ingredient is None:
             raise ValueError(
                 f"Recipe '{recipe.id}' references unknown ingredient '{ref.id}'."
             )
-        grams = ingredient.convert(ref.quantity, ref.unit, "g")
-        merged[ref.id] = merged.get(ref.id, 0.0) + grams
+        try:
+            canonical = ingredient.resolve(ref.unit)
+        except KeyError:
+            raise ValueError(
+                f"Recipe '{recipe.id}' references ingredient '{ref.id}' "
+                f"with unknown unit '{ref.unit}'."
+            )
+
+        grams = ingredient.convert(ref.quantity, canonical, "g")
+        entry = merged.get(ref.id)
+        if entry is None:
+            entry = {
+                "display_unit": ref.unit,
+                "display_canonical": canonical,
+                "display_qty": 0.0,
+                "grams": 0.0,
+            }
+            merged[ref.id] = entry
+        entry["display_qty"] += ingredient.convert(
+            ref.quantity, canonical, entry["display_canonical"]
+        )
+        entry["grams"] += grams
 
     resolved_ingredients = []
-    for ing_id, grams in merged.items():
+    for ing_id, entry in merged.items():
         ingredient = catalog[ing_id]
+        grams = entry["grams"]
         resolved_ingredients.append(
             RecipeIngredient(
                 id=ing_id,
                 name=ingredient.name,
+                quantity=entry["display_qty"],
+                unit=entry["display_unit"],
                 grams=grams,
                 cost=ingredient.price_per_100g * grams / 100.0,
                 macros=ingredient.macros_per_100g.scaled(grams / 100.0),

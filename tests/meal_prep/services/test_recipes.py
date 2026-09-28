@@ -80,8 +80,32 @@ def test_prepare_recipe_merges_duplicate_ingredient_references(library):
     )
     prepared = prepare_recipe(recipe, library.catalog, library.equipment)
     assert [i.id for i in prepared.ingredients] == ["olive-oil"]
-    assert prepared.ingredients[0].grams == pytest.approx(
+    ingredient = prepared.ingredients[0]
+    assert ingredient.grams == pytest.approx(
         library.catalog["olive-oil"].convert(1.5, "tbsp", "g")
+    )
+    # Display uses the first-authored unit, summed into it.
+    assert ingredient.unit == "tbsp"
+    assert ingredient.quantity == pytest.approx(1.5)
+
+
+def test_prepare_recipe_merges_mixed_units_into_first_unit(library):
+    # 1 tsp + 1 tbsp of the same ingredient -> expressed in the first unit (tsp).
+    recipe = library.recipes["air-fried-chicken-breast"].model_copy(
+        update={
+            "ingredients": [
+                RecipeIngredientRef(id="olive-oil", quantity=1, unit="tsp"),
+                RecipeIngredientRef(id="olive-oil", quantity=1, unit="tbsp"),
+            ]
+        }
+    )
+    prepared = prepare_recipe(recipe, library.catalog, library.equipment)
+    ingredient = prepared.ingredients[0]
+    assert ingredient.unit == "tsp"
+    assert ingredient.quantity == pytest.approx(4.0)  # 1 tsp + (1 tbsp = 3 tsp)
+    # Canonical grams stay correct regardless of display unit.
+    assert ingredient.grams == pytest.approx(
+        library.catalog["olive-oil"].convert(4.0, "tsp", "g")
     )
 
 
@@ -108,5 +132,5 @@ def test_prepare_recipe_rejects_unregistered_unit(library, chicken_recipe):
     recipe = chicken_recipe.model_copy(
         update={"ingredients": [RecipeIngredientRef(id="olive-oil", quantity=1, unit="furlong")]}
     )
-    with pytest.raises(ValueError, match="No conversion path"):
+    with pytest.raises(ValueError, match="unknown unit 'furlong'"):
         prepare_recipe(recipe, library.catalog, library.equipment)

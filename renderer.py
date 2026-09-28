@@ -429,7 +429,7 @@ def render_recipe_card(recipe: Recipe) -> str:
             f'                <input type="checkbox" class="ingredient-checkbox">\n'
             f'                <span class="checkmark"></span>\n'
             f'                <span class="ingredient-text">\n'
-            f'                    <span class="ing-qty">{item.grams:g} g</span>\n'
+            f'                    <span class="ing-qty">{item.quantity:g} {item.unit}</span>\n'
             f'                    <span class="ing-name">{item.name}</span>\n'
             f'                </span>\n'
             f'            </label>\n'
