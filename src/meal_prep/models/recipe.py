@@ -74,11 +74,6 @@ class Recipe:
     # ------------------------------------------------------------------
 
     @property
-    def batch_g(self) -> float:
-        """Total raw ingredient weight in grams."""
-        return sum(ing.grams for ing in self.ingredients)
-
-    @property
     def total_cost(self) -> float:
         """Total batch cost."""
         return sum(ing.cost for ing in self.ingredients)

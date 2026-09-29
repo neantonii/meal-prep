@@ -50,10 +50,6 @@ def _recipe() -> Recipe:
 # ---------------------------------------------------------------------------
 
 
-def test_batch_g_sums_ingredient_grams():
-    assert _recipe().batch_g == 300.0
-
-
 def test_total_cost_sums_ingredient_costs():
     assert _recipe().total_cost == 5.0
 
@@ -93,7 +89,6 @@ def test_empty_ingredients_yield_zero_aggregates():
         ingredients=(),
         instructions="",
     )
-    assert recipe.batch_g == 0.0
     assert recipe.total_cost == 0.0
     assert recipe.batch_macros == MacrosInfo.zero()
 
