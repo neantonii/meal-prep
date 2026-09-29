@@ -30,7 +30,7 @@ from meal_prep.models.ingredient import Ingredient
 from meal_prep.models.recipe import Recipe, RecipeIngredient
 
 
-class _MergedEntry(TypedDict):
+class _IngredientTotals(TypedDict):
     display_unit: str
     display_canonical: str
     display_qty: float
@@ -80,7 +80,7 @@ def prepare_recipe(
     for ref in recipe.ingredients:
         decl_count[ref.id] = decl_count.get(ref.id, 0) + 1
 
-    merged: dict[str, _MergedEntry] = {}
+    merged: dict[str, _IngredientTotals] = {}
     for ref in recipe.ingredients:
         ingredient = catalog.get(ref.id)
         if ingredient is None:
