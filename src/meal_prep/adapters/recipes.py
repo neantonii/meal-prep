@@ -116,7 +116,7 @@ def load_recipe_file(path: Path | str) -> RecipeDTO:
         id=frontmatter.id,
         title=frontmatter.title,
         category=frontmatter.category,
-        yield_info=frontmatter.yield_info,
+        yield_info=frontmatter.yield_info,  # type: ignore[call-arg]
         storage_info=frontmatter.storage_info,
         ingredients=ingredients,
         mentions=mentions,

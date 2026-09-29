@@ -21,12 +21,20 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from types import MappingProxyType
+from typing import TypedDict
 
 from meal_prep.dtos.equipment import EquipmentItem
 from meal_prep.dtos.recipe import RecipeDTO
 from meal_prep.engines.conversion_graph import ConversionError
 from meal_prep.models.ingredient import Ingredient
 from meal_prep.models.recipe import Recipe, RecipeIngredient
+
+
+class _IngredientTotals(TypedDict):
+    display_unit: str
+    display_canonical: str
+    display_qty: float
+    grams: float
 
 
 def prepare_recipe(
@@ -49,8 +57,8 @@ def prepare_recipe(
 
     resolved_equipment: list[str] = []
     cookware_by_token: dict[str, str] = {}
-    for ref in recipe.cookware:
-        token = ref.id
+    for cw_ref in recipe.cookware:
+        token = cw_ref.id
         name = name_by_alias.get(token)
         if name is None:
             raise ValueError(
@@ -72,7 +80,7 @@ def prepare_recipe(
     for ref in recipe.ingredients:
         decl_count[ref.id] = decl_count.get(ref.id, 0) + 1
 
-    merged: dict[str, dict] = {}
+    merged: dict[str, _IngredientTotals] = {}
     for ref in recipe.ingredients:
         ingredient = catalog.get(ref.id)
         if ingredient is None:
