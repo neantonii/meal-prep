@@ -62,7 +62,7 @@ def split_recipe_file(content: str) -> tuple[dict[str, Any], str]:
     try:
         raw_frontmatter = yaml.safe_load(frontmatter_yaml)
     except yaml.YAMLError as e:
-        raise ValueError(f"Failed to parse YAML frontmatter: {e}")
+        raise ValueError(f"Failed to parse YAML frontmatter: {e}") from e
 
     if not isinstance(raw_frontmatter, dict):
         raise ValueError("Recipe frontmatter must be a YAML mapping/dictionary")

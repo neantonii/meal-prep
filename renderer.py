@@ -662,7 +662,7 @@ def render_all_recipe_cards(
         stale.unlink()
 
     written: list[Path] = []
-    for recipe_id, dto in library.recipes.items():
+    for dto in library.recipes.values():
         prepared = prepare_recipe(dto, library.catalog, library.equipment)
         category_dir = target_root / prepared.category.value
         category_dir.mkdir(parents=True, exist_ok=True)

@@ -86,7 +86,7 @@ def prepare_recipe(
             raise ValueError(
                 f"Recipe '{recipe.id}' references ingredient '{ref.id}' "
                 f"with unknown unit '{unit}'."
-            )
+            ) from None
 
         try:
             grams = ingredient.convert(ref.quantity, canonical, "g")
@@ -95,7 +95,7 @@ def prepare_recipe(
                 f"Recipe '{recipe.id}' references ingredient '{ref.id}' "
                 f"with unit '{unit}' that has no gram conversion "
                 f"(author a '{canonical} -> g' edge on the ingredient)."
-            )
+            ) from None
         entry = merged.get(ref.id)
         if entry is None:
             entry = {

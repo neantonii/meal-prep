@@ -126,7 +126,7 @@ def parse_cooklang(text: str) -> CooklangDocument:
         except ValueError:
             raise ValueError(
                 f"Invalid quantity '{qty_raw}' for ingredient '@{name}'. Must be a numeric value."
-            )
+            ) from None
 
         if qty <= 0:
             raise ValueError(
@@ -164,7 +164,7 @@ def _validate_timers(text: str) -> None:
         except ValueError:
             raise ValueError(
                 f"Invalid timer duration '{duration_raw}' for timer '{name}'. Must be a numeric value."
-            )
+            ) from None
 
         if duration <= 0:
             raise ValueError(

@@ -10,8 +10,8 @@ select = [
     "F",      # Pyflakes (unused imports, undefined names)
     "I",      # isort (deterministic import ordering)
     "UP",     # pyupgrade (modern syntax: `X | Y` over `Union[X, Y]`)
+    "B",      # flake8-bugbear (common traps, mutable default args)
     # --- candidate rules, to be enabled one-by-one after review ---
-    # "B",      # flake8-bugbear (common traps, mutable default args)
     # "C4",     # flake8-comprehensions (cleaner comprehension patterns)
     # "SIM",    # flake8-simplify (catches nested ifs, redundant branches)
     # "TID252", # flake8-tidy-imports (bans relative parent imports like `from ..models`)

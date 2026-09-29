@@ -69,7 +69,7 @@ def test_edge_rejects_bool_factor(factor):
 
 def test_edge_is_frozen():
     edge = ConversionEdge("a", "b", 1.0)
-    with pytest.raises(Exception):
+    with pytest.raises(AttributeError, match="cannot assign to field"):
         edge.factor = 2.0  # type: ignore[misc]
 
 
