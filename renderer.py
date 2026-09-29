@@ -6,7 +6,7 @@ recipe card. This is the presentation layer: it owns formatting and rounding
 text to turn ``@ingredient`` / ``#cookware`` / ``~timer`` tokens into styled
 badges — reusing the exact compiled patterns from ``meal_prep.engines.cooklang``.
 
-A ``Recipe`` is fully self-contained (it carries ``equipment_by_id``), so
+A ``Recipe`` is fully self-contained (it carries ``cookware_by_token``), so
 ``render_recipe_card`` takes only the recipe. ``render_all_recipe_cards`` loads a
 ``MealPrepLibrary``, prepares every recipe, and writes one card per recipe into
 ``<output_dir>/<category>/<slug>.html``.
@@ -352,12 +352,14 @@ def _format_step_text(
     ingredient_step_names: dict[str, str],
     ingredient_names: dict[str, str],
     ingredient_repeated: dict[str, bool],
-    equipment_by_id: dict[str, str],
+    cookware_by_token: dict[str, str],
 ) -> str:
     """Render Cooklang instruction text into HTML with styled badges.
 
     The visible badge text uses the ingredient's ``step_name`` (prose-friendly
     short noun), while the ``title`` tooltip keeps the full canonical ``name``.
+    Cookware badges resolve through the recipe's pre-resolved ``cookware_by_token``
+    map (canonical id or alias -> display name), never against the raw registry.
 
     Amounts are omitted from step badges by default — the shopping checklist is
     the single source of truth for quantities. The exception is an ingredient
@@ -398,7 +400,11 @@ def _format_step_text(
 
     def replace_cookware(match) -> str:
         raw_id = (match.group(1) or match.group(2)).strip().lower()
-        name = equipment_by_id.get(raw_id, raw_id.replace("-", " ").title())
+        name = cookware_by_token.get(raw_id)
+        if name is None:
+            # Enrichment guarantees every body token resolves; this is a
+            # defensive fallback for a token the recipe did not carry.
+            name = raw_id.replace("-", " ").title()
         return f'<span class="badge badge-cookware" title="Equipment: {html.escape(name)}">{html.escape(name)}</span>'
 
     formatted = COOKWARE_PATTERN.sub(replace_cookware, formatted)
@@ -493,7 +499,7 @@ def render_recipe_card(recipe: Recipe) -> str:
         ingredient_step_names,
         ingredient_names,
         ingredient_repeated,
-        dict(recipe.equipment_by_id),
+        dict(recipe.cookware_by_token),
     )
 
     freezer_badge = "❄️ Freezer Friendly" if recipe.freezer_friendly else "🚫 No Freezing"

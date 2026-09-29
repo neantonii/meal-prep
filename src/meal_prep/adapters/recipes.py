@@ -109,7 +109,6 @@ def load_recipe_file(path: Path | str) -> Recipe:
         category=frontmatter.category,
         yield_info=frontmatter.yield_info,
         storage_info=frontmatter.storage_info,
-        equipment=frontmatter.equipment,
         ingredients=ingredients,
         mentions=mentions,
         cookware=cookware,

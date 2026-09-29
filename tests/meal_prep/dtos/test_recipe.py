@@ -57,7 +57,6 @@ def _frontmatter(**overrides):
         "category": "modular_protein",
         "yield": {"servings": 4, "cooked_g": 1600},
         "storage": {"fridge_days": 4, "freezer_friendly": True},
-        "equipment": ["air-fryer"],
     }
     data.update(overrides)
     return data
@@ -68,7 +67,6 @@ def test_frontmatter_valid():
     assert fm.id == "grilled-chicken-rice"
     assert fm.title == "Grilled Chicken & Rice"
     assert fm.category.value == "modular_protein"
-    assert fm.equipment == ["air-fryer"]
 
 
 def test_frontmatter_id_is_normalized():
@@ -122,7 +120,6 @@ def test_recipe_valid():
             "category": "modular_protein",
             "yield": {"servings": 4, "cooked_g": 1600},
             "storage": {"fridge_days": 4, "freezer_friendly": True},
-            "equipment": ["air-fryer"],
             "ingredients": [{"id": "boneless-chicken-breast", "quantity": 2, "unit": "piece"}],
             "cookware": [{"id": "air-fryer"}],
             "instructions": "Season and cook.",

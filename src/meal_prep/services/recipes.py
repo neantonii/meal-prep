@@ -3,14 +3,18 @@
 Turns an authored recipe DTO into the frozen, fully-resolved ``Recipe`` value.
 Ingredients are resolved against the enriched catalog (gram conversions come
 from each ingredient's own conversion graph), duplicate references are merged
-to grams, equipment IDs are resolved to display names via the equipment
-registry, and the batch/per-serving aggregates are pre-computed — all raw and
-unrounded.
+to grams, body ``#cookware`` tokens are resolved to display names via the
+equipment registry, and the batch/per-serving aggregates are pre-computed —
+all raw and unrounded.
+
+Equipment is authored exactly once — as ``#cookware`` tokens in the body — and
+resolved here against canonical ids *and* aliases. There is no frontmatter
+``equipment`` list to drift out of sync with the body.
 
 Recipe validation is deliberately trivial here: ingredient enrichment already
 guarantees gram reachability for every registered unit, so this service only
 checks that a recipe references existing ingredients with registered units and
-known equipment.
+known cookware.
 """
 
 from __future__ import annotations
@@ -31,17 +35,31 @@ def prepare_recipe(
     equipment: list[EquipmentItem],
 ) -> Recipe:
     """Resolve and validate one authored recipe into its frozen enriched value."""
-    # Resolve equipment ids to display names, preserving authored order and
-    # rejecting ids that are not in the registry. The id -> name map is retained
-    # on the recipe so the renderer can resolve body ``#cookware`` tokens.
-    names_by_id = {item.id: item.name for item in equipment}
-    resolved_equipment = []
-    for equip_id in recipe.equipment:
-        if equip_id not in names_by_id:
+    # Resolve body ``#cookware`` tokens — the single source of truth for
+    # equipment. A token may be a canonical id *or* an alias (e.g. ``#pan`` ->
+    # the ``skillet`` item); resolve it through both. The parser has already
+    # deduped tokens and preserved first-appearance order, so this yields the
+    # display-name list for the equipment panel and the raw-token -> name map
+    # for the renderer's badges.
+    name_by_alias: dict[str, str] = {}
+    for item in equipment:
+        name_by_alias[item.id] = item.name
+        for alias in item.aliases:
+            name_by_alias.setdefault(alias, item.name)
+
+    resolved_equipment: list[str] = []
+    cookware_by_token: dict[str, str] = {}
+    for ref in recipe.cookware:
+        token = ref.id
+        name = name_by_alias.get(token)
+        if name is None:
             raise ValueError(
-                f"Recipe '{recipe.id}' references unknown equipment '{equip_id}'."
+                f"Recipe '{recipe.id}' references unknown cookware '{token}' in "
+                f"the instructions body (not a known equipment id or alias)."
             )
-        resolved_equipment.append(names_by_id[equip_id])
+        cookware_by_token.setdefault(token, name)
+        if name not in resolved_equipment:
+            resolved_equipment.append(name)
 
     # Merge duplicate ingredient references: same id across multiple lines sums
     # to grams (canonical) for cost/macros, and also to a display amount in the
@@ -128,7 +146,7 @@ def prepare_recipe(
         fridge_days=recipe.storage_info.fridge_days,
         freezer_friendly=recipe.storage_info.freezer_friendly,
         equipment=tuple(resolved_equipment),
-        equipment_by_id=MappingProxyType(names_by_id),
+        cookware_by_token=MappingProxyType(cookware_by_token),
         ingredients=tuple(resolved_ingredients),
         instructions=recipe.instructions,
         source_path=recipe.source_path,

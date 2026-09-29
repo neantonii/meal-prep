@@ -28,7 +28,6 @@ class RecipeFrontmatter(BaseModel):
     category: RecipeCategory = Field(..., description="Recipe category enum")
     yield_info: RecipeYield = Field(..., alias="yield", description="Portion count and cooked batch weight")
     storage_info: RecipeStorage = Field(..., alias="storage", description="Storage specifications")
-    equipment: list[str] = Field(..., min_length=1, description="List of equipment IDs required")
 
     @field_validator("id")
     @classmethod
@@ -69,7 +68,6 @@ class Recipe(BaseModel):
     category: RecipeCategory
     yield_info: RecipeYield = Field(..., alias="yield")
     storage_info: RecipeStorage = Field(..., alias="storage")
-    equipment: list[str]
     ingredients: list[RecipeIngredientRef]
     mentions: list[RecipeIngredientMention] = Field(
         default_factory=list, description="Amount-less ingredient references"

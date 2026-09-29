@@ -126,10 +126,37 @@ def test_prepare_recipe_rejects_unknown_ingredient(library, chicken_recipe):
         prepare_recipe(recipe, library.catalog, library.equipment)
 
 
-def test_prepare_recipe_rejects_unknown_equipment(library, chicken_recipe):
-    recipe = chicken_recipe.model_copy(update={"equipment": ["not-equipment"]})
-    with pytest.raises(ValueError, match="unknown equipment 'not-equipment'"):
+def test_prepare_recipe_rejects_unknown_cookware(library, chicken_recipe):
+    from meal_prep.dtos.recipe import RecipeCookwareRef
+
+    recipe = chicken_recipe.model_copy(
+        update={"cookware": [RecipeCookwareRef(id="skilllet")]}
+    )
+    with pytest.raises(ValueError, match="unknown cookware 'skilllet'"):
         prepare_recipe(recipe, library.catalog, library.equipment)
+
+
+def test_prepare_recipe_resolves_cookware_alias_to_canonical_name(library, chicken_recipe):
+    from meal_prep.dtos.recipe import RecipeCookwareRef
+
+    recipe = chicken_recipe.model_copy(
+        update={"cookware": [RecipeCookwareRef(id="pan")]}
+    )
+    prepared = prepare_recipe(recipe, library.catalog, library.equipment)
+    # "pan" is an alias of the "skillet" item, not a canonical id.
+    assert prepared.equipment == ("Large Non-Stick Skillet",)
+    assert prepared.cookware_by_token["pan"] == "Large Non-Stick Skillet"
+
+
+def test_prepare_recipe_resolves_cookware_canonical_id(library, chicken_recipe):
+    from meal_prep.dtos.recipe import RecipeCookwareRef
+
+    recipe = chicken_recipe.model_copy(
+        update={"cookware": [RecipeCookwareRef(id="air-fryer")]}
+    )
+    prepared = prepare_recipe(recipe, library.catalog, library.equipment)
+    assert prepared.equipment == ("Air Fryer",)
+    assert prepared.cookware_by_token["air-fryer"] == "Air Fryer"
 
 
 def test_prepare_recipe_rejects_unregistered_unit(library, chicken_recipe):
