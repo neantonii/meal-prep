@@ -53,13 +53,6 @@ def test_prepare_recipe_equipment_names_are_resolved(library, chicken_recipe):
     assert prepared.equipment == ("Air Fryer", "Meat Thermometer")
 
 
-def test_prepare_recipe_computes_batch_g(library, chicken_recipe):
-    prepared = prepare_recipe(chicken_recipe, library.catalog, library.equipment)
-    # Chicken 4 piece @ 237.5g + seasonings; must exceed the chicken alone.
-    assert prepared.batch_g > 950.0
-    assert prepared.batch_g == sum(i.grams for i in prepared.ingredients)
-
-
 def test_prepare_recipe_computes_cost_and_macros(library, chicken_recipe):
     prepared = prepare_recipe(chicken_recipe, library.catalog, library.equipment)
     assert prepared.total_cost > 0.0

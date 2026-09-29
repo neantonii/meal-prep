@@ -604,10 +604,6 @@ def render_recipe_card(recipe: Recipe) -> str:
                         {ingredients_html}
                     </ul>
                     <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 0.82rem; color: var(--text-muted); display: flex; justify-content: space-between;">
-                        <span>Raw Batch Weight:</span>
-                        <strong style="color: #fff;">{recipe.batch_g:.1f} g</strong>
-                    </div>
-                    <div style="margin-top: 4px; font-size: 0.82rem; color: var(--text-muted); display: flex; justify-content: space-between;">
                         <span>Total Batch Cost:</span>
                         <strong style="color: var(--success);">${recipe.total_cost:.2f} CAD</strong>
                     </div>

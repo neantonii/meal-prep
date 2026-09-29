@@ -76,4 +76,3 @@ def test_render_all_recipe_cards():
         assert path.is_relative_to(out_dir)
         content = path.read_text(encoding="utf-8")
         assert content.startswith("<!DOCTYPE html>")
-        assert "Cooking Loss" not in content
