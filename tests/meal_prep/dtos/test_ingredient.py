@@ -5,8 +5,6 @@ constraints (``gt``, ``min_length``, enum/type coercion) are not re-tested here.
 
 Our custom validation in this module:
 - ``Ingredient.validate_id`` -> ``normalize_slug``
-- ``Ingredient.validate_name`` -> first character must be a capital letter
-- ``Ingredient.validate_step_name`` -> first character must be a lowercase letter
 - ``MacrosInfo.clean_unit`` / ``UnitConversion.clean_units`` -> ``clean_token``
 - ``UnitConversion.validate_different_units`` -> reject self-conversion
 - ``Ingredient.validate_custom_units`` -> slug keys, cleaned aliases, dedup
@@ -124,6 +122,7 @@ def _ingredient(**overrides):
     data = {
         "id": "boneless-chicken-breast",
         "name": "Boneless Chicken Breast",
+        "step_name": "chicken breast",
         "aisle": "meat",
         "storage": "refrigerated",
         "shelf_life_days": 3,
@@ -163,48 +162,57 @@ def test_ingredient_id_invalid_slug_is_rejected():
 
 
 # ---------------------------------------------------------------------------
-# Ingredient — name / step_name casing
+# Ingredient — name / step_name (no casing policy)
 # ---------------------------------------------------------------------------
 
 
-def test_name_must_start_with_capital_letter():
+def test_name_is_preserved_as_authored():
     assert Ingredient.model_validate(_ingredient(name="Boneless Chicken Breast")).name == (
         "Boneless Chicken Breast"
     )
 
 
-def test_name_starting_lowercase_is_rejected():
-    with pytest.raises(ValidationError, match="must start with a capital letter"):
-        Ingredient.model_validate(_ingredient(name="boneless chicken breast"))
+def test_name_starting_lowercase_is_accepted():
+    # The casing is a data convention (label vs prose), not a hard rule: authors
+    # may write any casing, and an authoring agent is expected to copy the style
+    # of existing rows. The *semantic* distinction is enforced by requiring
+    # `step_name`, not by validating its first letter.
+    assert Ingredient.model_validate(_ingredient(name="boneless chicken breast")).name == (
+        "boneless chicken breast"
+    )
 
 
-def test_name_starting_with_digit_is_rejected():
-    with pytest.raises(ValidationError, match="must start with a capital letter"):
-        Ingredient.model_validate(_ingredient(name="100% Pure Avocado Oil"))
+def test_name_starting_with_digit_is_accepted():
+    assert Ingredient.model_validate(_ingredient(name="100% Pure Avocado Oil")).name == (
+        "100% Pure Avocado Oil"
+    )
 
 
 def test_name_empty_is_rejected():
-    with pytest.raises(ValidationError, match="must start with a capital letter"):
+    with pytest.raises(ValidationError, match="at least 1 character"):
         Ingredient.model_validate(_ingredient(name=""))
 
 
-def test_step_name_must_start_with_lowercase_letter():
+def test_step_name_is_preserved_as_authored():
     assert Ingredient.model_validate(_ingredient(step_name="chicken breast")).step_name == (
         "chicken breast"
     )
 
 
-def test_step_name_starting_uppercase_is_rejected():
-    with pytest.raises(ValidationError, match="must start with a lowercase letter"):
-        Ingredient.model_validate(_ingredient(step_name="Chicken breast"))
+def test_step_name_starting_uppercase_is_accepted():
+    assert Ingredient.model_validate(_ingredient(step_name="Chicken breast")).step_name == (
+        "Chicken breast"
+    )
 
 
-def test_step_name_none_is_allowed():
-    assert Ingredient.model_validate(_ingredient(step_name=None)).step_name is None
+def test_step_name_is_required():
+    # step_name is non-negotiable: prose text must never silently reuse `name`.
+    with pytest.raises(ValidationError, match="step_name"):
+        Ingredient.model_validate(_ingredient(step_name=None))
 
 
 def test_step_name_empty_is_rejected():
-    with pytest.raises(ValidationError, match="must start with a lowercase letter"):
+    with pytest.raises(ValidationError, match="at least 1 character"):
         Ingredient.model_validate(_ingredient(step_name=""))
 
 

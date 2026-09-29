@@ -15,11 +15,16 @@ hand dicts here). Allowed imports: `pydantic`, stdlib, and `meal_prep.enums`
 ## Business Invariants
 
 - `id` fields must be kebab-case slugs (`boneless-chicken-breast`).
+- `Ingredient.step_name` is required and never derived from `Ingredient.name`:
+  the two carry different meanings, not just different casing.
 
 ## Chesterton's Fences
 
-- `Ingredient.name` starts with a capital letter; `Ingredient.step_name` starts
-  lowercase.
+- `Ingredient.name` is a label-style noun for tables and lists (capitalized,
+  more verbose); `Ingredient.step_name` is a prose noun for flowing instruction
+  text (lowercase, concise). They are *semantically* distinct — an authoring
+  agent should copy the casing/style of existing rows, but the casing is a
+  convention observed in the data, not a validation rule.
 - `RecipeIngredientRef.unit` `""` means "count", not "absent".
 - `from`/`to`/`yield`/`storage` are YAML keys but Python reserved-ish names, so
   fields are aliased (`from_unit`, `yield_info`, …) with `populate_by_name=True`.
