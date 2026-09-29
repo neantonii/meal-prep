@@ -7,6 +7,10 @@
 - **Lint/format**: [ruff](https://docs.astral.sh/ruff/) — installed in the
   environment, config in `pyproject.toml`. Run via `python -m ruff ...` (the
   `ruff` binary may not be on `PATH`).
+- **Types**: [mypy](https://mypy.readthedocs.io/) in `strict` mode over `src/`
+  only (`renderer.py`, `tests/`, `conftest.py` excluded — `renderer.py` is
+  slated to move into `src/`). Config in `pyproject.toml`. Run via
+  `python -m mypy` (reads `files = "src"` from config, no path arg needed).
 - **Tests**: `python -m pytest -q`.
 
 ## Code style
@@ -28,11 +32,12 @@ Run, in this order, and fix until clean:
 ```sh
 python -m ruff check . --fix
 python -m ruff format .
+python -m mypy
 python -m pytest -q
 ```
 
-Then `python -m ruff check .` and `python -m ruff format . --check` must both
-report "All checks passed!". Commit only when green.
+Then `python -m ruff check .`, `python -m ruff format . --check`, and
+`python -m mypy` must all report clean. Commit only when green.
 
 ## Ruff config policy
 

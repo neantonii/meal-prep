@@ -37,3 +37,14 @@ known-first-party = ["meal_prep"]
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+explicit_package_bases = true
+mypy_path = "src"
+files = "src"
+
+[[tool.mypy.overrides]]
+module = "yaml.*"
+ignore_missing_imports = true # no stubs for PyYAML and no dependency manifest yet
