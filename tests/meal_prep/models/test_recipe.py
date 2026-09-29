@@ -36,7 +36,7 @@ def _recipe() -> Recipe:
         fridge_days=4,
         freezer_friendly=True,
         equipment=("Air Fryer",),
-        equipment_by_id={"air-fryer": "Air Fryer"},
+        cookware_by_token={"air-fryer": "Air Fryer"},
         ingredients=(
             RecipeIngredient(id="a", name="A", step_name="A", quantity=200.0, unit="g", grams=200.0, cost=4.0, macros=_macros()),
             RecipeIngredient(id="b", name="B", step_name="B", quantity=100.0, unit="g", grams=100.0, cost=1.0, macros=_macros(cal=50.0)),
@@ -89,7 +89,7 @@ def test_empty_ingredients_yield_zero_aggregates():
         fridge_days=1,
         freezer_friendly=False,
         equipment=(),
-        equipment_by_id={},
+        cookware_by_token={},
         ingredients=(),
         instructions="",
     )

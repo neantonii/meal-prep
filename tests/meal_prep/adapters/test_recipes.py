@@ -31,7 +31,6 @@ def _cook(
         f"category: {category}\n"
         "yield:\n  servings: 2\n  cooked_g: 330\n"
         "storage:\n  fridge_days: 4\n  freezer_friendly: true\n"
-        "equipment:\n  - skillet\n"
         "---\n"
         f"{body}\n"
     )

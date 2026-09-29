@@ -37,7 +37,7 @@ def _recipe() -> Recipe:
         fridge_days=3,
         freezer_friendly=False,
         equipment=(),
-        equipment_by_id={},
+        cookware_by_token={},
         ingredients=(
             RecipeIngredient(
                 id="boneless-chicken-breast",

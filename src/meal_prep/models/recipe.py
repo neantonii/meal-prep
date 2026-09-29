@@ -59,8 +59,8 @@ class Recipe:
     cooked_g: float
     fridge_days: int
     freezer_friendly: bool
-    equipment: tuple[str, ...]  # resolved display names, in authored order
-    equipment_by_id: Mapping[str, str]  # canonical id -> display name
+    equipment: tuple[str, ...]  # resolved display names, deduped, in body order
+    cookware_by_token: Mapping[str, str]  # raw body token -> resolved display name
     ingredients: tuple[RecipeIngredient, ...]
     instructions: str
     source_path: Path | None = None
