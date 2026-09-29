@@ -1,0 +1,37 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes (unused imports, undefined names)
+    "I",      # isort (deterministic import ordering)
+    # --- candidate rules, to be enabled one-by-one after review ---
+    # "B",      # flake8-bugbear (common traps, mutable default args)
+    # "UP",     # pyupgrade (modern syntax: `X | Y` over `Union[X, Y]`)
+    # "C4",     # flake8-comprehensions (cleaner comprehension patterns)
+    # "SIM",    # flake8-simplify (catches nested ifs, redundant branches)
+    # "TID252", # flake8-tidy-imports (bans relative parent imports like `from ..models`)
+    # "RUF",    # Ruff-specific invariants and optimizations
+]
+ignore = [
+    "E501",   # line length is owned by `ruff format`
+    "B008",   # allow `Field(...)` in Pydantic default args
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["meal_prep"]
+
+[tool.ruff.lint.per-file-ignores]
+# Relax rules for test suites
+"tests/**/*" = [
+    "S101",   # allow `assert` in tests
+    "ARG",    # allow unused fixtures/arguments
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

@@ -13,10 +13,8 @@ from meal_prep.engines.cooklang import (
     CooklangCookware,
     CooklangIngredient,
     CooklangMention,
-    CooklangDocument,
     parse_cooklang,
 )
-
 
 # ---------------------------------------------------------------------------
 # happy paths — ingredients
@@ -25,7 +23,9 @@ from meal_prep.engines.cooklang import (
 
 def test_parse_single_ingredient():
     doc = parse_cooklang("Add @salt{1%tsp} to taste")
-    assert doc.ingredients == (CooklangIngredient(name="salt", quantity=1.0, unit="tsp"),)
+    assert doc.ingredients == (
+        CooklangIngredient(name="salt", quantity=1.0, unit="tsp"),
+    )
     assert doc.cookware == ()
 
 
@@ -97,7 +97,9 @@ def test_unnamed_timer_is_validated():
     assert doc.cookware == ()
 
 
-@pytest.mark.parametrize("unit", ["s", "sec", "seconds", "min", "mins", "minute", "hr", "hours"])
+@pytest.mark.parametrize(
+    "unit", ["s", "sec", "seconds", "min", "mins", "minute", "hr", "hours"]
+)
 def test_timer_accepts_all_registered_time_units(unit):
     parse_cooklang(f"~rest{{5%{unit}}}")
 

@@ -85,7 +85,9 @@ def test_split_recipe_file_rejects_invalid_frontmatter_yaml():
 
 
 def test_load_recipe_file_valid(tmp_path):
-    path = _write_file(tmp_path, "modular_protein/pan-fried-ground-turkey.cook", _cook())
+    path = _write_file(
+        tmp_path, "modular_protein/pan-fried-ground-turkey.cook", _cook()
+    )
     recipe = load_recipe_file(path)
     assert isinstance(recipe, RecipeDTO)
     assert recipe.id == "pan-fried-ground-turkey"
@@ -95,7 +97,9 @@ def test_load_recipe_file_valid(tmp_path):
 
 def test_load_recipe_file_captures_mentions_and_counts(tmp_path):
     body = "Add @turkey{1} then cook the @turkey{} through.\n"
-    path = _write_file(tmp_path, "modular_protein/pan-fried-ground-turkey.cook", _cook(body=body))
+    path = _write_file(
+        tmp_path, "modular_protein/pan-fried-ground-turkey.cook", _cook(body=body)
+    )
     recipe = load_recipe_file(path)
     assert recipe.ingredients[0].id == "turkey"
     assert recipe.ingredients[0].unit == ""
@@ -113,19 +117,29 @@ def test_load_recipe_file_missing_file():
 
 
 def test_load_recipe_file_id_stem_mismatch(tmp_path):
-    path = _write_file(tmp_path, "modular_protein/wrong-stem.cook", _cook(id_="other-id"))
+    path = _write_file(
+        tmp_path, "modular_protein/wrong-stem.cook", _cook(id_="other-id")
+    )
     with pytest.raises(ValueError, match="does not match filename stem 'wrong-stem'"):
         load_recipe_file(path)
 
 
 def test_load_recipe_file_category_directory_mismatch(tmp_path):
-    path = _write_file(tmp_path, "breakfast/recipe.cook", _cook(id_="recipe", category="modular_protein"))
+    path = _write_file(
+        tmp_path,
+        "breakfast/recipe.cook",
+        _cook(id_="recipe", category="modular_protein"),
+    )
     with pytest.raises(ValueError, match="does not match parent directory 'breakfast'"):
         load_recipe_file(path)
 
 
 def test_load_recipe_file_no_ingredients_is_rejected(tmp_path):
-    path = _write_file(tmp_path, "modular_protein/recipe.cook", _cook(id_="recipe", body="Just cook.\n"))
+    path = _write_file(
+        tmp_path,
+        "modular_protein/recipe.cook",
+        _cook(id_="recipe", body="Just cook.\n"),
+    )
     with pytest.raises(ValueError, match="has no ingredients declared"):
         load_recipe_file(path)
 

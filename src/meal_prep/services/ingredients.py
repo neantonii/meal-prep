@@ -24,8 +24,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from types import MappingProxyType
 
-from meal_prep.dtos.ingredient import IngredientDTO
 from meal_prep.dtos.aisle import Aisle
+from meal_prep.dtos.ingredient import IngredientDTO
 from meal_prep.dtos.units import UnitsFileSchema
 from meal_prep.engines.conversion_graph import ConversionEdge, build_graph
 from meal_prep.models.ingredient import Ingredient, MacrosInfo
@@ -59,9 +59,7 @@ def prepare_ingredient(
     """Resolve and validate one ingredient into its frozen enriched value."""
     aisle = aisles.get(dto.aisle)
     if aisle is None:
-        raise ValueError(
-            f"Ingredient '{dto.id}' declares unknown aisle '{dto.aisle}'."
-        )
+        raise ValueError(f"Ingredient '{dto.id}' declares unknown aisle '{dto.aisle}'.")
 
     synonyms = _default_synonyms(units)
 
@@ -148,4 +146,6 @@ def prepare_catalog(
     aisles: Mapping[str, Aisle],
 ) -> dict[str, Ingredient]:
     """Enrich every authored ingredient, keyed by id."""
-    return {ing_id: prepare_ingredient(dto, units, aisles) for ing_id, dto in dtos.items()}
+    return {
+        ing_id: prepare_ingredient(dto, units, aisles) for ing_id, dto in dtos.items()
+    }

@@ -7,11 +7,12 @@ registry happens here — that is enrichment, and lives in a service.
 
 from pathlib import Path
 from typing import Any
+
 import yaml
 
 from meal_prep.dtos.recipe import (
-    RecipeDTO,
     RecipeCookwareRef,
+    RecipeDTO,
     RecipeFrontmatter,
     RecipeIngredientMention,
     RecipeIngredientRef,
@@ -21,7 +22,9 @@ from meal_prep.engines.cooklang import parse_cooklang
 
 def parse_cooklang_body(
     text: str,
-) -> tuple[list[RecipeIngredientRef], list[RecipeIngredientMention], list[RecipeCookwareRef]]:
+) -> tuple[
+    list[RecipeIngredientRef], list[RecipeIngredientMention], list[RecipeCookwareRef]
+]:
     """Extract ingredient declarations, mentions, and cookware from Cooklang text.
 
     Tokenization and syntax validation live in the pure ``engines.cooklang``
@@ -43,11 +46,15 @@ def split_recipe_file(content: str) -> tuple[dict[str, Any], str]:
     """Split .cook file into YAML frontmatter dictionary and instructions body text."""
     stripped = content.strip()
     if not stripped.startswith("---"):
-        raise ValueError("Invalid recipe file: must begin with YAML frontmatter delimiter '---'")
+        raise ValueError(
+            "Invalid recipe file: must begin with YAML frontmatter delimiter '---'"
+        )
 
     parts = stripped.split("---", 2)
     if len(parts) < 3:
-        raise ValueError("Invalid recipe file: missing closing frontmatter delimiter '---'")
+        raise ValueError(
+            "Invalid recipe file: missing closing frontmatter delimiter '---'"
+        )
 
     frontmatter_yaml = parts[1]
     instructions = parts[2].strip()
@@ -101,7 +108,9 @@ def load_recipe_file(path: Path | str) -> RecipeDTO:
     ingredients, mentions, cookware = parse_cooklang_body(instructions)
 
     if not ingredients:
-        raise ValueError(f"Recipe '{frontmatter.id}' has no ingredients declared in instructions body.")
+        raise ValueError(
+            f"Recipe '{frontmatter.id}' has no ingredients declared in instructions body."
+        )
 
     return RecipeDTO(
         id=frontmatter.id,
@@ -127,7 +136,9 @@ def load_all_recipes(recipes_dir: Path | str = Path("recipes")) -> dict[str, Rec
     for cook_file in sorted(directory.rglob("*.cook")):
         recipe = load_recipe_file(cook_file)
         if recipe.id in recipes:
-            raise ValueError(f"Duplicate recipe ID '{recipe.id}' found across multiple files!")
+            raise ValueError(
+                f"Duplicate recipe ID '{recipe.id}' found across multiple files!"
+            )
         recipes[recipe.id] = recipe
 
     return recipes

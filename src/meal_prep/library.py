@@ -8,22 +8,24 @@ prepares them.
 
 from dataclasses import dataclass
 from pathlib import Path
-from meal_prep.dtos.units import UnitsFileSchema
-from meal_prep.dtos.equipment import EquipmentItem
-from meal_prep.dtos.aisle import Aisle
-from meal_prep.models.ingredient import Ingredient
-from meal_prep.dtos.recipe import RecipeDTO
-from meal_prep.adapters.units import load_units
-from meal_prep.adapters.equipment import load_equipment
+
 from meal_prep.adapters.aisles import load_aisles
+from meal_prep.adapters.equipment import load_equipment
 from meal_prep.adapters.ingredients import load_all_ingredients
 from meal_prep.adapters.recipes import load_all_recipes
+from meal_prep.adapters.units import load_units
+from meal_prep.dtos.aisle import Aisle
+from meal_prep.dtos.equipment import EquipmentItem
+from meal_prep.dtos.recipe import RecipeDTO
+from meal_prep.dtos.units import UnitsFileSchema
+from meal_prep.models.ingredient import Ingredient
 from meal_prep.services.ingredients import prepare_catalog
 
 
 @dataclass
 class MealPrepLibrary:
     """Unified repository container with validated domain standards, ingredients, and recipes."""
+
     units: UnitsFileSchema
     equipment: list[EquipmentItem]
     aisles: list[Aisle]

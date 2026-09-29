@@ -12,8 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from meal_prep.dtos.recipe import RecipeDTO
-from meal_prep.dtos.recipe import RecipeIngredientRef
+from meal_prep.dtos.recipe import RecipeDTO, RecipeIngredientRef
 from meal_prep.library import MealPrepLibrary
 from meal_prep.models.recipe import Recipe
 from meal_prep.services.recipes import prepare_recipe
@@ -113,7 +112,11 @@ def test_prepare_recipe_merges_mixed_units_into_first_unit(library):
 
 def test_prepare_recipe_rejects_unknown_ingredient(library, chicken_recipe):
     recipe = chicken_recipe.model_copy(
-        update={"ingredients": [RecipeIngredientRef(id="not-an-ingredient", quantity=1, unit="g")]}
+        update={
+            "ingredients": [
+                RecipeIngredientRef(id="not-an-ingredient", quantity=1, unit="g")
+            ]
+        }
     )
     with pytest.raises(ValueError, match="unknown ingredient 'not-an-ingredient'"):
         prepare_recipe(recipe, library.catalog, library.equipment)
@@ -129,7 +132,9 @@ def test_prepare_recipe_rejects_unknown_cookware(library, chicken_recipe):
         prepare_recipe(recipe, library.catalog, library.equipment)
 
 
-def test_prepare_recipe_resolves_cookware_alias_to_canonical_name(library, chicken_recipe):
+def test_prepare_recipe_resolves_cookware_alias_to_canonical_name(
+    library, chicken_recipe
+):
     from meal_prep.dtos.recipe import RecipeCookwareRef
 
     recipe = chicken_recipe.model_copy(
@@ -154,7 +159,11 @@ def test_prepare_recipe_resolves_cookware_canonical_id(library, chicken_recipe):
 
 def test_prepare_recipe_rejects_unregistered_unit(library, chicken_recipe):
     recipe = chicken_recipe.model_copy(
-        update={"ingredients": [RecipeIngredientRef(id="olive-oil", quantity=1, unit="furlong")]}
+        update={
+            "ingredients": [
+                RecipeIngredientRef(id="olive-oil", quantity=1, unit="furlong")
+            ]
+        }
     )
     with pytest.raises(ValueError, match="unknown unit 'furlong'"):
         prepare_recipe(recipe, library.catalog, library.equipment)
@@ -165,7 +174,9 @@ def test_prepare_recipe_rejects_mention_without_declaration(library, chicken_rec
 
     recipe = chicken_recipe.model_copy(
         update={
-            "ingredients": [RecipeIngredientRef(id="olive-oil", quantity=1, unit="tbsp")],
+            "ingredients": [
+                RecipeIngredientRef(id="olive-oil", quantity=1, unit="tbsp")
+            ],
             "mentions": [RecipeIngredientMention(id="kosher-salt")],
         }
     )
@@ -178,7 +189,9 @@ def test_prepare_recipe_allows_mention_with_declaration(library, chicken_recipe)
 
     recipe = chicken_recipe.model_copy(
         update={
-            "ingredients": [RecipeIngredientRef(id="olive-oil", quantity=1, unit="tbsp")],
+            "ingredients": [
+                RecipeIngredientRef(id="olive-oil", quantity=1, unit="tbsp")
+            ],
             "mentions": [RecipeIngredientMention(id="olive-oil")],
         }
     )

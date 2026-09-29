@@ -13,7 +13,6 @@ import pytest
 
 from meal_prep.dtos._normalize import clean_token, normalize_slug
 
-
 # ---------------------------------------------------------------------------
 # normalize_slug — the kebab-case identifier convention
 # ---------------------------------------------------------------------------

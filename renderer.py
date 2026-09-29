@@ -405,14 +405,14 @@ def _format_step_text(
                 label = step_name
             return (
                 f'<span class="badge badge-ingredient" title="Ingredient: {html.escape(full_name)}">'
-                f'{html.escape(label)}</span>'
+                f"{html.escape(label)}</span>"
             )
         raw_id = match.group(4).strip().lower()
         step_name = ingredient_step_names.get(raw_id, raw_id)
         full_name = ingredient_names.get(raw_id, raw_id)
         return (
             f'<span class="badge badge-ingredient" title="Ingredient: {html.escape(full_name)}">'
-            f'{html.escape(step_name)}</span>'
+            f"{html.escape(step_name)}</span>"
         )
 
     formatted = INGREDIENT_PATTERN.sub(replace_ingredient, text)
@@ -446,7 +446,7 @@ def _format_step_text(
             f'<div class="step-card">\n'
             f'            <div class="step-num">{index}</div>\n'
             f'            <div class="step-content">{paragraph}</div>\n'
-            f'        </div>'
+            f"        </div>"
         )
     return "\n\n".join(steps)
 
@@ -457,7 +457,7 @@ def _macro_item(value: str, unit: str, tag: str) -> str:
         f'            <div class="macro-num">{value}</div>\n'
         f'            <div class="macro-unit">{unit}</div>\n'
         f'            <div class="macro-tag">{tag}</div>\n'
-        f'        </div>'
+        f"        </div>"
     )
 
 
@@ -484,8 +484,8 @@ def _macro_items(macros) -> str:
 def _ingredient_row(item) -> str:
     """One checklist line, with storage/shelf-life detail on hover."""
     title = (
-        f"title=\"{html.escape(item.storage.display_name)} · "
-        f"keeps {item.shelf_life_days} days\""
+        f'title="{html.escape(item.storage.display_name)} · '
+        f'keeps {item.shelf_life_days} days"'
     )
     return (
         f'<li class="ingredient-item" {title}>\n'
@@ -495,10 +495,10 @@ def _ingredient_row(item) -> str:
         f'                <span class="ingredient-text">\n'
         f'                    <span class="ing-qty">{_format_display_amount(item.quantity, item.unit)}</span>\n'
         f'                    <span class="ing-name">{html.escape(item.name)}</span>\n'
-        f'                </span>\n'
-        f'            </label>\n'
+        f"                </span>\n"
+        f"            </label>\n"
         f'            <span class="ing-meta">{item.grams:.1f}g · ${item.cost:.2f} · {item.macros.calories_kcal:.0f} kcal</span>\n'
-        f'        </li>'
+        f"        </li>"
     )
 
 
@@ -520,18 +520,21 @@ def render_recipe_card(recipe: Recipe) -> str:
         by_aisle.setdefault((item.aisle_order, item.aisle_name), []).append(item)
 
     aisle_blocks = []
-    for (_order, aisle_name), items in sorted(by_aisle.items(), key=lambda kv: kv[0][0]):
+    for (_order, aisle_name), items in sorted(
+        by_aisle.items(), key=lambda kv: kv[0][0]
+    ):
         rows = "\n".join(_ingredient_row(item) for item in items)
         aisle_blocks.append(
             f'<div class="aisle-group">\n'
             f'    <h3 class="aisle-title">{html.escape(aisle_name)}</h3>\n'
             f'    <ul class="ingredient-list">\n{rows}\n    </ul>\n'
-            f'</div>'
+            f"</div>"
         )
     ingredients_html = "\n\n".join(aisle_blocks)
 
     equipment_badges = " ".join(
-        f'<span class="badge badge-cookware">{html.escape(name)}</span>' for name in recipe.equipment
+        f'<span class="badge badge-cookware">{html.escape(name)}</span>'
+        for name in recipe.equipment
     )
 
     steps_html = _format_step_text(
@@ -542,7 +545,9 @@ def render_recipe_card(recipe: Recipe) -> str:
         dict(recipe.cookware_by_token),
     )
 
-    freezer_badge = "❄️ Freezer Friendly" if recipe.freezer_friendly else "🚫 No Freezing"
+    freezer_badge = (
+        "❄️ Freezer Friendly" if recipe.freezer_friendly else "🚫 No Freezing"
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -639,7 +644,9 @@ def render_recipe_card(recipe: Recipe) -> str:
 """
 
 
-def render_all_recipe_cards(library: "MealPrepLibrary", output_dir: Path | str) -> list[Path]:
+def render_all_recipe_cards(
+    library: "MealPrepLibrary", output_dir: Path | str
+) -> list[Path]:
     """Render every recipe in ``library`` into ``output_dir/<category>/<slug>.html``.
 
     The output directory is force-cleaned first: any pre-existing ``*.html`` file

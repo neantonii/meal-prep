@@ -15,8 +15,8 @@ shared by the recipe adapter (parsing into DTOs) and the renderer (formatting
 instructions back to HTML).
 """
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 # Cooklang element patterns. Kept at module scope so the renderer can reuse the
 # exact same compiled objects rather than re-declaring them.
@@ -26,17 +26,24 @@ INGREDIENT_PATTERN = re.compile(
 COOKWARE_PATTERN = re.compile(
     r"#([a-zA-Z0-9_-]+|\b[a-zA-Z0-9_ -]+?)\s*\{\}|#([a-zA-Z0-9_-]+)"
 )
-TIMER_PATTERN = re.compile(
-    r"~([a-zA-Z0-9_-]+)?\s*\{\s*([^}%]+)\s*%\s*([^}]+)\s*\}"
-)
+TIMER_PATTERN = re.compile(r"~([a-zA-Z0-9_-]+)?\s*\{\s*([^}%]+)\s*%\s*([^}]+)\s*\}")
 
 # Valid timer duration units. Self-contained: the `time` dimension has been
 # removed from units.yaml, so this engine carries its own canonical set rather
 # than depending on an external registry.
 _TIME_UNITS = {
-    "s", "sec", "second", "seconds",
-    "min", "mins", "minute", "minutes",
-    "hr", "hrs", "hour", "hours",
+    "s",
+    "sec",
+    "second",
+    "seconds",
+    "min",
+    "mins",
+    "minute",
+    "minutes",
+    "hr",
+    "hrs",
+    "hour",
+    "hours",
 }
 
 
@@ -117,10 +124,14 @@ def parse_cooklang(text: str) -> CooklangDocument:
         try:
             qty = float(qty_raw)
         except ValueError:
-            raise ValueError(f"Invalid quantity '{qty_raw}' for ingredient '@{name}'. Must be a numeric value.")
+            raise ValueError(
+                f"Invalid quantity '{qty_raw}' for ingredient '@{name}'. Must be a numeric value."
+            )
 
         if qty <= 0:
-            raise ValueError(f"Quantity for ingredient '@{name}' must be positive, got {qty}.")
+            raise ValueError(
+                f"Quantity for ingredient '@{name}' must be positive, got {qty}."
+            )
 
         ingredients.append(CooklangIngredient(name=name, quantity=qty, unit=unit_raw))
 
@@ -156,7 +167,9 @@ def _validate_timers(text: str) -> None:
             )
 
         if duration <= 0:
-            raise ValueError(f"Timer duration for '{name}' must be positive, got {duration}.")
+            raise ValueError(
+                f"Timer duration for '{name}' must be positive, got {duration}."
+            )
 
         if unit_raw not in _TIME_UNITS:
             raise ValueError(

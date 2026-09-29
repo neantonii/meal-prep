@@ -13,8 +13,8 @@ mutation. Methods are pure functions of the fields alone.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from collections.abc import Mapping
+from dataclasses import dataclass
 
 from meal_prep.engines.conversion_graph import ConversionGraph
 from meal_prep.enums import StorageType
