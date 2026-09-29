@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from functools import reduce
 from pathlib import Path
 
-from meal_prep.enums import RecipeCategory
+from meal_prep.enums import RecipeCategory, StorageType
 from meal_prep.models.ingredient import MacrosInfo
 
 
@@ -40,6 +40,10 @@ class RecipeIngredient:
     id: str
     name: str
     step_name: str
+    aisle_name: str
+    aisle_order: int
+    storage: StorageType
+    shelf_life_days: int
     quantity: float
     unit: str
     grams: float

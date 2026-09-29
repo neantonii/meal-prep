@@ -8,7 +8,7 @@ while the tooltip title and the shopping checklist keep the full ``name``.
 from __future__ import annotations
 
 import renderer
-from meal_prep.enums import RecipeCategory
+from meal_prep.enums import RecipeCategory, StorageType
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.recipe import Recipe, RecipeIngredient
 
@@ -43,6 +43,10 @@ def _recipe() -> Recipe:
                 id="boneless-chicken-breast",
                 name="Boneless, Skinless Chicken Breast",
                 step_name="chicken breasts",
+                aisle_name="Meat",
+                aisle_order=3,
+                storage=StorageType.REFRIGERATED,
+                shelf_life_days=3,
                 quantity=4.0,
                 unit="piece",
                 grams=950.0,
@@ -66,6 +70,26 @@ def test_step_badge_uses_step_name():
 def test_checklist_uses_full_name():
     html = renderer.render_recipe_card(_recipe())
     assert '<span class="ing-name">Boneless, Skinless Chicken Breast</span>' in html
+
+
+def test_checklist_is_grouped_by_aisle():
+    html = renderer.render_recipe_card(_recipe())
+    assert '<h3 class="aisle-title">Meat</h3>' in html
+
+
+def test_checklist_annotates_storage_and_shelf_life_on_hover():
+    html = renderer.render_recipe_card(_recipe())
+    assert 'title="Refrigerated (Chilled) · keeps 3 days"' in html
+
+
+def test_category_badge_uses_display_name_not_title_case():
+    from dataclasses import replace
+
+    recipe = replace(_recipe(), category=RecipeCategory.MODULAR_CARB)
+    html = renderer.render_recipe_card(recipe)
+    assert '>Modular Side (Carbs)</span>' in html
+    assert '>Modular Carb</span>' not in html
+    assert 'title="Starchy sides (rice, buckwheat, potatoes, pasta)"' in html
 
 
 def test_step_name_falls_back_to_full_name():
