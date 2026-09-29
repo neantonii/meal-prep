@@ -38,8 +38,34 @@ def _recipe() -> Recipe:
         equipment=("Air Fryer",),
         cookware_by_token={"air-fryer": "Air Fryer"},
         ingredients=(
-            RecipeIngredient(id="a", name="A", step_name="A", aisle_name="Meat", aisle_order=3, storage=StorageType.REFRIGERATED, shelf_life_days=3, quantity=200.0, unit="g", grams=200.0, cost=4.0, macros=_macros()),
-            RecipeIngredient(id="b", name="B", step_name="B", aisle_name="Pantry", aisle_order=6, storage=StorageType.AMBIENT, shelf_life_days=365, quantity=100.0, unit="g", grams=100.0, cost=1.0, macros=_macros(cal=50.0)),
+            RecipeIngredient(
+                id="a",
+                name="A",
+                step_name="A",
+                aisle_name="Meat",
+                aisle_order=3,
+                storage=StorageType.REFRIGERATED,
+                shelf_life_days=3,
+                quantity=200.0,
+                unit="g",
+                grams=200.0,
+                cost=4.0,
+                macros=_macros(),
+            ),
+            RecipeIngredient(
+                id="b",
+                name="B",
+                step_name="B",
+                aisle_name="Pantry",
+                aisle_order=6,
+                storage=StorageType.AMBIENT,
+                shelf_life_days=365,
+                quantity=100.0,
+                unit="g",
+                grams=100.0,
+                cost=1.0,
+                macros=_macros(cal=50.0),
+            ),
         ),
         instructions="Cook.",
     )
@@ -65,8 +91,8 @@ def test_portion_cooked_g_divides_by_servings():
 def test_batch_macros_sums_every_ingredient():
     macros = _recipe().batch_macros
     assert macros.calories_kcal == 150.0  # 100 + 50
-    assert macros.protein_g == 20.0       # 10 + 10
-    assert macros.fat_g == 10.0           # 5 + 5
+    assert macros.protein_g == 20.0  # 10 + 10
+    assert macros.fat_g == 10.0  # 5 + 5
 
 
 def test_per_serving_macros_divides_batch_by_servings():
@@ -103,10 +129,23 @@ def test_source_path_defaults_to_none():
 
 
 def test_recipe_ingredient_is_frozen():
-    ing = RecipeIngredient(id="a", name="A", step_name="A", aisle_name="Meat", aisle_order=3, storage=StorageType.REFRIGERATED, shelf_life_days=3, quantity=1.0, unit="g", grams=1.0, cost=1.0, macros=_macros())
+    ing = RecipeIngredient(
+        id="a",
+        name="A",
+        step_name="A",
+        aisle_name="Meat",
+        aisle_order=3,
+        storage=StorageType.REFRIGERATED,
+        shelf_life_days=3,
+        quantity=1.0,
+        unit="g",
+        grams=1.0,
+        cost=1.0,
+        macros=_macros(),
+    )
     try:
         ing.grams = 5.0  # type: ignore[misc]
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         assert type(exc).__name__ == "FrozenInstanceError"
     else:
         raise AssertionError("RecipeIngredient is not frozen")

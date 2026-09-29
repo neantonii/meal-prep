@@ -19,7 +19,6 @@ from meal_prep.engines.conversion_graph import (
     build_graph,
 )
 
-
 # ---------------------------------------------------------------------------
 # ConversionEdge construction
 # ---------------------------------------------------------------------------
@@ -52,7 +51,9 @@ def test_edge_rejects_self_loop():
         ConversionEdge("x", "x", 1.0)
 
 
-@pytest.mark.parametrize("factor", [0.0, -1.0, float("inf"), float("-inf"), float("nan")])
+@pytest.mark.parametrize(
+    "factor", [0.0, -1.0, float("inf"), float("-inf"), float("nan")]
+)
 def test_edge_rejects_non_positive_or_non_finite_factor(factor):
     with pytest.raises(ValueError, match="positive finite"):
         ConversionEdge("x", "y", factor)
@@ -68,7 +69,7 @@ def test_edge_rejects_bool_factor(factor):
 
 def test_edge_is_frozen():
     edge = ConversionEdge("a", "b", 1.0)
-    with pytest.raises(Exception):
+    with pytest.raises(AttributeError, match="cannot assign to field"):
         edge.factor = 2.0  # type: ignore[misc]
 
 
@@ -251,6 +252,8 @@ def test_graph_rejects_mutation_of_units():
 
 
 def test_conversion_graph_is_constructible_and_read_only():
-    graph = build_graph([ConversionEdge("bag", "piece", 4.0), ConversionEdge("piece", "g", 237.5)])
+    graph = build_graph(
+        [ConversionEdge("bag", "piece", 4.0), ConversionEdge("piece", "g", 237.5)]
+    )
     assert isinstance(graph, ConversionGraph)
     assert graph.convert(1, "bag", "g") == 950.0

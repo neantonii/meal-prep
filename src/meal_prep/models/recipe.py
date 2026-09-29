@@ -91,7 +91,11 @@ class Recipe:
     @property
     def batch_macros(self) -> MacrosInfo:
         """Sum of every ingredient's macro contribution."""
-        return reduce(MacrosInfo.added, (ing.macros for ing in self.ingredients), MacrosInfo.zero())
+        return reduce(
+            MacrosInfo.added,
+            (ing.macros for ing in self.ingredients),
+            MacrosInfo.zero(),
+        )
 
     @property
     def per_serving_macros(self) -> MacrosInfo:

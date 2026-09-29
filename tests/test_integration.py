@@ -12,6 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import renderer
+
 from meal_prep.adapters.aisles import load_aisles
 from meal_prep.adapters.ingredients import load_all_ingredients
 from meal_prep.adapters.units import load_units

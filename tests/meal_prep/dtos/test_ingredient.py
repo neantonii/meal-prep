@@ -22,14 +22,15 @@ from meal_prep.dtos.ingredient import (
     UnitConversion,
 )
 
-
 # ---------------------------------------------------------------------------
 # ReferenceInfo — no custom validation (happy path only)
 # ---------------------------------------------------------------------------
 
 
 def test_reference_info_valid():
-    ref = ReferenceInfo.model_validate({"brand": "Compliments", "product": "Chicken 1kg", "price": 14.99})
+    ref = ReferenceInfo.model_validate(
+        {"brand": "Compliments", "product": "Chicken 1kg", "price": 14.99}
+    )
     assert ref.brand == "Compliments"
     assert ref.product == "Chicken 1kg"
     assert ref.price == 14.99
@@ -92,7 +93,9 @@ def test_unit_conversion_valid():
 
 
 def test_unit_conversion_units_are_cleaned():
-    uc = UnitConversion.model_validate({"from": " Piece ", "to": " G ", "factor": 237.5})
+    uc = UnitConversion.model_validate(
+        {"from": " Piece ", "to": " G ", "factor": 237.5}
+    )
     assert uc.from_unit == "piece"
     assert uc.to_unit == "g"
 
@@ -126,7 +129,11 @@ def _ingredient(**overrides):
         "aisle": "meat",
         "storage": "refrigerated",
         "shelf_life_days": 3,
-        "reference": {"brand": "Compliments", "product": "Chicken Breast 1kg", "price": 14.99},
+        "reference": {
+            "brand": "Compliments",
+            "product": "Chicken Breast 1kg",
+            "price": 14.99,
+        },
         "macros": {
             "unit": "g",
             "amount": 100,
@@ -151,9 +158,9 @@ def test_ingredient_valid():
 
 
 def test_ingredient_id_is_normalized():
-    assert IngredientDTO.model_validate(_ingredient(id="  Boneless-Chicken-Breast  ")).id == (
-        "boneless-chicken-breast"
-    )
+    assert IngredientDTO.model_validate(
+        _ingredient(id="  Boneless-Chicken-Breast  ")
+    ).id == ("boneless-chicken-breast")
 
 
 def test_ingredient_id_invalid_slug_is_rejected():
@@ -167,9 +174,9 @@ def test_ingredient_id_invalid_slug_is_rejected():
 
 
 def test_name_is_preserved_as_authored():
-    assert IngredientDTO.model_validate(_ingredient(name="Boneless Chicken Breast")).name == (
-        "Boneless Chicken Breast"
-    )
+    assert IngredientDTO.model_validate(
+        _ingredient(name="Boneless Chicken Breast")
+    ).name == ("Boneless Chicken Breast")
 
 
 def test_name_starting_lowercase_is_accepted():
@@ -177,15 +184,15 @@ def test_name_starting_lowercase_is_accepted():
     # may write any casing, and an authoring agent is expected to copy the style
     # of existing rows. The *semantic* distinction is enforced by requiring
     # `step_name`, not by validating its first letter.
-    assert IngredientDTO.model_validate(_ingredient(name="boneless chicken breast")).name == (
-        "boneless chicken breast"
-    )
+    assert IngredientDTO.model_validate(
+        _ingredient(name="boneless chicken breast")
+    ).name == ("boneless chicken breast")
 
 
 def test_name_starting_with_digit_is_accepted():
-    assert IngredientDTO.model_validate(_ingredient(name="100% Pure Avocado Oil")).name == (
-        "100% Pure Avocado Oil"
-    )
+    assert IngredientDTO.model_validate(
+        _ingredient(name="100% Pure Avocado Oil")
+    ).name == ("100% Pure Avocado Oil")
 
 
 def test_name_empty_is_rejected():
@@ -194,15 +201,15 @@ def test_name_empty_is_rejected():
 
 
 def test_step_name_is_preserved_as_authored():
-    assert IngredientDTO.model_validate(_ingredient(step_name="chicken breast")).step_name == (
-        "chicken breast"
-    )
+    assert IngredientDTO.model_validate(
+        _ingredient(step_name="chicken breast")
+    ).step_name == ("chicken breast")
 
 
 def test_step_name_starting_uppercase_is_accepted():
-    assert IngredientDTO.model_validate(_ingredient(step_name="Chicken breast")).step_name == (
-        "Chicken breast"
-    )
+    assert IngredientDTO.model_validate(
+        _ingredient(step_name="Chicken breast")
+    ).step_name == ("Chicken breast")
 
 
 def test_step_name_is_required():
@@ -222,7 +229,9 @@ def test_step_name_empty_is_rejected():
 
 
 def test_custom_units_normalizes_keys_and_aliases():
-    ing = IngredientDTO.model_validate(_ingredient(custom_units={"Scoop": ["Scoop", "Scoops"]}))
+    ing = IngredientDTO.model_validate(
+        _ingredient(custom_units={"Scoop": ["Scoop", "Scoops"]})
+    )
     assert ing.custom_units["scoop"] == ["scoop", "scoops"]
 
 
@@ -235,7 +244,9 @@ def test_custom_units_does_not_insert_canonical_when_absent():
 
 def test_custom_units_rejects_duplicate_alias():
     with pytest.raises(ValidationError, match="Duplicate alias"):
-        IngredientDTO.model_validate(_ingredient(custom_units={"scoop": ["scoops", "scoops"]}))
+        IngredientDTO.model_validate(
+            _ingredient(custom_units={"scoop": ["scoops", "scoops"]})
+        )
 
 
 def test_custom_units_rejects_invalid_key():

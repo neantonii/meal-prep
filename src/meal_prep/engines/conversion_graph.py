@@ -57,7 +57,9 @@ def _check_edge(source: str, target: str, factor: float) -> None:
     self-contained and does not trust its input to have been pre-validated).
     """
     if not source or not source.strip() or not target or not target.strip():
-        raise ValueError("Conversion edge endpoints must be non-empty, non-whitespace tokens.")
+        raise ValueError(
+            "Conversion edge endpoints must be non-empty, non-whitespace tokens."
+        )
     if source == target:
         raise ValueError(
             f"Conversion self-reference '{source}' -> '{target}' is not allowed; "
@@ -95,7 +97,9 @@ class ConversionGraph:
 
     def __init__(self, factors: Mapping[tuple[str, str], float]) -> None:
         self._factors: Mapping[tuple[str, str], float] = MappingProxyType(dict(factors))
-        self._units: frozenset[str] = frozenset(tok for pair in self._factors for tok in pair)
+        self._units: frozenset[str] = frozenset(
+            tok for pair in self._factors for tok in pair
+        )
 
     @property
     def factors(self) -> Mapping[tuple[str, str], float]:
@@ -220,4 +224,3 @@ def _reject_cycles(edges: set[tuple[str, str]]) -> None:
                 f"loop in the undirected conversion graph."
             )
         parent[ru] = rv
-

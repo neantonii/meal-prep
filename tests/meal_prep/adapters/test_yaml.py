@@ -13,7 +13,6 @@ import yaml
 
 from meal_prep.adapters._yaml import read_yaml, require_root_key
 
-
 # ---------------------------------------------------------------------------
 # read_yaml
 # ---------------------------------------------------------------------------
@@ -63,7 +62,9 @@ def test_read_yaml_invalid_syntax_raises_yaml_error(tmp_path):
 
 
 def test_require_root_key_returns_value(tmp_path):
-    assert require_root_key({"units": {"mass": {}}}, "units", tmp_path / "u.yaml") == {"mass": {}}
+    assert require_root_key({"units": {"mass": {}}}, "units", tmp_path / "u.yaml") == {
+        "mass": {}
+    }
 
 
 def test_require_root_key_missing_key_raises(tmp_path):

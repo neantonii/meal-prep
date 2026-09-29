@@ -13,15 +13,14 @@ import pytest
 from pydantic import ValidationError
 
 from meal_prep.dtos.recipe import (
-    RecipeDTO,
     RecipeCookwareRef,
+    RecipeDTO,
     RecipeFrontmatter,
     RecipeIngredientMention,
     RecipeIngredientRef,
     RecipeStorage,
     RecipeYield,
 )
-
 
 # ---------------------------------------------------------------------------
 # RecipeYield — no custom validation (happy path only)
@@ -70,9 +69,9 @@ def test_frontmatter_valid():
 
 
 def test_frontmatter_id_is_normalized():
-    assert RecipeFrontmatter.model_validate(_frontmatter(id="  Grilled-Chicken-Rice  ")).id == (
-        "grilled-chicken-rice"
-    )
+    assert RecipeFrontmatter.model_validate(
+        _frontmatter(id="  Grilled-Chicken-Rice  ")
+    ).id == ("grilled-chicken-rice")
 
 
 def test_frontmatter_id_invalid_slug_is_rejected():
@@ -86,7 +85,9 @@ def test_frontmatter_id_invalid_slug_is_rejected():
 
 
 def test_recipe_ingredient_ref_valid():
-    ref = RecipeIngredientRef.model_validate({"id": "boneless-chicken-breast", "quantity": 2, "unit": "piece"})
+    ref = RecipeIngredientRef.model_validate(
+        {"id": "boneless-chicken-breast", "quantity": 2, "unit": "piece"}
+    )
     assert ref.id == "boneless-chicken-breast"
     assert ref.quantity == 2
     assert ref.unit == "piece"
@@ -120,7 +121,9 @@ def test_recipe_valid():
             "category": "modular_protein",
             "yield": {"servings": 4, "cooked_g": 1600},
             "storage": {"fridge_days": 4, "freezer_friendly": True},
-            "ingredients": [{"id": "boneless-chicken-breast", "quantity": 2, "unit": "piece"}],
+            "ingredients": [
+                {"id": "boneless-chicken-breast", "quantity": 2, "unit": "piece"}
+            ],
             "cookware": [{"id": "air-fryer"}],
             "instructions": "Season and cook.",
         }

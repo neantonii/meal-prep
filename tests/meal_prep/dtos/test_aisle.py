@@ -20,7 +20,10 @@ def test_aisle_valid():
 
 
 def test_aisle_id_is_normalized_to_slug():
-    assert Aisle.model_validate({"id": "  Produce  ", "name": "Produce", "order": 1}).id == "produce"
+    assert (
+        Aisle.model_validate({"id": "  Produce  ", "name": "Produce", "order": 1}).id
+        == "produce"
+    )
 
 
 def test_aisle_id_invalid_slug_is_rejected():

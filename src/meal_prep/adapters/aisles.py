@@ -11,7 +11,11 @@ def load_aisles(path: Path | str = Path("data/aisles.yaml")) -> list[Aisle]:
     file_path = Path(path)
     data = read_yaml(file_path, what="Aisles configuration")
     if not isinstance(data, dict):
-        raise ValueError(f"Invalid YAML structure in {file_path}: expected dictionary root")
+        raise ValueError(
+            f"Invalid YAML structure in {file_path}: expected dictionary root"
+        )
     if not isinstance(data.get("aisles"), list):
-        raise ValueError(f"Invalid YAML structure in {file_path}: expected 'aisles' list")
+        raise ValueError(
+            f"Invalid YAML structure in {file_path}: expected 'aisles' list"
+        )
     return [Aisle.model_validate(item) for item in data["aisles"]]

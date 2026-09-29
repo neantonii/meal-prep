@@ -18,4 +18,3 @@ class Aisle(BaseModel):
     @classmethod
     def validate_id(cls, v: str) -> str:
         return normalize_slug(v, field="Aisle id")
-

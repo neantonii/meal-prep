@@ -68,14 +68,20 @@ def test_load_ingredients_file_rejects_aisle_stem_mismatch(tmp_path):
 
 
 def test_load_all_ingredients_valid(tmp_path):
-    (tmp_path / "dairy.yaml").write_text(_ingredient_yaml(aisle="dairy", id_="butter"), encoding="utf-8")
-    (tmp_path / "meat.yaml").write_text(_ingredient_yaml(aisle="meat", id_="chicken"), encoding="utf-8")
+    (tmp_path / "dairy.yaml").write_text(
+        _ingredient_yaml(aisle="dairy", id_="butter"), encoding="utf-8"
+    )
+    (tmp_path / "meat.yaml").write_text(
+        _ingredient_yaml(aisle="meat", id_="chicken"), encoding="utf-8"
+    )
     catalog = load_all_ingredients(tmp_path)
     assert set(catalog) == {"butter", "chicken"}
 
 
 def test_load_all_ingredients_ignores_non_yaml(tmp_path):
-    (tmp_path / "dairy.yaml").write_text(_ingredient_yaml(aisle="dairy", id_="butter"), encoding="utf-8")
+    (tmp_path / "dairy.yaml").write_text(
+        _ingredient_yaml(aisle="dairy", id_="butter"), encoding="utf-8"
+    )
     (tmp_path / "notes.txt").write_text("ignore me", encoding="utf-8")
     catalog = load_all_ingredients(tmp_path)
     assert set(catalog) == {"butter"}
@@ -92,7 +98,11 @@ def test_load_all_ingredients_missing_directory():
 
 
 def test_load_all_ingredients_rejects_duplicate_id_across_files(tmp_path):
-    (tmp_path / "dairy.yaml").write_text(_ingredient_yaml(aisle="dairy", id_="butter"), encoding="utf-8")
-    (tmp_path / "pantry.yaml").write_text(_ingredient_yaml(aisle="pantry", id_="butter"), encoding="utf-8")
+    (tmp_path / "dairy.yaml").write_text(
+        _ingredient_yaml(aisle="dairy", id_="butter"), encoding="utf-8"
+    )
+    (tmp_path / "pantry.yaml").write_text(
+        _ingredient_yaml(aisle="pantry", id_="butter"), encoding="utf-8"
+    )
     with pytest.raises(ValueError, match="Duplicate ingredient ID 'butter'"):
         load_all_ingredients(tmp_path)

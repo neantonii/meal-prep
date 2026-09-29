@@ -7,16 +7,16 @@ validated in place but deliberately not surfaced as records.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from meal_prep.engines.cooklang import (
     CooklangCookware,
     CooklangIngredient,
     CooklangMention,
-    CooklangDocument,
     parse_cooklang,
 )
-
 
 # ---------------------------------------------------------------------------
 # happy paths — ingredients
@@ -25,7 +25,9 @@ from meal_prep.engines.cooklang import (
 
 def test_parse_single_ingredient():
     doc = parse_cooklang("Add @salt{1%tsp} to taste")
-    assert doc.ingredients == (CooklangIngredient(name="salt", quantity=1.0, unit="tsp"),)
+    assert doc.ingredients == (
+        CooklangIngredient(name="salt", quantity=1.0, unit="tsp"),
+    )
     assert doc.cookware == ()
 
 
@@ -97,7 +99,9 @@ def test_unnamed_timer_is_validated():
     assert doc.cookware == ()
 
 
-@pytest.mark.parametrize("unit", ["s", "sec", "seconds", "min", "mins", "minute", "hr", "hours"])
+@pytest.mark.parametrize(
+    "unit", ["s", "sec", "seconds", "min", "mins", "minute", "hr", "hours"]
+)
 def test_timer_accepts_all_registered_time_units(unit):
     parse_cooklang(f"~rest{{5%{unit}}}")
 
@@ -162,12 +166,12 @@ def test_ingredient_non_numeric_quantity_is_rejected():
 
 
 def test_ingredient_zero_quantity_is_rejected():
-    with pytest.raises(ValueError, match="must be positive, got 0.0"):
+    with pytest.raises(ValueError, match=re.escape("must be positive, got 0.0")):
         parse_cooklang("@salt{0%tsp}")
 
 
 def test_ingredient_negative_quantity_is_rejected():
-    with pytest.raises(ValueError, match="must be positive, got -1.0"):
+    with pytest.raises(ValueError, match=re.escape("must be positive, got -1.0")):
         parse_cooklang("@salt{-1%tsp}")
 
 
@@ -182,12 +186,12 @@ def test_timer_non_numeric_duration_is_rejected():
 
 
 def test_timer_zero_duration_is_rejected():
-    with pytest.raises(ValueError, match="must be positive, got 0.0"):
+    with pytest.raises(ValueError, match=re.escape("must be positive, got 0.0")):
         parse_cooklang("~rest{0%min}")
 
 
 def test_timer_negative_duration_is_rejected():
-    with pytest.raises(ValueError, match="must be positive, got -5.0"):
+    with pytest.raises(ValueError, match=re.escape("must be positive, got -5.0")):
         parse_cooklang("~rest{-5%min}")
 
 

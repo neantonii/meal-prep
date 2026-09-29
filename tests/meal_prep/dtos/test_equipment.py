@@ -13,7 +13,9 @@ from meal_prep.dtos.equipment import EquipmentItem
 
 
 def test_equipment_valid():
-    item = EquipmentItem.model_validate({"id": "air-fryer", "name": "Air Fryer", "aliases": ["fryer"]})
+    item = EquipmentItem.model_validate(
+        {"id": "air-fryer", "name": "Air Fryer", "aliases": ["fryer"]}
+    )
     assert item.id == "air-fryer"
     assert item.name == "Air Fryer"
     assert item.aliases == ["fryer"]
@@ -25,7 +27,10 @@ def test_equipment_id_is_normalized_to_slug():
 
 
 def test_equipment_aliases_default_to_empty_list():
-    assert EquipmentItem.model_validate({"id": "air-fryer", "name": "Air Fryer"}).aliases == []
+    assert (
+        EquipmentItem.model_validate({"id": "air-fryer", "name": "Air Fryer"}).aliases
+        == []
+    )
 
 
 def test_equipment_id_invalid_slug_is_rejected():
