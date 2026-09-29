@@ -1,7 +1,7 @@
 """Enriched recipe value — the frozen, fully-resolved form of a recipe.
 
-A ``Recipe`` here is *not* the authored document (that is the DTO of the same
-name in ``meal_prep.dtos.recipe``); it is computed once by
+A ``Recipe`` here is *not* the authored document (that is the ``RecipeDTO`` in
+``meal_prep.dtos.recipe``); it is computed once by
 ``meal_prep.services.recipes.prepare_recipe`` and never constructed from a file
 directly. It carries the resolved, gram-based ingredient breakdown and the
 pre-computed batch/per-serving aggregates a consumer needs, with no hidden

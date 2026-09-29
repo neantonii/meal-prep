@@ -60,7 +60,7 @@ class RecipeCookwareRef(BaseModel):
     id: str = Field(..., description="Equipment identifier or canonical name")
 
 
-class Recipe(BaseModel):
+class RecipeDTO(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     id: str

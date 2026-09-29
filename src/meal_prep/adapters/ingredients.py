@@ -3,10 +3,10 @@
 from pathlib import Path
 
 from meal_prep.adapters._yaml import read_yaml
-from meal_prep.dtos.ingredient import Ingredient
+from meal_prep.dtos.ingredient import IngredientDTO
 
 
-def load_ingredients_file(path: Path | str) -> list[Ingredient]:
+def load_ingredients_file(path: Path | str) -> list[IngredientDTO]:
     """Load and validate all ingredients from an aisle YAML file."""
     file_path = Path(path)
     data = read_yaml(file_path, what="Ingredients")
@@ -17,7 +17,7 @@ def load_ingredients_file(path: Path | str) -> list[Ingredient]:
     expected_aisle = file_path.stem
     ingredients = []
     for item_data in data:
-        ingredient = Ingredient.model_validate(item_data)
+        ingredient = IngredientDTO.model_validate(item_data)
         if ingredient.aisle != expected_aisle:
             raise ValueError(
                 f"Ingredient '{ingredient.id}' declares aisle '{ingredient.aisle}', "
@@ -28,13 +28,13 @@ def load_ingredients_file(path: Path | str) -> list[Ingredient]:
     return ingredients
 
 
-def load_all_ingredients(dir_path: Path | str = Path("data/ingredients")) -> dict[str, Ingredient]:
+def load_all_ingredients(dir_path: Path | str = Path("data/ingredients")) -> dict[str, IngredientDTO]:
     """Load all ingredients across all aisle YAML files and ensure global ID uniqueness."""
     directory = Path(dir_path)
     if not directory.exists() or not directory.is_dir():
         raise FileNotFoundError(f"Ingredients directory not found: {directory}")
 
-    all_ingredients: dict[str, Ingredient] = {}
+    all_ingredients: dict[str, IngredientDTO] = {}
     for yaml_file in sorted(directory.glob("*.yaml")):
         items = load_ingredients_file(yaml_file)
         for item in items:

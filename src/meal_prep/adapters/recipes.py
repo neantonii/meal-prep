@@ -10,7 +10,7 @@ from typing import Any
 import yaml
 
 from meal_prep.dtos.recipe import (
-    Recipe,
+    RecipeDTO,
     RecipeCookwareRef,
     RecipeFrontmatter,
     RecipeIngredientMention,
@@ -63,7 +63,7 @@ def split_recipe_file(content: str) -> tuple[dict[str, Any], str]:
     return raw_frontmatter, instructions
 
 
-def load_recipe_file(path: Path | str) -> Recipe:
+def load_recipe_file(path: Path | str) -> RecipeDTO:
     """Load and parse a .cook recipe file into its authored DTO.
 
     Performs only deserialization and shape validation (frontmatter model,
@@ -103,7 +103,7 @@ def load_recipe_file(path: Path | str) -> Recipe:
     if not ingredients:
         raise ValueError(f"Recipe '{frontmatter.id}' has no ingredients declared in instructions body.")
 
-    return Recipe(
+    return RecipeDTO(
         id=frontmatter.id,
         title=frontmatter.title,
         category=frontmatter.category,
@@ -117,13 +117,13 @@ def load_recipe_file(path: Path | str) -> Recipe:
     )
 
 
-def load_all_recipes(recipes_dir: Path | str = Path("recipes")) -> dict[str, Recipe]:
+def load_all_recipes(recipes_dir: Path | str = Path("recipes")) -> dict[str, RecipeDTO]:
     """Load and validate all .cook recipe files across all category directories."""
     directory = Path(recipes_dir)
     if not directory.exists() or not directory.is_dir():
         raise FileNotFoundError(f"Recipes directory not found: {directory}")
 
-    recipes: dict[str, Recipe] = {}
+    recipes: dict[str, RecipeDTO] = {}
     for cook_file in sorted(directory.rglob("*.cook")):
         recipe = load_recipe_file(cook_file)
         if recipe.id in recipes:

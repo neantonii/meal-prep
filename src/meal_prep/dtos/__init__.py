@@ -10,13 +10,13 @@ from meal_prep.dtos.aisle import Aisle
 from meal_prep.dtos.equipment import EquipmentItem
 from meal_prep.enums import StorageType, RecipeCategory
 from meal_prep.dtos.ingredient import (
-    Ingredient,
+    IngredientDTO,
     ReferenceInfo,
-    MacrosInfo,
+    MacrosInfoDTO,
     UnitConversion,
 )
 from meal_prep.dtos.recipe import (
-    Recipe,
+    RecipeDTO,
     RecipeFrontmatter,
     RecipeYield,
     RecipeStorage,
@@ -31,11 +31,11 @@ __all__ = [
     "EquipmentItem",
     "StorageType",
     "RecipeCategory",
-    "Ingredient",
+    "IngredientDTO",
     "ReferenceInfo",
-    "MacrosInfo",
+    "MacrosInfoDTO",
     "UnitConversion",
-    "Recipe",
+    "RecipeDTO",
     "RecipeFrontmatter",
     "RecipeYield",
     "RecipeStorage",

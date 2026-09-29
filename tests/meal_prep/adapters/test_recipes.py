@@ -15,7 +15,7 @@ from meal_prep.adapters.recipes import (
     load_recipe_file,
     split_recipe_file,
 )
-from meal_prep.dtos.recipe import Recipe
+from meal_prep.dtos.recipe import RecipeDTO
 
 
 def _cook(
@@ -87,7 +87,7 @@ def test_split_recipe_file_rejects_invalid_frontmatter_yaml():
 def test_load_recipe_file_valid(tmp_path):
     path = _write_file(tmp_path, "modular_protein/pan-fried-ground-turkey.cook", _cook())
     recipe = load_recipe_file(path)
-    assert isinstance(recipe, Recipe)
+    assert isinstance(recipe, RecipeDTO)
     assert recipe.id == "pan-fried-ground-turkey"
     assert recipe.ingredients[0].id == "turkey"
     assert recipe.source_path == path

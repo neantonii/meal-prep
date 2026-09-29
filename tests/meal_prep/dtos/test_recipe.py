@@ -13,7 +13,7 @@ import pytest
 from pydantic import ValidationError
 
 from meal_prep.dtos.recipe import (
-    Recipe,
+    RecipeDTO,
     RecipeCookwareRef,
     RecipeFrontmatter,
     RecipeIngredientMention,
@@ -108,12 +108,12 @@ def test_recipe_cookware_ref_valid():
 
 
 # ---------------------------------------------------------------------------
-# Recipe — no custom validation (happy path only)
+# RecipeDTO — no custom validation (happy path only)
 # ---------------------------------------------------------------------------
 
 
 def test_recipe_valid():
-    recipe = Recipe.model_validate(
+    recipe = RecipeDTO.model_validate(
         {
             "id": "grilled-chicken-rice",
             "title": "Grilled Chicken & Rice",

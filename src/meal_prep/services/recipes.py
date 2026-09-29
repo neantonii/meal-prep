@@ -22,7 +22,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from types import MappingProxyType
 
-from meal_prep.dtos.recipe import Recipe as RecipeDTO
+from meal_prep.dtos.recipe import RecipeDTO
 from meal_prep.dtos.equipment import EquipmentItem
 from meal_prep.engines.conversion_graph import ConversionError
 from meal_prep.models.ingredient import Ingredient

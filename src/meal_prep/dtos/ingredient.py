@@ -9,7 +9,7 @@ class ReferenceInfo(BaseModel):
     price: float = Field(..., gt=0, description="Retail purchase price in CAD")
 
 
-class MacrosInfo(BaseModel):
+class MacrosInfoDTO(BaseModel):
     """Authored nutrition values, expressed *per* a serving basis.
 
     The nutrients are not necessarily per 100g: Canadian labels usually print
@@ -57,13 +57,13 @@ class UnitConversion(BaseModel):
         return self
 
 
-class Ingredient(BaseModel):
+class IngredientDTO(BaseModel):
     """Ingredient DTO — the authored, validated ingredient document.
 
     Decodes ``data/ingredients/<aisle>.yaml`` and carries raw authored values.
     The enriched ``Ingredient`` (in ``meal_prep.models``) is computed later by a
-    service (``prepare_ingredient``). The two share a name and are distinguished
-    by import path, not by suffix or underscore.
+    service (``prepare_ingredient``). The ``DTO`` suffix distinguishes this
+    authored form from the enriched model of the same concept.
     """
     id: str = Field(..., description="Canonical unique slug, e.g. 'boneless-chicken-breast'")
     name: str = Field(
@@ -83,7 +83,7 @@ class Ingredient(BaseModel):
     shelf_life_days: int = Field(..., gt=0, description="Mandatory shelf life in days under this storage mode")
 
     reference: ReferenceInfo
-    macros: MacrosInfo
+    macros: MacrosInfoDTO
     custom_units: dict[str, list[str]] = Field(
         default_factory=dict,
         description="Explicitly registered non-standard units (canonical -> aliases), in the "

@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from meal_prep.dtos.recipe import Recipe as RecipeDTO
+from meal_prep.dtos.recipe import RecipeDTO
 from meal_prep.dtos.recipe import RecipeIngredientRef
 from meal_prep.library import MealPrepLibrary
 from meal_prep.models.recipe import Recipe
