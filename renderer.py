@@ -14,6 +14,7 @@ A ``Recipe`` is fully self-contained (it carries ``equipment_by_id``), so
 
 from __future__ import annotations
 
+import html
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -343,7 +344,7 @@ def _format_display_amount(quantity: float, unit: str) -> str:
     """
     if unit == "count":
         return f"{quantity:g}"
-    return f"{quantity:g} {unit}"
+    return f"{quantity:g} {html.escape(unit)}"
 
 
 def _format_step_text(
@@ -363,6 +364,11 @@ def _format_step_text(
     declared with an amount more than once (``repeated``): there the inline
     amount is needed to disambiguate the steps.
     """
+    # Escape the authored prose up front so surrounding text (and any embedded
+    # ``&``/``<``/``>``) is never emitted raw; the badge HTML injected below is
+    # generated and separately escaped. Cooklang tokens use only ``@ # ~ { } %``
+    # and word characters, so escaping does not disturb the patterns.
+    text = html.escape(text)
 
     def replace_ingredient(match) -> str:
         if match.group(1):
@@ -377,15 +383,15 @@ def _format_step_text(
             else:
                 label = step_name
             return (
-                f'<span class="badge badge-ingredient" title="Ingredient: {full_name}">'
-                f'{label}</span>'
+                f'<span class="badge badge-ingredient" title="Ingredient: {html.escape(full_name)}">'
+                f'{html.escape(label)}</span>'
             )
         raw_id = match.group(4).strip().lower()
         step_name = ingredient_step_names.get(raw_id, raw_id)
         full_name = ingredient_names.get(raw_id, raw_id)
         return (
-            f'<span class="badge badge-ingredient" title="Ingredient: {full_name}">'
-            f'{step_name}</span>'
+            f'<span class="badge badge-ingredient" title="Ingredient: {html.escape(full_name)}">'
+            f'{html.escape(step_name)}</span>'
         )
 
     formatted = INGREDIENT_PATTERN.sub(replace_ingredient, text)
@@ -393,7 +399,7 @@ def _format_step_text(
     def replace_cookware(match) -> str:
         raw_id = (match.group(1) or match.group(2)).strip().lower()
         name = equipment_by_id.get(raw_id, raw_id.replace("-", " ").title())
-        return f'<span class="badge badge-cookware" title="Equipment: {name}">{name}</span>'
+        return f'<span class="badge badge-cookware" title="Equipment: {html.escape(name)}">{html.escape(name)}</span>'
 
     formatted = COOKWARE_PATTERN.sub(replace_cookware, formatted)
 
@@ -404,7 +410,7 @@ def _format_step_text(
         label = f"{duration} {unit}"
         if name:
             label = f"{label} ({name.replace('-', ' ')})"
-        return f'<span class="badge badge-timer" title="Timer: {label}">⏱️ {label}</span>'
+        return f'<span class="badge badge-timer" title="Timer: {html.escape(label)}">⏱️ {html.escape(label)}</span>'
 
     formatted = TIMER_PATTERN.sub(replace_timer, formatted)
 
@@ -470,7 +476,7 @@ def render_recipe_card(recipe: Recipe) -> str:
             f'                <span class="checkmark"></span>\n'
             f'                <span class="ingredient-text">\n'
             f'                    <span class="ing-qty">{_format_display_amount(item.quantity, item.unit)}</span>\n'
-            f'                    <span class="ing-name">{item.name}</span>\n'
+            f'                    <span class="ing-name">{html.escape(item.name)}</span>\n'
             f'                </span>\n'
             f'            </label>\n'
             f'            <span class="ing-meta">{item.grams:.1f}g · ${item.cost:.2f} · {item.macros.calories_kcal:.0f} kcal</span>\n'
@@ -479,7 +485,7 @@ def render_recipe_card(recipe: Recipe) -> str:
     ingredients_html = "\n\n".join(ingredient_rows)
 
     equipment_badges = " ".join(
-        f'<span class="badge badge-cookware">{name}</span>' for name in recipe.equipment
+        f'<span class="badge badge-cookware">{html.escape(name)}</span>' for name in recipe.equipment
     )
 
     steps_html = _format_step_text(
@@ -497,7 +503,7 @@ def render_recipe_card(recipe: Recipe) -> str:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{recipe.title} — Meal Prep Recipe</title>
+    <title>{html.escape(recipe.title)} — Meal Prep Recipe</title>
     <style>{_CSS}
     </style>
 </head>
@@ -505,8 +511,8 @@ def render_recipe_card(recipe: Recipe) -> str:
     <div class="container">
         <!-- Header -->
         <header class="recipe-header">
-            <span class="recipe-category">{cat_label}</span>
-            <h1 class="recipe-title">{recipe.title}</h1>
+            <span class="recipe-category">{html.escape(cat_label)}</span>
+            <h1 class="recipe-title">{html.escape(recipe.title)}</h1>
 
             <div class="stats-grid">
                 <div class="stat-box">

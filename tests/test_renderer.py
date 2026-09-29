@@ -99,3 +99,30 @@ def test_checklist_drops_count_unit():
     html = renderer.render_recipe_card(recipe)
     assert '<span class="ing-qty">4</span>' in html
     assert "<span class=\"ing-qty\">4 count</span>" not in html
+
+
+def test_interpolated_values_are_html_escaped():
+    from dataclasses import replace
+
+    recipe = _recipe()
+    recipe = replace(recipe, title='A <script>alert(1)</script> & "Title"')
+    ing = replace(
+        recipe.ingredients[0],
+        name='X & <Y> "Z"',
+        step_name='x & <y>',
+    )
+    recipe = replace(recipe, ingredients=(ing,), equipment=('Oven & <Rack>',))
+
+    html = renderer.render_recipe_card(recipe)
+
+    # Title is escaped in both <title> and <h1>.
+    assert '<title>A &lt;script&gt;alert(1)&lt;/script&gt; &amp; &quot;Title&quot; — Meal Prep Recipe</title>' in html
+    assert '<h1 class="recipe-title">A &lt;script&gt;alert(1)&lt;/script&gt; &amp; &quot;Title&quot;</h1>' in html
+    # Ingredient checklist name is escaped.
+    assert '<span class="ing-name">X &amp; &lt;Y&gt; &quot;Z&quot;</span>' in html
+    # Ingredient step badge (title + visible) is escaped.
+    assert 'title="Ingredient: X &amp; &lt;Y&gt; &quot;Z&quot;">x &amp; &lt;y&gt;' in html
+    # Equipment badge is escaped.
+    assert 'Oven &amp; &lt;Rack&gt;' in html
+    # No raw, unescaped dangerous fragment survives.
+    assert '<script>alert(1)</script>' not in html
