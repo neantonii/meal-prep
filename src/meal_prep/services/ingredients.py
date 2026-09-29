@@ -125,7 +125,7 @@ def prepare_ingredient(
     return Ingredient(
         id=dto.id,
         name=dto.name,
-        step_name=dto.step_name or dto.name,
+        step_name=dto.step_name,
         aisle_name=aisle.name,
         aisle_order=aisle.order,
         storage=dto.storage,

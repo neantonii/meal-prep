@@ -66,11 +66,17 @@ class Ingredient(BaseModel):
     by import path, not by suffix or underscore.
     """
     id: str = Field(..., description="Canonical unique slug, e.g. 'boneless-chicken-breast'")
-    name: str = Field(..., description="Generic staple display name")
-    step_name: str | None = Field(
-        None,
-        description="Optional prose-friendly noun for instruction text (e.g. 'chicken "
-        "breasts'). Falls back to `name` when absent.",
+    name: str = Field(
+        ...,
+        min_length=1,
+        description="Label-style noun for tables and lists (e.g. 'Boneless, Skinless "
+        "Chicken Breast') — capitalized, slightly more verbose.",
+    )
+    step_name: str = Field(
+        ...,
+        min_length=1,
+        description="Prose noun for flowing instruction text (e.g. 'chicken breast') — "
+        "lowercase and concise. Required; never derived from `name`.",
     )
     aisle: str = Field(..., description="Supermarket aisle slug")
     storage: StorageType = Field(..., description="Storage temperature classification")
@@ -93,22 +99,6 @@ class Ingredient(BaseModel):
     @classmethod
     def validate_id(cls, v: str) -> str:
         return normalize_slug(v, field="Ingredient id")
-
-    @field_validator("name")
-    @classmethod
-    def validate_name(cls, v: str) -> str:
-        # First character must be a capital letter.
-        if not (v and v[0].isalpha() and v[0].isupper()):
-            raise ValueError(f"Ingredient name must start with a capital letter, got '{v}'.")
-        return v
-
-    @field_validator("step_name")
-    @classmethod
-    def validate_step_name(cls, v: str | None) -> str | None:
-        # Optional; when present, first character must be a lowercase letter.
-        if v is not None and not (v and v[0].isalpha() and v[0].islower()):
-            raise ValueError(f"Ingredient step_name must start with a lowercase letter, got '{v}'.")
-        return v
 
     @field_validator("custom_units")
     @classmethod

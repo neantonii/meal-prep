@@ -92,17 +92,6 @@ def test_category_badge_uses_display_name_not_title_case():
     assert 'title="Starchy sides (rice, buckwheat, potatoes, pasta)"' in html
 
 
-def test_step_name_falls_back_to_full_name():
-    recipe = _recipe()
-    # Rebuild with step_name == full name (the service default when unset).
-    from dataclasses import replace
-
-    ing = replace(recipe.ingredients[0], step_name="Boneless, Skinless Chicken Breast")
-    recipe = replace(recipe, ingredients=(ing,))
-    html = renderer.render_recipe_card(recipe)
-    assert '>Boneless, Skinless Chicken Breast</span>' in html
-
-
 def test_step_badge_shows_amount_when_repeated():
     from dataclasses import replace
 

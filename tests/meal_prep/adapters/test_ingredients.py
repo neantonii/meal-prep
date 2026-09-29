@@ -17,6 +17,7 @@ def _ingredient_yaml(aisle: str = "dairy", id_: str = "unsalted-butter"):
     return (
         f"- id: {id_}\n"
         f"  name: Test\n"
+        f"  step_name: test\n"
         f"  aisle: {aisle}\n"
         "  storage: refrigerated\n"
         "  shelf_life_days: 90\n"
