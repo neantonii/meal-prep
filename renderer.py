@@ -645,7 +645,7 @@ def render_recipe_card(recipe: Recipe) -> str:
 
 
 def render_all_recipe_cards(
-    library: "MealPrepLibrary", output_dir: Path | str
+    library: MealPrepLibrary, output_dir: Path | str
 ) -> list[Path]:
     """Render every recipe in ``library`` into ``output_dir/<category>/<slug>.html``.
 

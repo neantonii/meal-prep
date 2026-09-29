@@ -40,11 +40,11 @@ class MacrosInfo:
     potassium_mg: float
 
     @classmethod
-    def zero(cls) -> "MacrosInfo":
+    def zero(cls) -> MacrosInfo:
         """The additive identity — every nutrient at 0.0."""
         return cls(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
-    def scaled(self, factor: float) -> "MacrosInfo":
+    def scaled(self, factor: float) -> MacrosInfo:
         """Multiply every nutrient by ``factor`` (raw, unrounded)."""
         return MacrosInfo(
             calories_kcal=self.calories_kcal * factor,
@@ -58,7 +58,7 @@ class MacrosInfo:
             potassium_mg=self.potassium_mg * factor,
         )
 
-    def added(self, other: "MacrosInfo") -> "MacrosInfo":
+    def added(self, other: MacrosInfo) -> MacrosInfo:
         """Element-wise sum with ``other`` (raw, unrounded)."""
         return MacrosInfo(
             calories_kcal=self.calories_kcal + other.calories_kcal,
