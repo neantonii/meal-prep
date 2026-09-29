@@ -37,8 +37,6 @@ report "All checks passed!". Commit only when green.
 ## Ruff config policy
 
 The `select` list is intentionally minimal (currently `E`, `W`, `F`, `I`,
-`UP`, `B`, `C4`, `SIM`, `TID252`).
-Candidate rule (`RUF`) is commented out in
-`pyproject.toml` and is being enabled after discussing/refactoring
-the category. Do not silently re-enable a commented-out rule — talk it through
-with the user first.
+`UP`, `B`, `C4`, `SIM`, `TID252`, `RUF`).
+All candidate rules from the original rollout are now enabled. Do not add new
+rules silently — talk it through with the user first.

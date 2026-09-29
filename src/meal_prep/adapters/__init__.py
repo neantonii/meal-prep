@@ -17,13 +17,13 @@ from meal_prep.adapters.recipes import (
 from meal_prep.adapters.units import load_units
 
 __all__ = [
-    "load_units",
-    "load_equipment",
     "load_aisles",
     "load_all_ingredients",
-    "load_ingredients_file",
     "load_all_recipes",
+    "load_equipment",
+    "load_ingredients_file",
     "load_recipe_file",
+    "load_units",
     "parse_cooklang_body",
     "split_recipe_file",
 ]

@@ -14,14 +14,14 @@ select = [
     "C4",     # flake8-comprehensions (cleaner comprehension patterns)
     "SIM",    # flake8-simplify (catches nested ifs, redundant branches)
     "TID252", # flake8-tidy-imports (bans relative parent imports like `from ..models`)
-    # --- candidate rules, to be enabled one-by-one after review ---
-    # "RUF",    # Ruff-specific invariants and optimizations
+    "RUF",    # Ruff-specific invariants and optimizations
 ]
 ignore = [
     "E501",   # line length is owned by `ruff format`
     "B008",   # allow `Field(...)` in Pydantic default args
     "UP042",  # keep `(str, Enum)` mixin for now — `StrEnum` changes str()/f-string
               # rendering of members; needs explicit review before migrating
+    "RUF002", # allow intentional typography (`×`, `—`, …) in prose docstrings
 ]
 
 [tool.ruff.lint.isort]

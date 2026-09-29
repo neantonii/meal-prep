@@ -145,7 +145,7 @@ def test_recipe_ingredient_is_frozen():
     )
     try:
         ing.grams = 5.0  # type: ignore[misc]
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         assert type(exc).__name__ == "FrozenInstanceError"
     else:
         raise AssertionError("RecipeIngredient is not frozen")
