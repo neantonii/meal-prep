@@ -12,7 +12,7 @@ from meal_prep.dtos.units import UnitsFileSchema
 from meal_prep.dtos.equipment import EquipmentItem
 from meal_prep.dtos.aisle import Aisle
 from meal_prep.models.ingredient import Ingredient
-from meal_prep.dtos.recipe import Recipe
+from meal_prep.dtos.recipe import RecipeDTO
 from meal_prep.adapters.units import load_units
 from meal_prep.adapters.equipment import load_equipment
 from meal_prep.adapters.aisles import load_aisles
@@ -28,7 +28,7 @@ class MealPrepLibrary:
     equipment: list[EquipmentItem]
     aisles: list[Aisle]
     catalog: dict[str, Ingredient]
-    recipes: dict[str, Recipe]
+    recipes: dict[str, RecipeDTO]
 
     @classmethod
     def load(
@@ -57,7 +57,7 @@ class MealPrepLibrary:
             {aisle.id: aisle for aisle in aisles},
         )
 
-        recipes: dict[str, Recipe] = {}
+        recipes: dict[str, RecipeDTO] = {}
         if recipes_path.exists():
             recipes = load_all_recipes(recipes_dir=recipes_path)
 

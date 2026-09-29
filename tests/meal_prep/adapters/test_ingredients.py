@@ -2,7 +2,7 @@
 
 Happy paths plus the adapter's own structure/consistency errors: non-list root,
 aisle/stem mismatch, missing directory, and duplicate ID across files. Per-item
-shape validation belongs to ``Ingredient`` and is not re-tested.
+shape validation belongs to ``IngredientDTO`` and is not re-tested.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from meal_prep.adapters.ingredients import load_all_ingredients, load_ingredients_file
-from meal_prep.dtos.ingredient import Ingredient
+from meal_prep.dtos.ingredient import IngredientDTO
 
 
 def _ingredient_yaml(aisle: str = "dairy", id_: str = "unsalted-butter"):
@@ -38,7 +38,7 @@ def test_load_ingredients_file_valid(tmp_path):
     path.write_text(_ingredient_yaml(), encoding="utf-8")
     items = load_ingredients_file(path)
     assert len(items) == 1
-    assert isinstance(items[0], Ingredient)
+    assert isinstance(items[0], IngredientDTO)
     assert items[0].id == "unsalted-butter"
     assert items[0].aisle == "dairy"
 

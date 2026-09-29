@@ -1,7 +1,7 @@
 """Enriched ingredient value — the frozen, fully-resolved form of an ingredient.
 
-An ``Ingredient`` here is *not* the authored document (that is the DTO of the
-same name in ``meal_prep.dtos.ingredient``); it is computed once by
+An ``Ingredient`` here is *not* the authored document (that is the
+``IngredientDTO`` in ``meal_prep.dtos.ingredient``); it is computed once by
 ``meal_prep.services.ingredients.prepare_ingredient`` and never constructed
 from a file directly. It carries identity fields, the flattened reference
 (brand/product/price), per-100g macros, and the ingredient's own frozen

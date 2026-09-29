@@ -24,7 +24,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from types import MappingProxyType
 
-from meal_prep.dtos.ingredient import Ingredient as IngredientDTO
+from meal_prep.dtos.ingredient import IngredientDTO
 from meal_prep.dtos.aisle import Aisle
 from meal_prep.dtos.units import UnitsFileSchema
 from meal_prep.engines.conversion_graph import ConversionEdge, build_graph

@@ -4,10 +4,10 @@ Happy paths plus our custom validation only. Pydantic's implicit field
 constraints (``gt``, ``min_length``, enum/type coercion) are not re-tested here.
 
 Our custom validation in this module:
-- ``Ingredient.validate_id`` -> ``normalize_slug``
-- ``MacrosInfo.clean_unit`` / ``UnitConversion.clean_units`` -> ``clean_token``
+- ``IngredientDTO.validate_id`` -> ``normalize_slug``
+- ``MacrosInfoDTO.clean_unit`` / ``UnitConversion.clean_units`` -> ``clean_token``
 - ``UnitConversion.validate_different_units`` -> reject self-conversion
-- ``Ingredient.validate_custom_units`` -> slug keys, cleaned aliases, dedup
+- ``IngredientDTO.validate_custom_units`` -> slug keys, cleaned aliases, dedup
 """
 
 from __future__ import annotations
@@ -16,8 +16,8 @@ import pytest
 from pydantic import ValidationError
 
 from meal_prep.dtos.ingredient import (
-    Ingredient,
-    MacrosInfo,
+    IngredientDTO,
+    MacrosInfoDTO,
     ReferenceInfo,
     UnitConversion,
 )
@@ -36,7 +36,7 @@ def test_reference_info_valid():
 
 
 # ---------------------------------------------------------------------------
-# MacrosInfo — clean_unit
+# MacrosInfoDTO — clean_unit
 # ---------------------------------------------------------------------------
 
 
@@ -55,7 +55,7 @@ def _macros(**overrides):
 
 
 def test_macros_valid_minimal():
-    m = MacrosInfo.model_validate(_macros())
+    m = MacrosInfoDTO.model_validate(_macros())
     assert m.unit == "g"
     assert m.amount == 100
     assert m.saturated_fat_g is None
@@ -63,7 +63,7 @@ def test_macros_valid_minimal():
 
 
 def test_macros_valid_with_optional_nutrients():
-    m = MacrosInfo.model_validate(
+    m = MacrosInfoDTO.model_validate(
         _macros(saturated_fat_g=1.0, sugars_g=2.0, sodium_mg=10.0, potassium_mg=20.0)
     )
     assert m.saturated_fat_g == 1.0
@@ -71,12 +71,12 @@ def test_macros_valid_with_optional_nutrients():
 
 
 def test_macros_unit_is_cleaned():
-    assert MacrosInfo.model_validate(_macros(unit="  G  ")).unit == "g"
+    assert MacrosInfoDTO.model_validate(_macros(unit="  G  ")).unit == "g"
 
 
 def test_macros_unit_whitespace_only_is_rejected():
     with pytest.raises(ValidationError, match="cannot be empty"):
-        MacrosInfo.model_validate(_macros(unit="   "))
+        MacrosInfoDTO.model_validate(_macros(unit="   "))
 
 
 # ---------------------------------------------------------------------------
@@ -114,7 +114,7 @@ def test_unit_conversion_same_unit_different_case_is_rejected():
 
 
 # ---------------------------------------------------------------------------
-# Ingredient — validate_id (normalize_slug)
+# IngredientDTO — validate_id (normalize_slug)
 # ---------------------------------------------------------------------------
 
 
@@ -143,7 +143,7 @@ def _ingredient(**overrides):
 
 
 def test_ingredient_valid():
-    ing = Ingredient.model_validate(_ingredient())
+    ing = IngredientDTO.model_validate(_ingredient())
     assert ing.id == "boneless-chicken-breast"
     assert ing.storage.value == "refrigerated"
     assert ing.macros.amount == 100
@@ -151,23 +151,23 @@ def test_ingredient_valid():
 
 
 def test_ingredient_id_is_normalized():
-    assert Ingredient.model_validate(_ingredient(id="  Boneless-Chicken-Breast  ")).id == (
+    assert IngredientDTO.model_validate(_ingredient(id="  Boneless-Chicken-Breast  ")).id == (
         "boneless-chicken-breast"
     )
 
 
 def test_ingredient_id_invalid_slug_is_rejected():
     with pytest.raises(ValidationError, match="kebab-case slug"):
-        Ingredient.model_validate(_ingredient(id="boneless_chicken"))
+        IngredientDTO.model_validate(_ingredient(id="boneless_chicken"))
 
 
 # ---------------------------------------------------------------------------
-# Ingredient — name / step_name (no casing policy)
+# IngredientDTO — name / step_name (no casing policy)
 # ---------------------------------------------------------------------------
 
 
 def test_name_is_preserved_as_authored():
-    assert Ingredient.model_validate(_ingredient(name="Boneless Chicken Breast")).name == (
+    assert IngredientDTO.model_validate(_ingredient(name="Boneless Chicken Breast")).name == (
         "Boneless Chicken Breast"
     )
 
@@ -177,30 +177,30 @@ def test_name_starting_lowercase_is_accepted():
     # may write any casing, and an authoring agent is expected to copy the style
     # of existing rows. The *semantic* distinction is enforced by requiring
     # `step_name`, not by validating its first letter.
-    assert Ingredient.model_validate(_ingredient(name="boneless chicken breast")).name == (
+    assert IngredientDTO.model_validate(_ingredient(name="boneless chicken breast")).name == (
         "boneless chicken breast"
     )
 
 
 def test_name_starting_with_digit_is_accepted():
-    assert Ingredient.model_validate(_ingredient(name="100% Pure Avocado Oil")).name == (
+    assert IngredientDTO.model_validate(_ingredient(name="100% Pure Avocado Oil")).name == (
         "100% Pure Avocado Oil"
     )
 
 
 def test_name_empty_is_rejected():
     with pytest.raises(ValidationError, match="at least 1 character"):
-        Ingredient.model_validate(_ingredient(name=""))
+        IngredientDTO.model_validate(_ingredient(name=""))
 
 
 def test_step_name_is_preserved_as_authored():
-    assert Ingredient.model_validate(_ingredient(step_name="chicken breast")).step_name == (
+    assert IngredientDTO.model_validate(_ingredient(step_name="chicken breast")).step_name == (
         "chicken breast"
     )
 
 
 def test_step_name_starting_uppercase_is_accepted():
-    assert Ingredient.model_validate(_ingredient(step_name="Chicken breast")).step_name == (
+    assert IngredientDTO.model_validate(_ingredient(step_name="Chicken breast")).step_name == (
         "Chicken breast"
     )
 
@@ -208,36 +208,36 @@ def test_step_name_starting_uppercase_is_accepted():
 def test_step_name_is_required():
     # step_name is non-negotiable: prose text must never silently reuse `name`.
     with pytest.raises(ValidationError, match="step_name"):
-        Ingredient.model_validate(_ingredient(step_name=None))
+        IngredientDTO.model_validate(_ingredient(step_name=None))
 
 
 def test_step_name_empty_is_rejected():
     with pytest.raises(ValidationError, match="at least 1 character"):
-        Ingredient.model_validate(_ingredient(step_name=""))
+        IngredientDTO.model_validate(_ingredient(step_name=""))
 
 
 # ---------------------------------------------------------------------------
-# Ingredient — validate_custom_units
+# IngredientDTO — validate_custom_units
 # ---------------------------------------------------------------------------
 
 
 def test_custom_units_normalizes_keys_and_aliases():
-    ing = Ingredient.model_validate(_ingredient(custom_units={"Scoop": ["Scoop", "Scoops"]}))
+    ing = IngredientDTO.model_validate(_ingredient(custom_units={"Scoop": ["Scoop", "Scoops"]}))
     assert ing.custom_units["scoop"] == ["scoop", "scoops"]
 
 
 def test_custom_units_does_not_insert_canonical_when_absent():
     # Aliases are stored exactly as authored; the canonical key is NOT
     # auto-inserted (mirrors the standard `allowed` map).
-    ing = Ingredient.model_validate(_ingredient(custom_units={"scoop": ["scoops"]}))
+    ing = IngredientDTO.model_validate(_ingredient(custom_units={"scoop": ["scoops"]}))
     assert ing.custom_units["scoop"] == ["scoops"]
 
 
 def test_custom_units_rejects_duplicate_alias():
     with pytest.raises(ValidationError, match="Duplicate alias"):
-        Ingredient.model_validate(_ingredient(custom_units={"scoop": ["scoops", "scoops"]}))
+        IngredientDTO.model_validate(_ingredient(custom_units={"scoop": ["scoops", "scoops"]}))
 
 
 def test_custom_units_rejects_invalid_key():
     with pytest.raises(ValidationError, match="kebab-case slug"):
-        Ingredient.model_validate(_ingredient(custom_units={"scoop_size": ["s"]}))
+        IngredientDTO.model_validate(_ingredient(custom_units={"scoop_size": ["s"]}))
