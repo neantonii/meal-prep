@@ -23,7 +23,7 @@ from meal_prep.engines.cooklang import (
     INGREDIENT_PATTERN,
     TIMER_PATTERN,
 )
-from meal_prep.models.recipe import Recipe
+from meal_prep.models.recipe import Recipe, RecipeIngredient
 
 if TYPE_CHECKING:
     from meal_prep.library import MealPrepLibrary
@@ -219,6 +219,25 @@ _CSS = """
         /* Checklist */
         .ingredient-list {
             list-style: none;
+        }
+
+        .aisle-group {
+            margin-bottom: 16px;
+        }
+
+        .aisle-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .aisle-title {
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+            padding: 6px 8px;
+            border-bottom: 1px solid rgba(51, 65, 85, 0.6);
+            margin-bottom: 6px;
         }
 
         .ingredient-item {
@@ -462,9 +481,30 @@ def _macro_items(macros) -> str:
     return "\n".join(items)
 
 
+def _ingredient_row(item) -> str:
+    """One checklist line, with storage/shelf-life detail on hover."""
+    title = (
+        f"title=\"{html.escape(item.storage.display_name)} · "
+        f"keeps {item.shelf_life_days} days\""
+    )
+    return (
+        f'<li class="ingredient-item" {title}>\n'
+        f'            <label class="ingredient-checkbox-label">\n'
+        f'                <input type="checkbox" class="ingredient-checkbox">\n'
+        f'                <span class="checkmark"></span>\n'
+        f'                <span class="ingredient-text">\n'
+        f'                    <span class="ing-qty">{_format_display_amount(item.quantity, item.unit)}</span>\n'
+        f'                    <span class="ing-name">{html.escape(item.name)}</span>\n'
+        f'                </span>\n'
+        f'            </label>\n'
+        f'            <span class="ing-meta">{item.grams:.1f}g · ${item.cost:.2f} · {item.macros.calories_kcal:.0f} kcal</span>\n'
+        f'        </li>'
+    )
+
+
 def render_recipe_card(recipe: Recipe) -> str:
     """Render one enriched recipe into a standalone HTML card."""
-    cat_label = recipe.category.value.replace("_", " ").title()
+    cat_label = recipe.category.display_name
     portion_g = recipe.portion_cooked_g
     serving_macros = recipe.per_serving_macros
     batch_macros = recipe.batch_macros
@@ -473,22 +513,22 @@ def render_recipe_card(recipe: Recipe) -> str:
     ingredient_step_names = {item.id: item.step_name for item in recipe.ingredients}
     ingredient_repeated = {item.id: item.repeated for item in recipe.ingredients}
 
-    ingredient_rows = []
+    # Group the checklist by aisle, ordered by supermarket walking order, and
+    # keep authored (first-appearance) order within each aisle.
+    by_aisle: dict[tuple[int, str], list[RecipeIngredient]] = {}
     for item in recipe.ingredients:
-        ingredient_rows.append(
-            f'<li class="ingredient-item">\n'
-            f'            <label class="ingredient-checkbox-label">\n'
-            f'                <input type="checkbox" class="ingredient-checkbox">\n'
-            f'                <span class="checkmark"></span>\n'
-            f'                <span class="ingredient-text">\n'
-            f'                    <span class="ing-qty">{_format_display_amount(item.quantity, item.unit)}</span>\n'
-            f'                    <span class="ing-name">{html.escape(item.name)}</span>\n'
-            f'                </span>\n'
-            f'            </label>\n'
-            f'            <span class="ing-meta">{item.grams:.1f}g · ${item.cost:.2f} · {item.macros.calories_kcal:.0f} kcal</span>\n'
-            f'        </li>'
+        by_aisle.setdefault((item.aisle_order, item.aisle_name), []).append(item)
+
+    aisle_blocks = []
+    for (_order, aisle_name), items in sorted(by_aisle.items(), key=lambda kv: kv[0][0]):
+        rows = "\n".join(_ingredient_row(item) for item in items)
+        aisle_blocks.append(
+            f'<div class="aisle-group">\n'
+            f'    <h3 class="aisle-title">{html.escape(aisle_name)}</h3>\n'
+            f'    <ul class="ingredient-list">\n{rows}\n    </ul>\n'
+            f'</div>'
         )
-    ingredients_html = "\n\n".join(ingredient_rows)
+    ingredients_html = "\n\n".join(aisle_blocks)
 
     equipment_badges = " ".join(
         f'<span class="badge badge-cookware">{html.escape(name)}</span>' for name in recipe.equipment
@@ -517,7 +557,7 @@ def render_recipe_card(recipe: Recipe) -> str:
     <div class="container">
         <!-- Header -->
         <header class="recipe-header">
-            <span class="recipe-category">{html.escape(cat_label)}</span>
+            <span class="recipe-category" title="{html.escape(recipe.category.description)}">{html.escape(cat_label)}</span>
             <h1 class="recipe-title">{html.escape(recipe.title)}</h1>
 
             <div class="stats-grid">

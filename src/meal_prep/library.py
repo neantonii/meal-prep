@@ -51,7 +51,11 @@ class MealPrepLibrary:
         units = load_units(data_path / "units.yaml")
         equipment = load_equipment(data_path / "equipment.yaml")
         aisles = load_aisles(data_path / "aisles.yaml")
-        catalog = prepare_catalog(load_all_ingredients(data_path / "ingredients"), units)
+        catalog = prepare_catalog(
+            load_all_ingredients(data_path / "ingredients"),
+            units,
+            {aisle.id: aisle for aisle in aisles},
+        )
 
         recipes: dict[str, Recipe] = {}
         if recipes_path.exists():
