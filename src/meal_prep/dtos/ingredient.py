@@ -117,7 +117,10 @@ class Ingredient(BaseModel):
 
         Custom units follow the same identifier convention as ids (kebab-case)
         and the same alias cleanup as standard units (case-fold + trim only).
-        No inference, no plural stripping, no magic.
+        Aliases are stored exactly as authored — the canonical key is *not*
+        auto-inserted, mirroring the standard `allowed` map, which also requires
+        the canonical to be listed explicitly. No inference, no plural
+        stripping, no magic.
         """
         cleaned: dict[str, list[str]] = {}
         for canonical, aliases in v.items():
@@ -130,8 +133,6 @@ class Ingredient(BaseModel):
                     raise ValueError(f"Duplicate alias '{alias}' for custom unit '{canonical}'")
                 seen.add(a)
                 cleaned_aliases.append(a)
-            if key not in seen:
-                cleaned_aliases.insert(0, key)
             cleaned[key] = cleaned_aliases
         return cleaned
 

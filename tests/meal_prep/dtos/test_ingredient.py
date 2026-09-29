@@ -214,18 +214,15 @@ def test_step_name_empty_is_rejected():
 
 
 def test_custom_units_normalizes_keys_and_aliases():
-    ing = Ingredient.model_validate(_ingredient(custom_units={"Scoop": ["Scoops"]}))
+    ing = Ingredient.model_validate(_ingredient(custom_units={"Scoop": ["Scoop", "Scoops"]}))
     assert ing.custom_units["scoop"] == ["scoop", "scoops"]
 
 
-def test_custom_units_inserts_canonical_when_absent():
+def test_custom_units_does_not_insert_canonical_when_absent():
+    # Aliases are stored exactly as authored; the canonical key is NOT
+    # auto-inserted (mirrors the standard `allowed` map).
     ing = Ingredient.model_validate(_ingredient(custom_units={"scoop": ["scoops"]}))
-    assert ing.custom_units["scoop"] == ["scoop", "scoops"]
-
-
-def test_custom_units_canonical_alias_is_deduplicated():
-    ing = Ingredient.model_validate(_ingredient(custom_units={"scoop": ["scoop", "scoops"]}))
-    assert ing.custom_units["scoop"] == ["scoop", "scoops"]
+    assert ing.custom_units["scoop"] == ["scoops"]
 
 
 def test_custom_units_rejects_duplicate_alias():
