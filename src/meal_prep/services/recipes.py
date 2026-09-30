@@ -113,9 +113,16 @@ def prepare_recipe(
                 "grams": 0.0,
             }
             merged[ref.id] = entry
-        entry["display_qty"] += ingredient.convert(
-            ref.quantity, canonical, entry["display_canonical"]
-        )
+        try:
+            entry["display_qty"] += ingredient.convert(
+                ref.quantity, canonical, entry["display_canonical"]
+            )
+        except ConversionError:
+            raise ValueError(
+                f"Recipe '{recipe.id}' references ingredient '{ref.id}' "
+                f"with unit '{unit}' that has no conversion to "
+                f"'{entry['display_canonical']}'."
+            ) from None
         entry["grams"] += grams
 
     # Validate amount-less mentions: every mention must be backed by a

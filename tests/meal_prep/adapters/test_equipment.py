@@ -27,14 +27,14 @@ def test_load_equipment_valid(tmp_path):
     path = _write(
         tmp_path,
         "equipment:\n"
-        "  - id: air-fryer\n    name: Air Fryer\n    aliases: [air fryer, airfryer]\n"
+        "  - id: air-fryer\n    name: Air Fryer\n    aliases: [air-fryer, airfryer]\n"
         "  - id: skillet\n    name: Skillet\n",
     )
     items = load_equipment(path)
     assert len(items) == 2
     assert isinstance(items[0], EquipmentItem)
     assert items[0].id == "air-fryer"
-    assert items[0].aliases == ["air fryer", "airfryer"]
+    assert items[0].aliases == ["air-fryer", "airfryer"]
     assert items[1].aliases == []
 
 

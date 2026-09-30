@@ -36,3 +36,10 @@ def test_equipment_aliases_default_to_empty_list():
 def test_equipment_id_invalid_slug_is_rejected():
     with pytest.raises(ValidationError, match="kebab-case slug"):
         EquipmentItem.model_validate({"id": "air_fryer", "name": "Air Fryer"})
+
+
+def test_equipment_alias_with_space_is_rejected():
+    with pytest.raises(ValidationError, match="kebab-case slug"):
+        EquipmentItem.model_validate(
+            {"id": "air-fryer", "name": "Air Fryer", "aliases": ["air fryer"]}
+        )

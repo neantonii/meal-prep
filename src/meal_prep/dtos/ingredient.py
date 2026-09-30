@@ -5,6 +5,8 @@ from meal_prep.enums import StorageType
 
 
 class ReferenceInfo(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     brand: str = Field(..., description="Brand name, e.g. Compliments")
     product: str = Field(..., description="Full commercial product name")
     price: float = Field(..., gt=0, description="Retail purchase price in CAD")
@@ -18,6 +20,8 @@ class MacrosInfoDTO(BaseModel):
     ``amount`` fields record that basis; enrichment scales the values to a
     per-100g standard using the conversion graph.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     unit: str = Field(
         ..., min_length=1, description="Serving basis unit, e.g. 'g' or 'cup'"
@@ -63,7 +67,7 @@ class MacrosInfoDTO(BaseModel):
 
 
 class UnitConversion(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
     from_unit: str = Field(..., alias="from", description="Source measurement unit")
     to_unit: str = Field(..., alias="to", description="Target measurement unit")
@@ -90,9 +94,11 @@ class IngredientDTO(BaseModel):
 
     Decodes ``data/ingredients/<aisle>.yaml`` and carries raw authored values.
     The enriched ``Ingredient`` (in ``meal_prep.models``) is computed later by a
-    service (``prepare_ingredient``). The ``DTO`` suffix distinguishes this
+    service (``prepare_ingredient``). The ``DTO``     suffix distinguishes this
     authored form from the enriched model of the same concept.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     id: str = Field(
         ..., description="Canonical unique slug, e.g. 'boneless-chicken-breast'"

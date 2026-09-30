@@ -5,14 +5,12 @@ equipment:
   - id: air-fryer
     name: Air Fryer
     aliases:
-      - air fryer
       - air-fryer
       - airfryer
 
   - id: rice-cooker
     name: Rice Cooker
     aliases:
-      - rice cooker
       - rice-cooker
 
   - id: skillet
@@ -20,36 +18,36 @@ equipment:
     aliases:
       - skillet
       - pan
-      - frying pan
-      - non-stick pan
-      - nonstick pan
-      - large skillet
-      - large non-stick skillet
+      - frying-pan
+      - non-stick-pan
+      - nonstick-pan
+      - large-skillet
+      - large-non-stick-skillet
 
   - id: sheet-pan
     name: Sheet Pan
     aliases:
-      - sheet pan
-      - baking sheet
-      - baking tray
-      - cookie sheet
+      - sheet-pan
+      - baking-sheet
+      - baking-tray
+      - cookie-sheet
 
   - id: large-pot
     name: Large Pot
     aliases:
-      - large pot
-      - stock pot
-      - soup pot
-      - big pot
+      - large-pot
+      - stock-pot
+      - soup-pot
+      - big-pot
       - pot
 
   - id: saucepan
     name: Medium Saucepan
     aliases:
       - saucepan
-      - medium saucepan
-      - small pot
-      - medium pot
+      - medium-saucepan
+      - small-pot
+      - medium-pot
 
   - id: oven
     name: Oven
@@ -61,21 +59,21 @@ equipment:
     name: Blender / Food Processor
     aliases:
       - blender
-      - food processor
-      - immersion blender
-      - bullet blender
+      - food-processor
+      - immersion-blender
+      - bullet-blender
 
   - id: meat-thermometer
     name: Meat Thermometer
     aliases:
-      - meat thermometer
-      - digital thermometer
-      - food thermometer
-      - instant read thermometer
+      - meat-thermometer
+      - digital-thermometer
+      - food-thermometer
+      - instant-read-thermometer
 
   - id: wire-rack
     name: Wire Rack
     aliases:
-      - wire rack
-      - cooling rack
-      - roasting rack
+      - wire-rack
+      - cooling-rack
+      - roasting-rack

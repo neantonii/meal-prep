@@ -133,3 +133,44 @@ def test_recipe_valid():
     assert len(recipe.cookware) == 1
     assert recipe.instructions == "Season and cook."
     assert recipe.source_path is None
+
+
+# ---------------------------------------------------------------------------
+# strict boundaries — extra keys rejected, ref ids must be slugs
+# ---------------------------------------------------------------------------
+
+
+def test_recipe_yield_rejects_extra_keys():
+    with pytest.raises(ValidationError, match="Extra"):
+        RecipeYield.model_validate({"servings": 4, "cooked_g": 1600, "serving": 4})
+
+
+def test_recipe_frontmatter_rejects_extra_keys():
+    with pytest.raises(ValidationError, match="Extra"):
+        RecipeFrontmatter.model_validate(
+            {
+                "id": "grilled-chicken",
+                "title": "Grilled Chicken",
+                "category": "modular_protein",
+                "yield": {"servings": 4, "cooked_g": 1600},
+                "storage": {"fridge_days": 4, "freezer_friendly": True},
+                "serving": 4,
+            }
+        )
+
+
+def test_recipe_ingredient_ref_rejects_space_name():
+    with pytest.raises(ValidationError, match="kebab-case slug"):
+        RecipeIngredientRef.model_validate(
+            {"id": "olive oil", "quantity": 1, "unit": "tbsp"}
+        )
+
+
+def test_recipe_ingredient_mention_rejects_space_name():
+    with pytest.raises(ValidationError, match="kebab-case slug"):
+        RecipeIngredientMention.model_validate({"id": "chicken breast"})
+
+
+def test_recipe_cookware_ref_rejects_space_token():
+    with pytest.raises(ValidationError, match="kebab-case slug"):
+        RecipeCookwareRef.model_validate({"id": "air fryer"})

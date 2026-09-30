@@ -7,6 +7,9 @@ are not re-tested here.
 
 from __future__ import annotations
 
+import pytest
+from pydantic import ValidationError
+
 from meal_prep.dtos.units import ConversionStep, DimensionGroup, UnitsFileSchema
 
 
@@ -57,3 +60,31 @@ def test_units_file_schema_count_defaults_to_reserved_node():
         }
     )
     assert schema.count.base == "count"
+
+
+# ---------------------------------------------------------------------------
+# strict boundaries — extra keys rejected, tokens normalized
+# ---------------------------------------------------------------------------
+
+
+def test_conversion_step_rejects_extra_keys():
+    with pytest.raises(ValidationError, match="Extra"):
+        ConversionStep.model_validate({"amount": 15, "unit": "ml", "units": "ml"})
+
+
+def test_conversion_step_rejects_non_positive_amount():
+    with pytest.raises(ValidationError):
+        ConversionStep.model_validate({"amount": 0, "unit": "ml"})
+
+
+def test_dimension_group_normalizes_allowed_tokens():
+    group = DimensionGroup.model_validate(
+        {"base": "G", "allowed": {"KG": ["Kilogram"]}}
+    )
+    assert group.base == "g"
+    assert group.allowed == {"kg": ["kilogram"]}
+
+
+def test_dimension_group_rejects_duplicate_alias():
+    with pytest.raises(ValidationError, match="Duplicate alias"):
+        DimensionGroup.model_validate({"base": "g", "allowed": {"g": ["gram", "gram"]}})
