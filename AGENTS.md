@@ -28,6 +28,14 @@
   DTO and model of the same concept are *different forms*; see
   `src/meal_prep/dtos/README.md`.
 
+## Version control
+
+- Never push directly to `master`. All work goes on a feature branch +
+  pull request (`git checkout -b <name>`, push, `gh pr create`).
+- Before raising a PR, squash local iterations into meaningful chunks —
+  one commit per logical change. Only keep genuinely separate commits;
+  never one commit per edit.
+
 ## Required workflow after any code edit
 
 Run, in this order, and fix until clean:
