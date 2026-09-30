@@ -1,8 +1,7 @@
 """Week-plan solver — builds the model and maps the answer to ``WeekPlan``.
 
 Solves the cheapest 7-day x 3-meal plan with CP-SAT: breakfasts come from
-``BREAKFAST``-category recipes, lunch/dinner from any recipe. Model rules
-live in ``meal_prep.planner.constraints`` (one function per rule).
+``BREAKFAST``-category recipes, lunch/dinner from any recipe.
 CP-SAT works on integers, so portion costs are scaled to cents first.
 """
 
@@ -15,7 +14,6 @@ from ortools.sat.python import cp_model
 
 from meal_prep.enums import RecipeCategory
 from meal_prep.models.recipe import Recipe
-from meal_prep.planner.constraints import exactly_one_per_meal
 from meal_prep.planner.plan import (
     DAY_NAMES,
     DailyPlannedMeal,
@@ -69,18 +67,10 @@ def plan_week(recipes: Sequence[Recipe]) -> WeekPlan:
             _PlannedDay(day=day, breakfast=breakfast, lunch=lunch, dinner=dinner)
         )
 
-    exactly_one_per_meal(
-        model,
-        [
-            planned_meal.is_selected
-            for planned_day in week
-            for planned_meal in (
-                planned_day.breakfast,
-                planned_day.lunch,
-                planned_day.dinner,
-            )
-        ],
-    )
+    for planned_day in week:
+        model.add_exactly_one(planned_day.breakfast.is_selected)
+        model.add_exactly_one(planned_day.lunch.is_selected)
+        model.add_exactly_one(planned_day.dinner.is_selected)
 
     model.minimize(
         sum(

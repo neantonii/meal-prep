@@ -29,12 +29,15 @@ def _macros(*, cal: float = 100.0, protein: float = 10.0) -> MacrosInfo:
 
 
 def _recipe(
-    recipe_id: str, *, cost: float, category: RecipeCategory | None = None
+    recipe_id: str,
+    *,
+    cost: float,
+    category: RecipeCategory = RecipeCategory.MODULAR_PROTEIN,
 ) -> Recipe:
     return Recipe(
         id=recipe_id,
         title=f"Recipe {recipe_id}",
-        category=category or RecipeCategory.MODULAR_PROTEIN,
+        category=category,
         servings=1.0,
         cooked_g=200.0,
         fridge_days=4,
