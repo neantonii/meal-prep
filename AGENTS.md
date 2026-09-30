@@ -2,13 +2,13 @@
 
 ## Tooling
 
-- **Python**: `python` (3.13). Package is `src`-layout; tests bootstrap via
-  `conftest.py` (no install needed — `import meal_prep` resolves from `src/`).
+- **Python**: `python` (3.13). Package is `src`-layout, installed editable
+  (`pip install -e .`); deps declared in `pyproject.toml` (`pydantic`, `pyyaml`).
 - **Lint/format**: [ruff](https://docs.astral.sh/ruff/) — installed in the
   environment, config in `pyproject.toml`. Run via `python -m ruff ...` (the
   `ruff` binary may not be on `PATH`).
 - **Types**: [mypy](https://mypy.readthedocs.io/) in `strict` mode over `src/`
-  only (`renderer.py`, `tests/`, `conftest.py` excluded — `renderer.py` is
+  only (`renderer.py`, `tests/` excluded — `renderer.py` is
   slated to move into `src/`). Config in `pyproject.toml`. Run via
   `python -m mypy` (reads `files = "src"` from config, no path arg needed).
 - **Tests**: `python -m pytest -q`.
