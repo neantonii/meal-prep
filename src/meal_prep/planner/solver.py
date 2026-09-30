@@ -1,7 +1,8 @@
-"""Week-plan solver — the only module that imports OR-Tools.
+"""Week-plan solver — builds the model and maps the answer to ``WeekPlan``.
 
-Solves the cheapest 7-day x 3-meal plan (one recipe per meal, any recipe
-allowed) with CP-SAT and maps the answer to the frozen ``WeekPlan``.
+Solves the cheapest 7-day x 3-meal plan with CP-SAT: breakfasts come from
+``BREAKFAST``-category recipes, lunch/dinner from any recipe. Model rules
+live in ``meal_prep.planner.constraints`` (one function per rule).
 CP-SAT works on integers, so portion costs are scaled to cents first.
 """
 
@@ -12,7 +13,9 @@ from dataclasses import dataclass
 
 from ortools.sat.python import cp_model
 
+from meal_prep.enums import RecipeCategory
 from meal_prep.models.recipe import Recipe
+from meal_prep.planner.constraints import exactly_one_per_meal
 from meal_prep.planner.plan import (
     DAY_NAMES,
     DailyPlannedMeal,
@@ -53,20 +56,31 @@ def plan_week(recipes: Sequence[Recipe]) -> WeekPlan:
     meals = list(recipes)
     if not meals:
         raise ValueError("plan_week needs at least one recipe.")
+    breakfasts = [r for r in meals if r.category is RecipeCategory.BREAKFAST]
+    if not breakfasts:
+        raise ValueError("plan_week needs at least one breakfast recipe.")
     model = cp_model.CpModel()
     week: list[_PlannedDay] = []
     for day in DAY_NAMES:
-        breakfast = _new_planned_meal(model, day, "Breakfast", meals)
+        breakfast = _new_planned_meal(model, day, "Breakfast", breakfasts)
         lunch = _new_planned_meal(model, day, "Lunch", meals)
         dinner = _new_planned_meal(model, day, "Dinner", meals)
         week.append(
             _PlannedDay(day=day, breakfast=breakfast, lunch=lunch, dinner=dinner)
         )
 
-    for planned_day in week:
-        model.add_exactly_one(planned_day.breakfast.is_selected)
-        model.add_exactly_one(planned_day.lunch.is_selected)
-        model.add_exactly_one(planned_day.dinner.is_selected)
+    exactly_one_per_meal(
+        model,
+        [
+            planned_meal.is_selected
+            for planned_day in week
+            for planned_meal in (
+                planned_day.breakfast,
+                planned_day.lunch,
+                planned_day.dinner,
+            )
+        ],
+    )
 
     model.minimize(
         sum(
