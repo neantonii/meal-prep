@@ -17,6 +17,8 @@ from meal_prep.adapters.aisles import load_aisles
 from meal_prep.adapters.ingredients import load_all_ingredients
 from meal_prep.adapters.units import load_units
 from meal_prep.library import MealPrepLibrary
+from meal_prep.planner.report import render_week_plan_page
+from meal_prep.planner.solver import plan_week
 from meal_prep.services.ingredients import prepare_catalog
 from meal_prep.services.recipes import prepare_recipe
 
@@ -77,3 +79,24 @@ def test_render_all_recipe_cards():
         assert path.is_relative_to(out_dir)
         content = path.read_text(encoding="utf-8")
         assert content.startswith("<!DOCTYPE html>")
+
+
+def test_solve_week_plan_and_render_page():
+    library = MealPrepLibrary.load(
+        data_dir=_REPO_ROOT / "data",
+        recipes_dir=_REPO_ROOT / "recipes",
+    )
+    prepared = {
+        recipe_id: prepare_recipe(recipe, library.catalog, library.equipment)
+        for recipe_id, recipe in library.recipes.items()
+    }
+
+    plan = plan_week(list(prepared.values()))
+    assert len(plan.days) == 7
+
+    target = render_week_plan_page(
+        plan, _REPO_ROOT / "weekly_plan" / "plan.html", recipes=prepared
+    )
+    content = target.read_text(encoding="utf-8")
+    assert content.startswith("<!DOCTYPE html>")
+    assert content.count('class="day-card"') == 7

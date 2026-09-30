@@ -286,3 +286,18 @@ def render_week_plan(
 </body>
 </html>
 """
+
+
+def render_week_plan_page(
+    plan: WeekPlan,
+    output_path: str | Path,
+    recipes: Mapping[str, Recipe] | None = None,
+    cards_dir: str | Path = "recipe_cards",
+) -> Path:
+    """Write ``plan`` to ``output_path`` as standalone HTML; return the path."""
+    target = Path(output_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        render_week_plan(plan, recipes=recipes, cards_dir=cards_dir), encoding="utf-8"
+    )
+    return target
