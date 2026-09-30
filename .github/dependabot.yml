@@ -5,7 +5,5 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
+# github-actions intentionally omitted: no workflows yet (see #26).
+# Re-add when the first .github/workflows/*.yml lands.
