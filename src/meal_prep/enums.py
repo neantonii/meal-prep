@@ -48,3 +48,5 @@ class RecipeCategory(str, Enum):
             RecipeCategory.FRESH_SALAD_VEG: "Raw crunchy salads and fresh veg (vitaminka, cucumber-tomato)",
             RecipeCategory.BREAKFAST: "Quick-cook morning meals (oatmeal, eggs & toast)",
         }[self]
+
+import os  # probe: unused import, ruff F401 will fail the check
