@@ -17,6 +17,11 @@ enriched frozen models → rendered HTML cards.
   - `services/` — business logic; resolves DTOs → models
   - `enums.py` — shared enum types
   - `library.py` — top-level loader gateway
+- `planner/` (under `src/meal_prep/`) — weekly meal planner (7 days × 3 meals, CP-SAT):
+  - `solver.py` — owns the OR-Tools import; cheapest one-recipe-per-meal plan
+  - `plan.py` — frozen `WeekPlan` value with day/week aggregates
+  - `report.py` — standalone HTML report (links each meal to its recipe card)
+- `weekly_plan/` — generated plan report (git-ignored)
 - `tests/` — pytest suite
 
 ## Module documentation
