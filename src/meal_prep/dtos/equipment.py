@@ -1,7 +1,7 @@
 """Equipment taxonomy DTOs — deserialization and shape validation only.
 
-Mirrors ``data/equipment.yaml``. No alias lookup or normalization lives here;
-an equipment registry is built later by a service from these raw records.
+Mirrors ``data/equipment.yaml``. Cookware tokens in recipe bodies match ``id``
+directly; there are no aliases.
 """
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -16,17 +16,8 @@ class EquipmentItem(BaseModel):
         ..., description="Unique canonical equipment slug, e.g. 'air-fryer'"
     )
     name: str = Field(..., description="Display name, e.g. 'Air Fryer'")
-    aliases: list[str] = Field(
-        default_factory=list,
-        description="Alternative slug tokens resolving to this item",
-    )
 
     @field_validator("id")
     @classmethod
     def validate_id(cls, v: str) -> str:
         return normalize_slug(v, field="Equipment id")
-
-    @field_validator("aliases")
-    @classmethod
-    def validate_aliases(cls, v: list[str]) -> list[str]:
-        return [normalize_slug(a, field="Equipment alias") for a in v]

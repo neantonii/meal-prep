@@ -13,12 +13,9 @@ from meal_prep.dtos.equipment import EquipmentItem
 
 
 def test_equipment_valid():
-    item = EquipmentItem.model_validate(
-        {"id": "air-fryer", "name": "Air Fryer", "aliases": ["fryer"]}
-    )
+    item = EquipmentItem.model_validate({"id": "air-fryer", "name": "Air Fryer"})
     assert item.id == "air-fryer"
     assert item.name == "Air Fryer"
-    assert item.aliases == ["fryer"]
 
 
 def test_equipment_id_is_normalized_to_slug():
@@ -26,20 +23,13 @@ def test_equipment_id_is_normalized_to_slug():
     assert item.id == "air-fryer"
 
 
-def test_equipment_aliases_default_to_empty_list():
-    assert (
-        EquipmentItem.model_validate({"id": "air-fryer", "name": "Air Fryer"}).aliases
-        == []
-    )
-
-
 def test_equipment_id_invalid_slug_is_rejected():
     with pytest.raises(ValidationError, match="kebab-case slug"):
         EquipmentItem.model_validate({"id": "air_fryer", "name": "Air Fryer"})
 
 
-def test_equipment_alias_with_space_is_rejected():
-    with pytest.raises(ValidationError, match="kebab-case slug"):
+def test_equipment_rejects_aliases_key():
+    with pytest.raises(ValidationError, match="Extra"):
         EquipmentItem.model_validate(
-            {"id": "air-fryer", "name": "Air Fryer", "aliases": ["air fryer"]}
+            {"id": "air-fryer", "name": "Air Fryer", "aliases": ["fryer"]}
         )

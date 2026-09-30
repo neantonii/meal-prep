@@ -132,18 +132,15 @@ def test_prepare_recipe_rejects_unknown_cookware(library, chicken_recipe):
         prepare_recipe(recipe, library.catalog, library.equipment)
 
 
-def test_prepare_recipe_resolves_cookware_alias_to_canonical_name(
-    library, chicken_recipe
-):
+def test_prepare_recipe_rejects_cookware_alias(library, chicken_recipe):
     from meal_prep.dtos.recipe import RecipeCookwareRef
 
     recipe = chicken_recipe.model_copy(
         update={"cookware": [RecipeCookwareRef(id="pan")]}
     )
-    prepared = prepare_recipe(recipe, library.catalog, library.equipment)
-    # "pan" is an alias of the "skillet" item, not a canonical id.
-    assert prepared.equipment == ("Large Non-Stick Skillet",)
-    assert prepared.cookware_by_token["pan"] == "Large Non-Stick Skillet"
+    # "pan" is not a canonical id — aliases no longer exist.
+    with pytest.raises(ValueError, match="unknown cookware 'pan'"):
+        prepare_recipe(recipe, library.catalog, library.equipment)
 
 
 def test_prepare_recipe_resolves_cookware_canonical_id(library, chicken_recipe):
