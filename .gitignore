@@ -57,3 +57,6 @@ recipe_cards/
 recipes/**/*.html
 recipes/*.html
 
+# Generated Week-Plan Reports
+weekly_plan/
+
