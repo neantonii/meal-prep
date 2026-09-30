@@ -12,6 +12,9 @@
   slated to move into `src/`). Config in `pyproject.toml`. Run via
   `python -m mypy` (reads `files = "src"` from config, no path arg needed).
 - **Tests**: `python -m pytest -q`.
+- **GitHub CLI**: `gh` is available but needs auth — export `GH_TOKEN="$GITHUB_TOKEN"`
+  first (e.g. `export GH_TOKEN="$GITHUB_TOKEN" && gh issue list`). The `GITHUB_TOKEN`
+  env var alone is not picked up by `gh`.
 
 ## Code style
 
