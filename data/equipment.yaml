@@ -1,81 +1,25 @@
 # data/equipment.yaml
-# Canonical Kitchen Equipment & Cookware Aliases
-
+# Canonical Kitchen Equipment & Cookware
+#
+# Cookware tokens in recipe bodies match id directly; there are no aliases.
 equipment:
-  - id: air-fryer
-    name: Air Fryer
-    aliases:
-      - air fryer
-      - air-fryer
-      - airfryer
-
-  - id: rice-cooker
-    name: Rice Cooker
-    aliases:
-      - rice cooker
-      - rice-cooker
-
-  - id: skillet
-    name: Large Non-Stick Skillet
-    aliases:
-      - skillet
-      - pan
-      - frying pan
-      - non-stick pan
-      - nonstick pan
-      - large skillet
-      - large non-stick skillet
-
-  - id: sheet-pan
-    name: Sheet Pan
-    aliases:
-      - sheet pan
-      - baking sheet
-      - baking tray
-      - cookie sheet
-
-  - id: large-pot
-    name: Large Pot
-    aliases:
-      - large pot
-      - stock pot
-      - soup pot
-      - big pot
-      - pot
-
-  - id: saucepan
-    name: Medium Saucepan
-    aliases:
-      - saucepan
-      - medium saucepan
-      - small pot
-      - medium pot
-
-  - id: oven
-    name: Oven
-    aliases:
-      - oven
-      - broiler
-
-  - id: blender
-    name: Blender / Food Processor
-    aliases:
-      - blender
-      - food processor
-      - immersion blender
-      - bullet blender
-
-  - id: meat-thermometer
-    name: Meat Thermometer
-    aliases:
-      - meat thermometer
-      - digital thermometer
-      - food thermometer
-      - instant read thermometer
-
-  - id: wire-rack
-    name: Wire Rack
-    aliases:
-      - wire rack
-      - cooling rack
-      - roasting rack
+- id: air-fryer
+  name: Air Fryer
+- id: rice-cooker
+  name: Rice Cooker
+- id: skillet
+  name: Large Non-Stick Skillet
+- id: sheet-pan
+  name: Sheet Pan
+- id: large-pot
+  name: Large Pot
+- id: saucepan
+  name: Medium Saucepan
+- id: oven
+  name: Oven
+- id: blender
+  name: Blender / Food Processor
+- id: meat-thermometer
+  name: Meat Thermometer
+- id: wire-rack
+  name: Wire Rack

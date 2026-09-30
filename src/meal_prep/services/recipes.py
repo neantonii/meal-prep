@@ -44,26 +44,21 @@ def prepare_recipe(
 ) -> Recipe:
     """Resolve and validate one authored recipe into its frozen enriched value."""
     # Resolve body ``#cookware`` tokens — the single source of truth for
-    # equipment. A token may be a canonical id *or* an alias (e.g. ``#pan`` ->
-    # the ``skillet`` item); resolve it through both. The parser has already
-    # deduped tokens and preserved first-appearance order, so this yields the
-    # display-name list for the equipment panel and the raw-token -> name map
-    # for the renderer's badges.
-    name_by_alias: dict[str, str] = {}
-    for item in equipment:
-        name_by_alias[item.id] = item.name
-        for alias in item.aliases:
-            name_by_alias.setdefault(alias, item.name)
+    # equipment. Tokens are canonical ids, matched directly; there are no
+    # aliases. The parser has already deduped tokens and preserved
+    # first-appearance order, so this yields the display-name list for the
+    # equipment panel and the raw-token -> name map for the renderer's badges.
+    name_by_id: dict[str, str] = {item.id: item.name for item in equipment}
 
     resolved_equipment: list[str] = []
     cookware_by_token: dict[str, str] = {}
     for cw_ref in recipe.cookware:
         token = cw_ref.id
-        name = name_by_alias.get(token)
+        name = name_by_id.get(token)
         if name is None:
             raise ValueError(
                 f"Recipe '{recipe.id}' references unknown cookware '{token}' in "
-                f"the instructions body (not a known equipment id or alias)."
+                f"the instructions body (not a known equipment id)."
             )
         cookware_by_token.setdefault(token, name)
         if name not in resolved_equipment:
@@ -113,9 +108,16 @@ def prepare_recipe(
                 "grams": 0.0,
             }
             merged[ref.id] = entry
-        entry["display_qty"] += ingredient.convert(
-            ref.quantity, canonical, entry["display_canonical"]
-        )
+        try:
+            entry["display_qty"] += ingredient.convert(
+                ref.quantity, canonical, entry["display_canonical"]
+            )
+        except ConversionError:
+            raise ValueError(
+                f"Recipe '{recipe.id}' references ingredient '{ref.id}' "
+                f"with unit '{unit}' that has no conversion to "
+                f"'{entry['display_canonical']}'."
+            ) from None
         entry["grams"] += grams
 
     # Validate amount-less mentions: every mention must be backed by a

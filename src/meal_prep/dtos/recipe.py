@@ -13,6 +13,8 @@ from meal_prep.enums import RecipeCategory
 
 
 class RecipeYield(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     servings: float = Field(
         ..., gt=0, description="Number of portions produced by the batch"
     )
@@ -22,6 +24,8 @@ class RecipeYield(BaseModel):
 
 
 class RecipeStorage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     fridge_days: int = Field(
         ..., gt=0, description="Maximum safe refrigerated shelf life in days"
     )
@@ -31,7 +35,7 @@ class RecipeStorage(BaseModel):
 
 
 class RecipeFrontmatter(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
     id: str = Field(
         ..., description="Unique alphanumeric slug with hyphens matching file stem"
@@ -52,6 +56,8 @@ class RecipeFrontmatter(BaseModel):
 
 
 class RecipeIngredientRef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     id: str = Field(..., description="Ingredient identifier matching catalog id")
     quantity: float = Field(..., gt=0, description="Quantity used in recipe")
     unit: str = Field(
@@ -59,6 +65,11 @@ class RecipeIngredientRef(BaseModel):
         description="Measurement unit; empty string means a count (resolved to the "
         "reserved 'count' node during enrichment).",
     )
+
+    @field_validator("id")
+    @classmethod
+    def validate_id_format(cls, v: str) -> str:
+        return normalize_slug(v, field="Recipe ingredient id")
 
 
 class RecipeIngredientMention(BaseModel):
@@ -69,15 +80,29 @@ class RecipeIngredientMention(BaseModel):
     that invariant.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     id: str = Field(..., description="Ingredient identifier matching catalog id")
+
+    @field_validator("id")
+    @classmethod
+    def validate_id_format(cls, v: str) -> str:
+        return normalize_slug(v, field="Recipe ingredient mention id")
 
 
 class RecipeCookwareRef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     id: str = Field(..., description="Equipment identifier or canonical name")
+
+    @field_validator("id")
+    @classmethod
+    def validate_id_format(cls, v: str) -> str:
+        return normalize_slug(v, field="Recipe cookware id")
 
 
 class RecipeDTO(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
     id: str
     title: str
