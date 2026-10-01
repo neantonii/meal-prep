@@ -2,7 +2,9 @@
 
 A ``WeekPlan`` is computed once by ``meal_prep.planner.solver.plan_week`` and
 never constructed by hand. Each day names its three meals explicitly
-(``breakfast``/``lunch``/``dinner``).
+(``breakfast``/``lunch``/``dinner``); ``prep`` lists the batches to cook so
+the week's portions are covered (``portions_used <= batches * servings`` —
+leftovers are tolerated and charged at full batch cost).
 
 All frozen dataclasses are value objects: no I/O, no mutation. All amounts
 are raw floats with no rounding — presentation is the report's concern.
@@ -50,15 +52,42 @@ class DailyPlannedMeal:
 
 
 @dataclass(frozen=True, slots=True)
+class PlannedBatch:
+    """One prep-list line: how many batches of a recipe to cook.
+
+    ``portions_made`` is ``batches * servings``; ``portions_used`` counts the
+    week's meals assigned to this recipe (never more than made).
+    """
+
+    recipe_id: str
+    title: str
+    batches: int
+    servings: int
+    portions_used: int
+    cost: float
+
+    @property
+    def portions_made(self) -> int:
+        """Portions produced by the cooked batches."""
+        return self.batches * self.servings
+
+    @property
+    def leftover(self) -> int:
+        """Made but uneaten portions."""
+        return self.portions_made - self.portions_used
+
+
+@dataclass(frozen=True, slots=True)
 class WeekPlan:
-    """A solved week: 7 days plus pre-computed aggregates."""
+    """A solved week: 7 days, the batches to cook, plus aggregates."""
 
     days: tuple[DailyPlannedMeal, ...]
+    prep: tuple[PlannedBatch, ...] = ()
 
     @property
     def total_cost(self) -> float:
-        """Total week cost."""
-        return sum(day.cost for day in self.days)
+        """Total week cost at full batch prices (leftovers included)."""
+        return sum(batch.cost for batch in self.prep)
 
     @property
     def week_macros(self) -> MacrosInfo:

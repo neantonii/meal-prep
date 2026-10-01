@@ -177,6 +177,43 @@ _CSS = """
             color: var(--text-muted);
             margin-top: 4px;
         }
+
+        .prep-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .prep-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .prep-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px 0;
+            border-top: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        .prep-row a {
+            color: #ffffff;
+            text-decoration: underline;
+            text-decoration-color: var(--primary);
+            text-underline-offset: 3px;
+        }
+
+        .prep-meta {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
 """
 
 
@@ -244,6 +281,34 @@ def render_week_plan(
             f"</section>"
         )
     days_html = "\n\n".join(day_blocks)
+    prep_rows = []
+    for batch in plan.prep:
+        recipe = by_id.get(batch.recipe_id)
+        prep_href: str | None = None
+        if recipe is not None:
+            prep_href = (
+                cards_root / recipe.category.value / f"{recipe.id}.html"
+            ).as_posix()
+        title = html.escape(batch.title)
+        if prep_href is not None:
+            title = f'<a href="{html.escape(prep_href)}">{title}</a>'
+        prep_rows.append(
+            f'<div class="prep-row">\n'
+            f"    <span>{title} x {batch.batches}</span>\n"
+            f'    <span class="prep-meta">{batch.portions_made} made · '
+            f"{batch.portions_used} used · "
+            f"${batch.cost:.2f}</span>\n"
+            f"</div>"
+        )
+    prep_html = ""
+    if prep_rows:
+        rows_html = "\n".join(prep_rows)
+        prep_html = (
+            f'<section class="prep-card">\n'
+            f'    <h2 class="prep-title">Prep List</h2>\n'
+            f"{rows_html}\n"
+            f"</section>"
+        )
     week = plan.week_macros
 
     return f"""<!DOCTYPE html>
@@ -280,6 +345,8 @@ def render_week_plan(
                 </div>
             </div>
         </header>
+
+        {prep_html}
 
         {days_html}
     </div>
