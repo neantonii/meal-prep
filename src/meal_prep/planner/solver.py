@@ -2,9 +2,9 @@
 
 Solves the cheapest 7-day x 3-meal plan with CP-SAT: breakfasts come from
 ``BREAKFAST``-category recipes, lunch/dinner from any recipe. Meals are
-covered by cooked batches — one integer variable per recipe (0..7; no recipe
-repeats within a day, so 7 uses is the ceiling) — and the objective minimizes
-full batch cost, so leftovers are tolerated but charged.
+covered by cooked batches — one integer variable per recipe (0..21; with no
+variety control yet, one recipe can fill all 21 slots) — and the objective
+minimizes full batch cost, so leftovers are tolerated but charged.
 CP-SAT works on integers, so batch costs are scaled to cents first.
 """
 
@@ -26,7 +26,9 @@ from meal_prep.planner.plan import (
 )
 
 _CENTS = 100
-_MAX_BATCHES = 7
+# No variety control yet: one recipe can fill all 21 slots, so a servings=1
+# recipe needs up to 21 batches.
+_MAX_BATCHES = 21
 
 
 @dataclass(eq=False)
@@ -73,25 +75,9 @@ def plan_week(recipes: Sequence[Recipe]) -> WeekPlan:
         )
 
     for planned_day in week:
-        day_meals = (
-            planned_day.breakfast,
-            planned_day.lunch,
-            planned_day.dinner,
-        )
-        for planned_meal in day_meals:
-            model.add_exactly_one(planned_meal.is_selected)
-        for recipe in meals:
-            model.add(
-                sum(
-                    var
-                    for planned_meal in day_meals
-                    for candidate, var in zip(
-                        planned_meal.recipes, planned_meal.is_selected, strict=True
-                    )
-                    if candidate.id == recipe.id
-                )
-                <= 1
-            )
+        model.add_exactly_one(planned_day.breakfast.is_selected)
+        model.add_exactly_one(planned_day.lunch.is_selected)
+        model.add_exactly_one(planned_day.dinner.is_selected)
 
     batches: dict[str, cp_model.IntVar] = {}
     batch_costs_cents: dict[str, int] = {}
