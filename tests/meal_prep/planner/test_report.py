@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from meal_prep.enums import RecipeCategory
 from meal_prep.models.ingredient import MacrosInfo
-from meal_prep.planner.plan import DailyPlannedMeal, PlannedMeal, WeekPlan
+from meal_prep.planner.plan import (
+    DailyPlannedMeal,
+    PlannedBatch,
+    PlannedMeal,
+    WeekPlan,
+)
 from meal_prep.planner.report import render_week_plan
 
 
@@ -38,6 +43,16 @@ def _plan() -> WeekPlan:
             )
             for idx in range(7)
         ),
+        prep=(
+            PlannedBatch(
+                recipe_id="rice",
+                title="Boiled Rice",
+                batches=7,
+                servings=4,
+                portions_used=21,
+                cost=16.8,
+            ),
+        ),
     )
 
 
@@ -45,9 +60,21 @@ def test_report_is_standalone_html_with_totals():
     page = render_week_plan(_plan())
     assert page.startswith("<!DOCTYPE html>")
     assert "Weekly Meal Plan" in page
-    assert "$5.04" in page
+    assert "$16.80" in page
     assert page.count('class="day-card"') == 7
     assert "Breakfast" in page and "Lunch" in page and "Dinner" in page
+
+
+def test_report_shows_prep_list():
+    page = render_week_plan(_plan())
+    assert "Prep List" in page
+    assert "Boiled Rice x 7" in page
+    assert "28 made · 21 used" in page
+
+
+def test_report_omits_prep_list_when_empty():
+    plan = WeekPlan(days=_plan().days)
+    assert "Prep List" not in render_week_plan(plan)
 
 
 def test_report_links_recipe_cards_when_lookup_given():

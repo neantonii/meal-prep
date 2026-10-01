@@ -1,6 +1,6 @@
 # Planner
 
-Cheapest 7-day × 3-meal assignment via CP-SAT.
+Cheapest 7-day × 3-meal assignment via CP-SAT, covered by cooked batches.
 
 ## Role & Imports
 
@@ -8,8 +8,10 @@ Consumes `meal_prep.models.Recipe`. Only `solver.py` may import `ortools`.
 
 ## Business Invariants
 
-Costs scaled to integer cents; exactly one recipe per meal; breakfasts from
-`BREAKFAST`-category recipes only; deterministic seed.
+Batch costs scaled to integer cents; exactly one recipe per meal; breakfasts
+from `BREAKFAST`-category recipes only; no recipe repeats within a day; one
+integer batch variable (0–7) per recipe with `uses <= batches * servings`
+(leftovers tolerated, charged at full batch cost); deterministic seed.
 
 ## Test
 

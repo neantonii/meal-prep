@@ -8,7 +8,12 @@ import), and returns the frozen ``WeekPlan`` (``meal_prep.planner.plan``).
 
 from __future__ import annotations
 
-from meal_prep.planner.plan import DailyPlannedMeal, PlannedMeal, WeekPlan
+from meal_prep.planner.plan import (
+    DailyPlannedMeal,
+    PlannedBatch,
+    PlannedMeal,
+    WeekPlan,
+)
 from meal_prep.planner.solver import plan_week
 
-__all__ = ["DailyPlannedMeal", "PlannedMeal", "WeekPlan", "plan_week"]
+__all__ = ["DailyPlannedMeal", "PlannedBatch", "PlannedMeal", "WeekPlan", "plan_week"]
