@@ -39,6 +39,16 @@
 - Agents never merge: no `gh pr merge`, no merging `master` into a branch
   (rebase only if asked), no pushing to `master`. Merging is the user's
   decision after their own review.
+- Post-merge cleanup: after the user confirms a PR is merged, run
+  `git prune-stale` (fetches with prune, deletes local branches whose
+  upstream is `[gone]`; `master`/`main` exempt, `git branch -d` refuses
+  unmerged work). Then `git checkout master && git pull`.
+- `git prune-stale` is a repo-local alias (lives in `.git/config`, not
+  cloned). Reinstall on a fresh checkout with:
+  `git config alias.prune-stale '!git fetch --prune && git for-each-ref
+  --format="%(refname:short) %(upstream:track)" refs/heads | while read -r
+  name track; do case "$name" in master|main) continue;; esac; if
+  [ "$track" = "[gone]" ]; then git branch -d "$name"; fi; done'`
 
 ## Required workflow after any code edit
 
