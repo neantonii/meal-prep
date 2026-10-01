@@ -38,11 +38,10 @@ class _PlannedMeal:
     Build-scratch only — it holds live solver variables, so it never
     leaves this module. ``eq=False`` because ``IntVar.__eq__`` builds a
     solver expression instead of comparing. Parallel lists stay aligned:
-    ``recipes[i]`` is selected by ``is_selected[i]`` at ``costs_cents[i]``.
+    ``recipes[i]`` is selected by ``is_selected[i]``.
     """
 
     recipes: list[Recipe]
-    costs_cents: list[int]
     is_selected: list[cp_model.IntVar]
 
 
@@ -152,15 +151,12 @@ def _new_planned_meal(
 ) -> _PlannedMeal:
     """Create one solvable meal with a boolean per candidate recipe."""
     candidates: list[Recipe] = []
-    costs_cents: list[int] = []
     is_selected: list[cp_model.IntVar] = []
     for recipe in meals:
         candidates.append(recipe)
-        costs_cents.append(round(recipe.cost_per_portion * _CENTS))
         is_selected.append(model.new_bool_var(f"x_{day}_{meal_slot}_{recipe.id}"))
     return _PlannedMeal(
         recipes=candidates,
-        costs_cents=costs_cents,
         is_selected=is_selected,
     )
 
