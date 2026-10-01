@@ -9,9 +9,9 @@ Consumes `meal_prep.models.Recipe`. Only `solver.py` may import `ortools`.
 ## Business Invariants
 
 Batch costs scaled to integer cents; exactly one recipe per meal; breakfasts
-from `BREAKFAST`-category recipes only; no recipe repeats within a day; one
-integer batch variable (0–7) per recipe with `uses <= batches * servings`
-(leftovers tolerated, charged at full batch cost); deterministic seed.
+from `BREAKFAST`-category recipes only; one integer batch variable (0–21)
+per recipe with `uses <= batches * servings` (leftovers tolerated, charged
+at full batch cost); deterministic seed.
 
 ## Test
 
