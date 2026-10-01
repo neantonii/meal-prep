@@ -36,6 +36,9 @@
 - Before raising a PR, squash local iterations into meaningful chunks —
   one commit per logical change. Only keep genuinely separate commits;
   never one commit per edit.
+- Agents never merge: no `gh pr merge`, no merging `master` into a branch
+  (rebase only if asked), no pushing to `master`. Merging is the user's
+  decision after their own review.
 
 ## Required workflow after any code edit
 
