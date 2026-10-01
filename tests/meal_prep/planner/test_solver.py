@@ -68,7 +68,7 @@ def _recipe(
 def test_picks_cheapest_meal_every_meal():
     plan = plan_week(
         [
-            _recipe("cheap", cost=1.0),
+            _recipe("cheap", cost=1.0, servings=2.0),
             _recipe("pricey", cost=9.0),
             _recipe("morning", cost=2.0, category=RecipeCategory.BREAKFAST),
         ]
@@ -79,12 +79,12 @@ def test_picks_cheapest_meal_every_meal():
         assert day.breakfast.recipe_id == "morning"
         assert day.lunch.recipe_id == "cheap"
         assert day.dinner.recipe_id == "cheap"
-    # servings=1: 14 cheap uses need 14 batches, 7 morning uses need 7.
+    # 14 cheap uses at servings=2 need exactly 7 batches (the bound edge).
     assert [(batch.recipe_id, batch.batches) for batch in plan.prep] == [
-        ("cheap", 14),
+        ("cheap", 7),
         ("morning", 7),
     ]
-    assert plan.total_cost == 14 * 1.0 + 7 * 2.0
+    assert plan.total_cost == 7 * 1.0 + 7 * 2.0
 
 
 def test_breakfast_comes_from_breakfast_category():
@@ -92,7 +92,7 @@ def test_breakfast_comes_from_breakfast_category():
         [
             _recipe("oats", cost=5.0, category=RecipeCategory.BREAKFAST),
             _recipe("eggs", cost=1.0, category=RecipeCategory.BREAKFAST),
-            _recipe("stew", cost=0.5),
+            _recipe("stew", cost=0.5, servings=2.0),
         ]
     )
     for day in plan.days:
@@ -101,13 +101,16 @@ def test_breakfast_comes_from_breakfast_category():
         assert day.dinner.recipe_id == "stew"
 
 
-def test_single_recipe_fills_whole_week():
-    plan = plan_week([_recipe("only", cost=2.5, category=RecipeCategory.BREAKFAST)])
+def test_batch_bound_caps_cook_sessions_at_seven():
+    # One servings=7 recipe: 21 uses need only 3 batches, within the bound.
+    plan = plan_week(
+        [_recipe("only", cost=2.5, category=RecipeCategory.BREAKFAST, servings=7.0)]
+    )
     assert isinstance(plan, WeekPlan)
     assert [(batch.recipe_id, batch.batches) for batch in plan.prep] == [
-        ("only", 21),
+        ("only", 3),
     ]
-    assert plan.total_cost == 21 * 2.5
+    assert plan.total_cost == 3 * 2.5
 
 
 def test_big_batch_needs_fewer_batches():

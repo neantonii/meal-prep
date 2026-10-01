@@ -2,9 +2,9 @@
 
 Solves the cheapest 7-day x 3-meal plan with CP-SAT: breakfasts come from
 ``BREAKFAST``-category recipes, lunch/dinner from any recipe. Meals are
-covered by cooked batches — one integer variable per recipe (0..21; with no
-variety control yet, one recipe can fill all 21 slots) — and the objective
-minimizes full batch cost, so leftovers are tolerated but charged.
+covered by cooked batches — one integer variable per recipe (0..7; at most
+one cook session per recipe per day) — and the objective minimizes full
+batch cost, so leftovers are tolerated but charged.
 CP-SAT works on integers, so batch costs are scaled to cents first.
 """
 
@@ -26,9 +26,9 @@ from meal_prep.planner.plan import (
 )
 
 _CENTS = 100
-# No variety control yet: one recipe can fill all 21 slots, so a servings=1
-# recipe needs up to 21 batches.
-_MAX_BATCHES = 21
+# A batch is a cook session: at most one per recipe per day, so 7 is a safe
+# upper bound that never cuts a feasible solution.
+_MAX_BATCHES = 7
 
 
 @dataclass(eq=False)
