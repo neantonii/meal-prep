@@ -2,6 +2,7 @@
 
 ## Tooling
 
+- **Setup (fresh container)**: `pip install -e . pytest ruff mypy`
 - **Python**: `python` (3.13). Package is `src`-layout, installed editable
   (`pip install -e .`); deps declared in `pyproject.toml` (`pydantic`, `pyyaml`).
 - **Lint/format**: [ruff](https://docs.astral.sh/ruff/) — installed in the
