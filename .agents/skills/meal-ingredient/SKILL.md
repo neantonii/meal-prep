@@ -97,8 +97,9 @@ For field shapes and worked examples (simple, custom-unit, count-chain), see
 
 ### 6. Draft, validate, challenge
 
-Copy `assets/ingredient-template.yaml` into a draft entry. Append to the aisle
-file in id-sorted position (match file convention). Then run:
+Draft the entry from `schemas/ingredient.schema.json` (the contract) and the
+exemplar entries in `references/ingredient-catalog.md` (the shape). Append to
+the aisle file in id-sorted position (match file convention). Then run:
 
 ```sh
 python .agents/skills/meal-ingredient/scripts/validate_ingredient.py \
@@ -142,10 +143,3 @@ State which sanity warnings were accepted and why.
 - **`schemas/ingredient.schema.json`** (repo-level) — committed field schema
   generated from `IngredientDTO`. Read directly; refresh via
   `python scripts/refresh_schemas.py` when stale.
-
-### Assets
-
-- **`assets/ingredient-template.yaml`** — single-entry skeleton with
-  `TODO(user)` markers. Copy, never invent values. Starting point only —
-  the DTO/schema is the contract (see Template vs DTO in
-  `references/ingredient-catalog.md`).
