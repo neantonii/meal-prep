@@ -30,81 +30,21 @@ unknown keys fail shape validation. If the file looks stale, run
 - Custom-unit canonicals are slugs (`clove`); aliases cover plurals and
   variants (`[clove, cloves]`).
 
-## Worked Examples
+## Exemplar Entries (read live, never copy here)
 
-### Simple (no custom units)
+Study these in `data/ingredients/` before authoring; they cover the three
+shapes you will encounter. Read the files, don't rely on memory — values
+change as prices and packs change.
 
-Butter uses only standard units; `package -> g` plus one kitchen measure:
+- **Simple, no custom units** — `unsalted-butter` in `dairy.yaml`: standard
+  units only, `package -> g` plus one kitchen measure (`tbsp -> g`).
+- **Custom units** — `fresh-garlic` in `produce.yaml`: non-standard nouns in
+  `custom_units` (`clove`, `head`), each with a `-> g` path; retail edge is
+  `package -> head`.
+- **Count chain** — `boneless-chicken-breast` in `meat.yaml`: recipes using
+  `@boneless-chicken-breast{4}` (empty unit = `count`) need the two-hop
+  retail chain `package -> count -> g`; `package_weight_g` and
+  `price_per_100g` derive from it.
 
-```yaml
-- id: unsalted-butter
-  name: Unsalted Butter
-  step_name: butter
-  aisle: dairy
-  storage: refrigerated
-  shelf_life_days: 90
-
-  reference:
-    brand: Compliments
-    product: Compliments Butter Unsalted 454 g
-    price: 6.69
-
-  macros:
-    unit: g
-    amount: 100
-    calories_kcal: 700.0
-    protein_g: 1.0
-    fat_g: 80.0
-    carbs_g: 0.0
-    fiber_g: 0.0
-    saturated_fat_g: 50.0
-    sugars_g: 0.0
-    sodium_mg: 0.0
-    potassium_mg: 24.0
-
-  conversions:
-    - from: package
-      to: g
-      factor: 454
-    - from: tbsp
-      to: g
-      factor: 14.2
-```
-
-### Custom units (garlic)
-
-Non-standard nouns go in `custom_units`; every canonical needs a `-> g` path:
-
-```yaml
-  custom_units:
-    clove: [clove, cloves]
-    head: [head, heads]
-
-  conversions:
-    - from: package
-      to: head
-      factor: 3
-    - from: clove
-      to: g
-      factor: 3.0
-    - from: head
-      to: g
-      factor: 50.0
-```
-
-### Count chain (chicken breast)
-
-Recipes using `@boneless-chicken-breast{4}` (empty unit = `count`) need the
-two-hop retail chain `package -> count -> g`:
-
-```yaml
-  conversions:
-    - from: package
-      to: count
-      factor: 4
-    - from: count
-      to: g
-      factor: 237.5
-```
-
-`package_weight_g` derives as `4 * 237.5 = 950 g`; `price_per_100g` follows.
+When in doubt, browse the sibling file for the target aisle first — copy the
+casing, layout, and conversion style of neighboring rows.
