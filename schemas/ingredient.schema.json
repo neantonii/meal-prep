@@ -1,0 +1,257 @@
+{
+  "$defs": {
+    "MacrosInfoDTO": {
+      "additionalProperties": false,
+      "description": "Authored nutrition values, expressed *per* a serving basis.\n\nThe nutrients are not necessarily per 100g: Canadian labels usually print\n\"per <amount> <unit>\" (e.g. \"per 55 g\", \"per 1/3 cup\"). The ``unit`` and\n``amount`` fields record that basis; enrichment scales the values to a\nper-100g standard using the conversion graph.",
+      "properties": {
+        "amount": {
+          "description": "Serving basis quantity, e.g. 100 or 0.333",
+          "exclusiveMinimum": 0,
+          "title": "Amount",
+          "type": "number"
+        },
+        "calories_kcal": {
+          "description": "Calories (kcal) per the basis amount",
+          "minimum": 0,
+          "title": "Calories Kcal",
+          "type": "number"
+        },
+        "carbs_g": {
+          "description": "Total carbohydrates in grams per the basis amount",
+          "minimum": 0,
+          "title": "Carbs G",
+          "type": "number"
+        },
+        "fat_g": {
+          "description": "Total fat in grams per the basis amount",
+          "minimum": 0,
+          "title": "Fat G",
+          "type": "number"
+        },
+        "fiber_g": {
+          "description": "Dietary fiber in grams per the basis amount",
+          "minimum": 0,
+          "title": "Fiber G",
+          "type": "number"
+        },
+        "potassium_mg": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Potassium in milligrams per the basis amount",
+          "title": "Potassium Mg"
+        },
+        "protein_g": {
+          "description": "Protein in grams per the basis amount",
+          "minimum": 0,
+          "title": "Protein G",
+          "type": "number"
+        },
+        "saturated_fat_g": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Saturated fat in grams per the basis amount",
+          "title": "Saturated Fat G"
+        },
+        "sodium_mg": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Sodium in milligrams per the basis amount",
+          "title": "Sodium Mg"
+        },
+        "sugars_g": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Total sugars in grams per the basis amount",
+          "title": "Sugars G"
+        },
+        "unit": {
+          "description": "Serving basis unit, e.g. 'g' or 'cup'",
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "unit",
+        "amount",
+        "calories_kcal",
+        "protein_g",
+        "fat_g",
+        "carbs_g",
+        "fiber_g"
+      ],
+      "title": "MacrosInfoDTO",
+      "type": "object"
+    },
+    "ReferenceInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "brand": {
+          "description": "Brand name, e.g. Compliments",
+          "title": "Brand",
+          "type": "string"
+        },
+        "price": {
+          "description": "Retail purchase price in CAD",
+          "exclusiveMinimum": 0,
+          "title": "Price",
+          "type": "number"
+        },
+        "product": {
+          "description": "Full commercial product name",
+          "title": "Product",
+          "type": "string"
+        }
+      },
+      "required": [
+        "brand",
+        "product",
+        "price"
+      ],
+      "title": "ReferenceInfo",
+      "type": "object"
+    },
+    "StorageType": {
+      "enum": [
+        "ambient",
+        "refrigerated",
+        "frozen"
+      ],
+      "title": "StorageType",
+      "type": "string"
+    },
+    "UnitConversion": {
+      "additionalProperties": false,
+      "properties": {
+        "factor": {
+          "description": "Multiplier such that 1 from_unit = factor * to_unit",
+          "exclusiveMinimum": 0,
+          "title": "Factor",
+          "type": "number"
+        },
+        "from": {
+          "description": "Source measurement unit",
+          "title": "From",
+          "type": "string"
+        },
+        "to": {
+          "description": "Target measurement unit",
+          "title": "To",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "factor"
+      ],
+      "title": "UnitConversion",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Ingredient DTO \u2014 the authored, validated ingredient document.\n\nDecodes ``data/ingredients/<aisle>.yaml`` and carries raw authored values.\nThe enriched ``Ingredient`` (in ``meal_prep.models``) is computed later by a\nservice (``prepare_ingredient``). The ``DTO``     suffix distinguishes this\nauthored form from the enriched model of the same concept.",
+  "properties": {
+    "aisle": {
+      "description": "Supermarket aisle slug",
+      "title": "Aisle",
+      "type": "string"
+    },
+    "conversions": {
+      "description": "Unit conversions. The reserved `package` node's retail edge is authored here as `{from: package, to: <unit>, factor: <amount>}`.",
+      "items": {
+        "$ref": "#/$defs/UnitConversion"
+      },
+      "title": "Conversions",
+      "type": "array"
+    },
+    "custom_units": {
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "description": "Explicitly registered non-standard units (canonical -> aliases), in the same shape as the standard `allowed` map in units.yaml.",
+      "title": "Custom Units",
+      "type": "object"
+    },
+    "id": {
+      "description": "Canonical unique slug, e.g. 'boneless-chicken-breast'",
+      "title": "Id",
+      "type": "string"
+    },
+    "macros": {
+      "$ref": "#/$defs/MacrosInfoDTO"
+    },
+    "name": {
+      "description": "Label-style noun for tables and lists (e.g. 'Boneless, Skinless Chicken Breast') \u2014 capitalized, slightly more verbose.",
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "reference": {
+      "$ref": "#/$defs/ReferenceInfo"
+    },
+    "shelf_life_days": {
+      "description": "Mandatory shelf life in days under this storage mode",
+      "exclusiveMinimum": 0,
+      "title": "Shelf Life Days",
+      "type": "integer"
+    },
+    "step_name": {
+      "description": "Prose noun for flowing instruction text (e.g. 'chicken breast') \u2014 lowercase and concise. Required; never derived from `name`.",
+      "minLength": 1,
+      "title": "Step Name",
+      "type": "string"
+    },
+    "storage": {
+      "$ref": "#/$defs/StorageType",
+      "description": "Storage temperature classification"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "step_name",
+    "aisle",
+    "storage",
+    "shelf_life_days",
+    "reference",
+    "macros"
+  ],
+  "title": "IngredientDTO",
+  "type": "object"
+}
