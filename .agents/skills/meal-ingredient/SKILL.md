@@ -83,6 +83,13 @@ read-back value to the user for confirmation before accepting — vision
 misreads digits, and a wrong basis corrupts all per-100g macros. Fall back to
 verbatim transcription when no photo is available.
 
+When the photo has no Nutrition Facts panel (fresh meat, produce, bakery —
+no label to read), say so plainly and stop: show what the photo did contain
+(product, weight, price if printed) and wait. The user either fills macros
+manually from a reference source they name, or uploads a different image.
+Never estimate macros silently; a sourced manual value gets challenged
+against the sanity bands like any other.
+
 Record the basis exactly as printed. Enrichment scales to per-100g via the
 conversion graph. Run the Atwater and macro-sum challenges from
 `references/sanity-checks.md` before accepting.
