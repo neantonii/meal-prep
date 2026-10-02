@@ -1,8 +1,11 @@
-// Spike v5: two-column — form left, photo preview right.
-// Upload: multipart to .agent_tmp/ + local preview + poll for macros sidecar.
+// Spike v6: two-column — form left, photo preview right.
+// Upload: multipart to .agent_tmp/, then one conversation event asks the
+// agent to read the panel into the token-scoped sidecar the page polls.
+// (Direct /v1/* vision was tried: every call spawns a sidebar conversation,
+// nested or not. Agent-turn loop it is.)
 // Validate: builds YAML from ALL fields (incl. macros), backend verdict inline.
 // Submit: gated on clean verdict, draft to .agent_tmp, signal agent.
-const CONV = "3e1d2c457458460c98be1548e2c4dc20";
+const CONV = "9b9616f4-b7d6-48e1-9d1f-d248440a2b1d";
 const WORKDIR = "/projects/meal-prep";
 
 function el(tag, text, css) {
@@ -138,15 +141,28 @@ export function activate(host) {
           });
           const text = typeof r === "string" ? r : r.content || r.data || JSON.stringify(r);
           const sidecar = JSON.parse(text);
-          if (sidecar && sidecar.macros && sidecar.token === token) {
-            const { scale, basis } = fillMacros(sidecar);
-            const basisLabel = basis.label || `per ${basis.amount}g`;
-            status.textContent =
-              `Macros filled from ${photoName} (panel: ${basisLabel}` +
-              (scale !== 1 ? `, scaled x${Math.round(scale * 100) / 100} to per-100g` : "") +
-              `) — check against the photo, then Validate.`;
-            stale();
-            return;
+          if (sidecar && sidecar.token === token) {
+            if (sidecar.no_label) {
+              status.textContent =
+                `No Nutrition Facts in ${photoName}` +
+                (sidecar.seen ? ` (photo shows: ${sidecar.seen})` : "") +
+                ` — fill macros manually from a source you name, or upload a different image.`;
+              return;
+            }
+            if (sidecar.error) {
+              status.textContent = `Label read failed: ${sidecar.error} — fill manually or re-upload.`;
+              return;
+            }
+            if (sidecar.macros) {
+              const { scale, basis } = fillMacros(sidecar);
+              const basisLabel = basis.label || `per ${basis.amount}g`;
+              status.textContent =
+                `Macros filled from ${photoName} (panel: ${basisLabel}` +
+                (scale !== 1 ? `, scaled x${Math.round(scale * 100) / 100} to per-100g` : "") +
+                `) — check against the photo, then Validate.`;
+              stale();
+              return;
+            }
           }
         } catch (_) {}
         status.textContent = `Waiting for agent read… (${i + 1}/${tries})`;
@@ -188,7 +204,14 @@ export function activate(host) {
             content: [
               {
                 type: "text",
-                text: `[ping-app] v5 photo saved as .agent_tmp/${storedName} with token ${token} — please read it and write .agent_tmp/spike-macros-${token}.json including "token": "${token}"`,
+                text:
+                  `[ping-app] photo saved as .agent_tmp/${storedName} with token ${token} — ` +
+                  `read the Nutrition Facts panel and write .agent_tmp/spike-macros-${token}.json ` +
+                  `with "token": "${token}", panel-literal "macros" (calories_kcal, protein_g, fat_g, ` +
+                  `carbs_g, fiber_g required; saturated_fat_g, sugars_g, sodium_mg, potassium_mg when ` +
+                  `printed, else null), "basis" {amount, label as printed, unit}, and "note". ` +
+                  `If NO panel is visible, write {"no_label": true, "seen": "<product, weight, price if shown>"}. ` +
+                  `Never estimate; illegible values are null.`,
               },
             ],
             run: true,
