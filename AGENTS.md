@@ -50,11 +50,18 @@
   name track; do case "$name" in master|main) continue;; esac; if
   [ "$track" = "[gone]" ]; then git branch -d "$name"; fi; done'`
 
+## Committed schemas
+
+`schemas/*.schema.json` are generated from the DTOs, not authored. After any
+change under `src/meal_prep/dtos/`, run `python scripts/refresh_schemas.py`
+and commit the diff (`tests/test_schemas.py` fails CI when they drift).
+
 ## Required workflow after any code edit
 
 Run, in this order, and fix until clean:
 
 ```sh
+python scripts/refresh_schemas.py # only needed if dtos/ changed
 python -m ruff check . --fix
 python -m ruff format .
 python -m mypy
