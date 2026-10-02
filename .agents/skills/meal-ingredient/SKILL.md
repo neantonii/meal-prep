@@ -19,8 +19,13 @@ Do not batch multiple unrelated ingredients in one pass.
 
 - Never invent nutrition, price, or weights. Nutrition and price are
   user-supplied facts. Missing values stay `TODO(user)` until the user answers.
-- Ask interactively, in stages. One question group at a time; wait for answers
-  before drafting conversions.
+- Collect via chat (in stages, one question group at a time) or via the HTML
+  form below — never both half-done. The form replaces the staging, not the
+  confirmation: every value still needs user sign-off.
+- The form never validates. Its only backend is
+  `scripts/validate_ingredient.py --stdin`; no domain check may live in the
+  page. Errors block submit, warnings need explicit user acceptance — same as
+  chat.
 - Write YAML only. Never edit `src/`, `data/units.yaml`, `data/aisles.yaml`, or
   `data/equipment.yaml` from this flow.
 - Challenge weird data (see `references/sanity-checks.md`). Warn, do not
@@ -69,11 +74,14 @@ cost plus planner totals.
 
 ### 4. Collect macros basis
 
-Ask the user to transcribe the nutrition label verbatim:
-
-- `unit` + `amount` (the `per ...` basis, e.g. `per 55 g`, `per 1/3 cup`).
-- Required: `calories_kcal, protein_g, fat_g, carbs_g, fiber_g` (>= 0).
-- Optional: `saturated_fat_g, sugars_g, sodium_mg, potassium_mg`.
+Prefer a label photo over transcription: ask the user to upload a picture of
+the Nutrition Facts panel. Read it with vision and pre-fill `unit` + `amount`
+(the `per ...` basis, e.g. `per 55 g`, `per 1/3 cup`), required
+`calories_kcal, protein_g, fat_g, carbs_g, fiber_g` (>= 0), and optional
+`saturated_fat_g, sugars_g, sodium_mg, potassium_mg` when printed. Show every
+read-back value to the user for confirmation before accepting — vision
+misreads digits, and a wrong basis corrupts all per-100g macros. Fall back to
+verbatim transcription when no photo is available.
 
 Record the basis exactly as printed. Enrichment scales to per-100g via the
 conversion graph. Run the Atwater and macro-sum challenges from
@@ -140,6 +148,14 @@ State which sanity warnings were accepted and why.
 - **`scripts/validate_ingredient.py`** — thin scaffolding: enrich one entry
   via the real pipeline and print `check_ingredient` warnings. Usage:
   `python scripts/validate_ingredient.py data/ingredients/<aisle>.yaml --id <slug>`.
+  With `--stdin` it reads one entry mapping (plus `aisle_file`) and prints a
+  JSON verdict — the only backend the HTML form may call.
+- **`scripts/ingredient_form.py`** — generates the entry form from
+  `schemas/ingredient.schema.json` (+ `data/aisles.yaml`, `data/units.yaml`).
+  Regenerate, never hand-edit. Flow: user fills sections, clicks Validate to
+  reveal the stdin payload, agent runs the validator, user pastes the JSON
+  verdict back, page renders errors/warnings/derived and gates Submit on
+  zero errors. Pre-fill macros from a label photo read-back when available.
 - **`schemas/ingredient.schema.json`** (repo-level) — committed field schema
   generated from `IngredientDTO`. Read directly; refresh via
   `python scripts/refresh_schemas.py` when stale.
