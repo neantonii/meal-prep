@@ -146,4 +146,6 @@ State which sanity warnings were accepted and why.
 ### Assets
 
 - **`assets/ingredient-template.yaml`** — single-entry skeleton with
-  `TODO(user)` markers. Copy, never invent values.
+  `TODO(user)` markers. Copy, never invent values. Starting point only —
+  the DTO/schema is the contract (see Template vs DTO in
+  `references/ingredient-catalog.md`).
