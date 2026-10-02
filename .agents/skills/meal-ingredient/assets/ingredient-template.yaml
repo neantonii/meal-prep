@@ -1,0 +1,40 @@
+# Single-entry skeleton. Copy into data/ingredients/<aisle>.yaml in id-sorted
+# position. Replace every TODO(user) with a user-supplied fact — never invent.
+- id: TODO(user) # kebab-case slug, e.g. boneless-chicken-breast
+  name: TODO(user) # Label noun, Title Case, e.g. Boneless, Skinless Chicken Breast
+  step_name: TODO(user) # prose noun, lowercase, e.g. chicken breast
+  aisle: TODO(user) # must equal file stem: produce | bakery | meat | seafood | dairy | pantry | spices
+  storage: TODO(user) # ambient | refrigerated | frozen
+  shelf_life_days: TODO(user) # integer > 0 under this storage mode
+
+  reference:
+    brand: TODO(user)
+    product: TODO(user) # full commercial name as printed
+    price: TODO(user) # CAD, exact pack price
+
+  macros:
+    unit: TODO(user) # label basis unit as printed, e.g. g
+    amount: TODO(user) # label basis quantity, e.g. 100
+    calories_kcal: TODO(user)
+    protein_g: TODO(user)
+    fat_g: TODO(user)
+    carbs_g: TODO(user)
+    fiber_g: TODO(user)
+    # Optional — omit when absent on label:
+    # saturated_fat_g: TODO(user)
+    # sugars_g: TODO(user)
+    # sodium_mg: TODO(user)
+    # potassium_mg: TODO(user)
+
+  # Omit when no custom units. Canonical listed explicitly in its own aliases:
+  # custom_units:
+  #   clove: [clove, cloves]
+
+  conversions:
+    - from: package
+      to: TODO(user) # g, count, or custom unit — the weighed pack size
+      factor: TODO(user)
+    # One edge per unit recipes will use (-> g), plus macros basis (-> g):
+    # - from: count
+    #   to: g
+    #   factor: TODO(user)
