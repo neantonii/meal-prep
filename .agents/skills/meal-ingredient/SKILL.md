@@ -81,13 +81,15 @@ the Nutrition Facts panel. For any label photo in chat, invoke the
 `label-vision` skill — it owns the whole photo path (extract from event
 history, transcribe via the user's recognizer proxy). Never use model
 vision for panels; never ask the user to transcribe what the proxy can
-read. Pre-fill `unit` + `amount` (the `per ...` basis, e.g. `per 55 g`,
-`per 1/3 cup`), required `calories_kcal, protein_g, fat_g, carbs_g,
-fiber_g` (>= 0), and optional `saturated_fat_g, sugars_g, sodium_mg,
-potassium_mg` when printed. Show every read-back value to the user for
-confirmation before accepting — recognizers misread digits, and a wrong
-basis corrupts all per-100g macros. Fall back to verbatim transcription
-only when no photo is available.
+read. The recognizer returns the serving line verbatim (`serving_text`,
+e.g. `Per 4 squares (40 g)`) plus required `calories_kcal, protein_g,
+fat_g, carbs_g, fiber_g` (>= 0) and optional `saturated_fat_g, sugars_g,
+sodium_mg, potassium_mg` when printed. Map `serving_text` to the DTO's
+`unit` + `amount` yourself (those are our schema terms, not the proxy's).
+Show every read-back value to the user for confirmation before accepting
+— recognizers misread digits, and a wrong basis corrupts all per-100g
+macros. Fall back to verbatim transcription only when no photo is
+available.
 
 When the photo has no Nutrition Facts panel (fresh meat, produce, bakery —
 no label to read), say so plainly and stop: show what the photo did contain

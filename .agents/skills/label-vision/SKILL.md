@@ -57,19 +57,31 @@ Dead ends (do not retry — all proven to fail):
 
 ```sh
 curl -X POST \
-  -F "prompt=Transcribe the Nutrition Facts panel exactly as printed. Reply with ONLY a JSON object, no fences. Include macros (calories_kcal, protein_g, fat_g, carbs_g, fiber_g, saturated_fat_g, sugars_g, sodium_mg, potassium_mg), basis (amount, label as printed, unit), brand, product, price, pack size if visible. If NO panel visible, return no_label true with seen description. Never estimate; illegible values are null." \
+  -F "prompt=Transcribe the Nutrition Facts panel exactly as printed. Reply with ONLY a JSON object, no fences. Include macros (calories_kcal, protein_g, fat_g, carbs_g, fiber_g, saturated_fat_g, sugars_g, sodium_mg, potassium_mg), serving_text (the serving-size line VERBATIM as printed, e.g. 'Per 4 squares (40 g)' — copy the whole line, do not split it into parts), brand, product, price, pack size if visible. If NO panel visible, return no_label true with seen description. Never estimate; illegible values are null." \
   -F "file=@<path>" \
   http://gemini-proxy:8000/vision
 ```
 
+The proxy knows nothing of our schema: never ask it for `unit`/`amount`
+— those are our DTO terms, and asking for them gets the pieces scattered
+across slots (`amount: 4, unit: g, label: "squares"` for "Per 4 squares
+(40 g)"). One verbatim string in, mapping to `unit` + `amount` happens
+agent-side in §3.
+
 ### 3. Shape the result
 
 Parse the inner `text` as JSON. Expected keys: `brand`, `product`,
-`pack_size`, `price`, `basis` (`amount`, `label`, `unit`), flat macro
+`pack_size`, `price`, `serving_text` (verbatim serving line), flat macro
 nutrients. Missing/optional nutrients are `null` (not printed) — never 0
 unless the panel prints zero. If `no_label` is true, follow the skill's
 no-label rule: say what the photo shows, wait for manual fill or another
 image.
+
+Map `serving_text` to the DTO's `unit` + `amount` yourself, per the
+countable-discretion rule in `meal-ingredient` §4 (a countable nobody
+cooks with stays grams; a real portion unit becomes the basis with an
+edge). If the line is ambiguous, quote the verbatim line at the user —
+never a decomposed triple, which is a mapping artifact, not panel text.
 
 ## Rules
 
