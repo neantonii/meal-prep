@@ -49,12 +49,29 @@ Do not batch multiple unrelated ingredients in one pass.
 ### 1. Transcribe the label
 
 Ask the user to upload a picture of the Nutrition Facts panel (usually a
-grocery-webpage screenshot — panel plus page context). For any food image
-in chat, invoke the `label-vision` skill — it owns the whole photo path
-(extract from event history, transcribe via the user's recognizer proxy).
-Never use model vision for panels; never ask the user to transcribe what
-the proxy can read. Fall back to verbatim transcription only when no photo
-is available.
+grocery-webpage screenshot — panel plus page context). Transcribe it with
+the built-in `inspect_image_with_vision` tool (`image_index: 0` on the
+latest user message) — never ask the user to transcribe what vision can
+read. The question is settled — use it verbatim:
+
+> This is a screenshot from a grocery webpage showing a food product.
+> Transcribe the Nutrition Facts panel exactly as printed. Reply with ONLY
+> a JSON object, no fences. Include macros (calories_kcal, protein_g,
+> fat_g, carbs_g, fiber_g, saturated_fat_g, sugars_g, sodium_mg,
+> potassium_mg), serving_text (the serving-size line VERBATIM as printed,
+> e.g. 'Per 4 squares (40 g)' — copy the whole line, do not split it into
+> parts), and page context: brand, product (page title as shown), price,
+> pack_size if visible anywhere on the page. If NO Nutrition Facts panel
+> visible, return no_label true with seen description. Never estimate;
+> illegible values are null.
+
+Vision is dumb eyes only: it knows nothing of our schema, so never ask it
+for `unit`/`amount` (those are DTO terms — asking scatters panel pieces
+across slots). One verbatim `serving_text` string in, mapping to `unit` +
+`amount` happens agent-side below. Page-context fields (brand, product,
+price, pack) are small visible judgments — a wrong pick shows on the card
+for sign-off. Fall back to verbatim transcription only when no photo is
+available.
 
 When the photo has no Nutrition Facts panel (fresh meat, produce, bakery —
 no label to read), say so plainly and stop: show what the photo did contain
@@ -63,11 +80,12 @@ manually from a reference source they name, or uploads a different image.
 Never estimate macros silently; a sourced manual value gets challenged
 against the sanity bands like any other.
 
-The recognizer returns the serving line verbatim (`serving_text`, e.g. `Per
-4 squares (40 g)`) plus required `calories_kcal, protein_g, fat_g, carbs_g,
-fiber_g` (>= 0) and optional `saturated_fat_g, sugars_g, sodium_mg,
-potassium_mg` when printed. Map `serving_text` to the DTO's `unit` +
-`amount` yourself (those are our schema terms, not the proxy's).
+Parse the answer as JSON. Expected keys: `brand`, `product`, `pack_size`,
+`price`, `serving_text` (verbatim serving line), flat macro nutrients.
+Missing/optional nutrients are `null` (not printed) — never 0 unless the
+panel prints zero. Map `serving_text` to the DTO's `unit` + `amount`
+yourself. If the line is ambiguous, quote the verbatim line at the user —
+never a decomposed triple, which is a mapping artifact, not panel text.
 
 ### 2. Stage the draft and show the card
 
@@ -75,15 +93,21 @@ Transcription in hand, stage the full draft at once — no staged
 questioning. Propose `id` (kebab-case slug; collision-check with `grep -rn
 "id: <slug>" data/ingredients/`), `aisle`, `name` (Title Case verbose, copy
 sibling style), `step_name` (lowercase concise), `storage`, `shelf_life_days`,
-and conversion edges (§3), all as best guesses. Render immediately:
+and conversion edges (§3), all as best guesses. The card also needs the
+photo bytes on disk (vision reads from the message, the renderer reads a
+file), so save it fresh — never trust files already in `.agent_tmp/`
+(another conversation's `label.png` may be sitting there); use distinct
+names per run when juggling photos:
 
 ```sh
+python .agents/skills/meal-ingredient/scripts/extract_chat_image.py .agent_tmp/label
 python render_ingredient_review.py .agent_tmp/draft.json .agent_tmp/label.png .agent_tmp/review.html
 ```
 
 The renderer embeds the photo as a data URI, so the HTML is
 self-contained — the image renders wherever the preview opens. Pass the
-extracted file path (with its real extension); never a bare filename.
+extracted file path (with its real extension, as printed by the script);
+never a bare filename.
 Open with `show_preview` the moment it renders.
 
 Present the read-back with the card: panel-literal values (white) vs your
@@ -192,6 +216,14 @@ State which sanity warnings were accepted and why.
 
 ### Scripts
 
+- **`scripts/extract_chat_image.py`** — saves the latest user-attached
+  chat image to disk for the review card (vision reads from the message;
+  the renderer needs a file): `python scripts/extract_chat_image.py
+  .agent_tmp/label` → saves `.agent_tmp/label.<fmt>`, prints path + bytes.
+  Discovers the newest conversation, searches newest-first, decodes the
+  first image block. Nonzero exit = no image found. Stdlib only. Do not
+  reimplement as hand-rolled `curl /events/search` pipelines, and never
+  search the filesystem for uploads — chat attachments never land on disk.
 - **`scripts/validate_ingredient.py`** — thin scaffolding: enrich one entry
   via the real pipeline and print `check_ingredient` warnings. Usage:
   `python scripts/validate_ingredient.py data/ingredients/<aisle>.yaml --id <slug>`.
