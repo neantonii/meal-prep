@@ -18,16 +18,25 @@ Do not batch multiple unrelated ingredients in one pass.
 ## Core Rules
 
 - Never invent nutrition, price, or weights. Nutrition and price are
-  user-supplied facts. Missing values stay `TODO(user)` until the user answers.
-- Collect via chat (in stages, one question group at a time). Every value
-  still needs user sign-off on the side-by-side review card before drafting.
+  user-supplied facts (panel read or explicit user statement). Identity,
+  storage, shelf life, and edges are staged as best guesses and flagged
+  yellow/red on the review card — guessing there is the flow, not a
+  violation. Reserve `TODO(user)` for values with genuinely nothing to go
+  on.
+- The review card IS the collection flow, not a step after it. Transcription
+  in hand, stage the draft and render immediately — never interrogate the
+  user for identity/storage/edges first. The user corrects guesses on the
+  card; chat questions are only for genuine ambiguities the card cannot show
+  (e.g. an unclear serving line, new-entry vs update-existing).
 - The review card (`render_ingredient_review.py` at repo root) renders a
   recognizer draft as HTML next to the label photo: `python
   render_ingredient_review.py <draft.json> <photo> <out.html>`. It shapes
   the draft into an `IngredientDTO`, gates on `prepare_ingredient` (gram
   reachability), and renders strictly from validated fields — a DTO or
   enrichment failure renders errors instead of values. The page owns
-  formatting only; no domain check may live in it.
+  formatting only; no domain check may live in it. Always open it with
+  `show_preview` the moment it renders — never report transcription results
+  without the card beside them.
 - Write YAML only. Never edit `src/`, `data/units.yaml`, `data/aisles.yaml`, or
   `data/equipment.yaml` from this flow.
 - Challenge weird data (see `references/sanity-checks.md`). Warn, do not
@@ -37,59 +46,15 @@ Do not batch multiple unrelated ingredients in one pass.
 
 ## Workflow
 
-### 1. Identify the slot
+### 1. Transcribe the label
 
-Determine `id` (kebab-case slug) and `aisle` (one of `produce, bakery, meat,
-seafood, dairy, pantry, spices`). Check for collisions:
-
-```sh
-grep -rn "id: <slug>" data/ingredients/
-ls data/ingredients/<aisle>.yaml
-```
-
-Abort on duplicate id across any file. Confirm the target file is
-`data/ingredients/<aisle>.yaml` — the `aisle` field must equal the file stem
-(adapter-enforced).
-
-### 2. Collect identity
-
-Ask the user for:
-
-- `name`: Label-style noun, Title Case, verbose
-  (e.g. `Boneless, Skinless Chicken Breast`).
-- `step_name`: Prose noun, lowercase, concise (e.g. `chicken breast`).
-- `storage`: `ambient | refrigerated | frozen`.
-- `shelf_life_days`: integer > 0 under that storage mode.
-
-Copy casing/style from sibling rows in the same aisle file. Challenge
-storage/shelf-life mismatches per `references/sanity-checks.md`.
-
-### 3. Collect retail reference
-
-Ask the user for the exact pack bought:
-
-- `brand`, `product` (full commercial name), `price` (CAD, > 0).
-- Pack net weight or count (needed for the `package` edge below).
-
-Derive nothing. A guessed price corrupts `price_per_100g` and every recipe
-cost plus planner totals.
-
-### 4. Collect macros basis
-
-Prefer a label photo over transcription: ask the user to upload a picture of
-the Nutrition Facts panel. For any label photo in chat, invoke the
-`label-vision` skill — it owns the whole photo path (extract from event
-history, transcribe via the user's recognizer proxy). Never use model
-vision for panels; never ask the user to transcribe what the proxy can
-read. The recognizer returns the serving line verbatim (`serving_text`,
-e.g. `Per 4 squares (40 g)`) plus required `calories_kcal, protein_g,
-fat_g, carbs_g, fiber_g` (>= 0) and optional `saturated_fat_g, sugars_g,
-sodium_mg, potassium_mg` when printed. Map `serving_text` to the DTO's
-`unit` + `amount` yourself (those are our schema terms, not the proxy's).
-Show every read-back value to the user for confirmation before accepting
-— recognizers misread digits, and a wrong basis corrupts all per-100g
-macros. Fall back to verbatim transcription only when no photo is
-available.
+Ask the user to upload a picture of the Nutrition Facts panel (usually a
+grocery-webpage screenshot — panel plus page context). For any food image
+in chat, invoke the `label-vision` skill — it owns the whole photo path
+(extract from event history, transcribe via the user's recognizer proxy).
+Never use model vision for panels; never ask the user to transcribe what
+the proxy can read. Fall back to verbatim transcription only when no photo
+is available.
 
 When the photo has no Nutrition Facts panel (fresh meat, produce, bakery —
 no label to read), say so plainly and stop: show what the photo did contain
@@ -98,11 +63,39 @@ manually from a reference source they name, or uploads a different image.
 Never estimate macros silently; a sourced manual value gets challenged
 against the sanity bands like any other.
 
+The recognizer returns the serving line verbatim (`serving_text`, e.g. `Per
+4 squares (40 g)`) plus required `calories_kcal, protein_g, fat_g, carbs_g,
+fiber_g` (>= 0) and optional `saturated_fat_g, sugars_g, sodium_mg,
+potassium_mg` when printed. Map `serving_text` to the DTO's `unit` +
+`amount` yourself (those are our schema terms, not the proxy's).
+
+### 2. Stage the draft and show the card
+
+Transcription in hand, stage the full draft at once — no staged
+questioning. Propose `id` (kebab-case slug; collision-check with `grep -rn
+"id: <slug>" data/ingredients/`), `aisle`, `name` (Title Case verbose, copy
+sibling style), `step_name` (lowercase concise), `storage`, `shelf_life_days`,
+and conversion edges (§3), all as best guesses. Render immediately:
+
+```sh
+python render_ingredient_review.py .agent_tmp/draft.json .agent_tmp/label.png .agent_tmp/review.html
+```
+
+The renderer embeds the photo as a data URI, so the HTML is
+self-contained — the image renders wherever the preview opens. Pass the
+extracted file path (with its real extension); never a bare filename.
+Open with `show_preview` the moment it renders.
+
+Present the read-back with the card: panel-literal values (white) vs your
+guesses (yellow/red), Atwater and macro-sum results, price-band flag. The
+user corrects what's wrong on the card. Chat follow-ups are only for
+genuine ambiguities: an unclear serving line, new-entry vs
+update-existing, a price that needs confirming as paid vs shelf-tag.
+
 Record the basis as `unit` + `amount` only — never a free-text label
 passthrough. The review card derives its subline (`per 1 packet (28 g)`)
-from the validated DTO plus the conversion graph, so a recognizer's
-`"label": "1 packet (28 g)"` string is garnish, not data. Enrichment scales
-to per-100g via the conversion graph. Run the Atwater and macro-sum
+from the validated DTO plus the conversion graph. Enrichment scales to
+per-100g via the conversion graph. Run the Atwater and macro-sum
 challenges from `references/sanity-checks.md` before accepting.
 
 Exercise discretion when the printed serving is a countable nobody cooks
@@ -113,10 +106,10 @@ with: keep the basis in grams and skip the custom unit. Chips "per 26 chips
 portioned and cooked. The test is whether recipes would ever name the unit;
 a countable that only exists on the panel is not a unit.
 
-### 5. Collect conversions
+### 3. Author conversions
 
-Ask which units recipes will use (`cup, tbsp, count, piece, ...`), then ask
-for one kitchen measurement per unit. Author edges per
+Propose edges as guesses on the card; confirm recipe units with the user
+at review time (`cup, tbsp, count, piece, ...`). Author per
 `references/conversions.md`:
 
 - Always author `package -> <unit>` with the weighed pack size.
@@ -139,7 +132,7 @@ for one kitchen measurement per unit. Author edges per
 For field shapes and worked examples (simple, custom-unit, count-chain), see
 `references/ingredient-catalog.md`.
 
-### 6. Review card layout
+### 4. Review card layout
 
 The card renders strictly from validated DTO fields — no free text. Layout:
 
@@ -157,24 +150,7 @@ The card renders strictly from validated DTO fields — no free text. Layout:
   {to}`, one row per edge, confidence-colored per edge (`guessed_edges`
   sidecar renders yellow). Empty when the draft has no edges.
 
-### Staging the card
-
-Transcription in hand, stage the draft and render — best guesses for
-anything the panel didn't print (`id`, `name`, `storage`, edges), flagged
-yellow/red for user validation. Guesses are the flow, not a violation:
-the card exists so the user can correct them. Reserve `TODO(user)` rows
-for values with genuinely nothing to go on. Exact command — the photo is
-the extracted file under `.agent_tmp/`, not a bare filename:
-
-```sh
-python render_ingredient_review.py .agent_tmp/draft.json .agent_tmp/label.png .agent_tmp/review.html
-```
-
-The renderer embeds the photo as a data URI, so the HTML is
-self-contained — the image renders wherever the preview opens. Pass the
-extracted file path (with its real extension); never a bare filename.
-
-### 7. Draft, validate, challenge
+### 5. Draft, validate, challenge
 
 Draft the entry from `schemas/ingredient.schema.json` (the contract) and the
 exemplar entries in `references/ingredient-catalog.md` (the shape). Append to
@@ -189,7 +165,7 @@ Fix `ValueError`s by correcting the draft, never by editing the validator.
 Review every `WARN` line with the user; proceed only on explicit confirmation.
 Re-run until no errors remain.
 
-### 8. Close out
+### 6. Close out
 
 Run the repo gate per `AGENTS.md`:
 
@@ -224,7 +200,7 @@ State which sanity warnings were accepted and why.
 - **`render_ingredient_review.py`** (repo root) — side-by-side review card:
   recognizer draft JSON + label photo in, standalone HTML out. Shapes the
   draft into an `IngredientDTO`, gates on `prepare_ingredient`, renders per
-  §6 layout. Draft JSON may carry an authoring-only `guessed_edges` sidecar
+  §4 layout. Draft JSON may carry an authoring-only `guessed_edges` sidecar
   (never passed to validation) for yellow edge highlighting.
 - **`scripts/ingredient_form.py`** — legacy schema-driven entry form,
   superseded by the chat + review-card flow above.

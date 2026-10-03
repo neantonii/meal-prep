@@ -1,14 +1,17 @@
 # Label Vision (user recognizer)
 
-Read a Nutrition Facts panel photo through the user's own recognition
-service. **Never use built-in model vision for labels** — the user pays for
-their own recognizer and requires all label reads to go through it.
+Read a Nutrition Facts panel through the user's own recognition service.
+**Never use built-in model vision for labels** — the user pays for their
+own recognizer and requires all label reads to go through it.
 
 ## When to Use
 
-Any label photo the user drops in chat during ingredient authoring. The
-photo arrives as an embedded base64 `image` block in the conversation event
-history — extract it to disk first, then call the recognizer.
+Any food image the user drops in chat during ingredient authoring. Input
+is usually a screenshot from a grocery webpage, not a tight panel crop:
+expect the Nutrition Facts panel plus surrounding page content (product
+title, price, pack size, brand). The photo arrives as an embedded base64
+`image` block in the conversation event history — extract it to disk
+first, then call the recognizer.
 
 ## Endpoint
 
@@ -57,7 +60,7 @@ Dead ends (do not retry — all proven to fail):
 
 ```sh
 curl -X POST \
-  -F "prompt=Transcribe the Nutrition Facts panel exactly as printed. Reply with ONLY a JSON object, no fences. Include macros (calories_kcal, protein_g, fat_g, carbs_g, fiber_g, saturated_fat_g, sugars_g, sodium_mg, potassium_mg), serving_text (the serving-size line VERBATIM as printed, e.g. 'Per 4 squares (40 g)' — copy the whole line, do not split it into parts), brand, product, price, pack size if visible. If NO panel visible, return no_label true with seen description. Never estimate; illegible values are null." \
+  -F "prompt=This is a screenshot from a grocery webpage showing a food product. Transcribe the Nutrition Facts panel exactly as printed. Reply with ONLY a JSON object, no fences. Include macros (calories_kcal, protein_g, fat_g, carbs_g, fiber_g, saturated_fat_g, sugars_g, sodium_mg, potassium_mg), serving_text (the serving-size line VERBATIM as printed, e.g. 'Per 4 squares (40 g)' — copy the whole line, do not split it into parts), and page context: brand, product (page title as shown), price, pack_size if visible anywhere on the page. If NO Nutrition Facts panel visible, return no_label true with seen description. Never estimate; illegible values are null." \
   -F "file=@<path>" \
   http://gemini-proxy:8000/vision
 ```
