@@ -77,13 +77,17 @@ cost plus planner totals.
 ### 4. Collect macros basis
 
 Prefer a label photo over transcription: ask the user to upload a picture of
-the Nutrition Facts panel. Read it with vision and pre-fill `unit` + `amount`
-(the `per ...` basis, e.g. `per 55 g`, `per 1/3 cup`), required
-`calories_kcal, protein_g, fat_g, carbs_g, fiber_g` (>= 0), and optional
-`saturated_fat_g, sugars_g, sodium_mg, potassium_mg` when printed. Show every
-read-back value to the user for confirmation before accepting — vision
-misreads digits, and a wrong basis corrupts all per-100g macros. Fall back to
-verbatim transcription when no photo is available.
+the Nutrition Facts panel. For any label photo in chat, invoke the
+`label-vision` skill — it owns the whole photo path (extract from event
+history, transcribe via the user's recognizer proxy). Never use model
+vision for panels; never ask the user to transcribe what the proxy can
+read. Pre-fill `unit` + `amount` (the `per ...` basis, e.g. `per 55 g`,
+`per 1/3 cup`), required `calories_kcal, protein_g, fat_g, carbs_g,
+fiber_g` (>= 0), and optional `saturated_fat_g, sugars_g, sodium_mg,
+potassium_mg` when printed. Show every read-back value to the user for
+confirmation before accepting — recognizers misread digits, and a wrong
+basis corrupts all per-100g macros. Fall back to verbatim transcription
+only when no photo is available.
 
 When the photo has no Nutrition Facts panel (fresh meat, produce, bakery —
 no label to read), say so plainly and stop: show what the photo did contain
@@ -150,6 +154,19 @@ The card renders strictly from validated DTO fields — no free text. Layout:
 - **Conversions** (bottom): every authored edge as `1 {from} = {amount}
   {to}`, one row per edge, confidence-colored per edge (`guessed_edges`
   sidecar renders yellow). Empty when the draft has no edges.
+
+### Staging the card
+
+Transcription in hand, stage the draft and render — best guesses for
+anything the panel didn't print (`id`, `name`, `storage`, edges), flagged
+yellow/red for user validation. Guesses are the flow, not a violation:
+the card exists so the user can correct them. Reserve `TODO(user)` rows
+for values with genuinely nothing to go on. Exact command — the photo is
+the extracted file under `.agent_tmp/`, not a bare filename:
+
+```sh
+python render_ingredient_review.py .agent_tmp/draft.json .agent_tmp/label.png .agent_tmp/review.html
+```
 
 ### 7. Draft, validate, challenge
 
