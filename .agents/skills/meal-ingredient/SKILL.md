@@ -168,6 +168,10 @@ the extracted file under `.agent_tmp/`, not a bare filename:
 python render_ingredient_review.py .agent_tmp/draft.json .agent_tmp/label.png .agent_tmp/review.html
 ```
 
+The renderer embeds the photo as a data URI, so the HTML is
+self-contained — the image renders wherever the preview opens. Pass the
+extracted file path (with its real extension); never a bare filename.
+
 ### 7. Draft, validate, challenge
 
 Draft the entry from `schemas/ingredient.schema.json` (the contract) and the

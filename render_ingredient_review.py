@@ -17,6 +17,7 @@ Usage:
 
 from __future__ import annotations
 
+import base64
 import html
 import json
 import sys
@@ -326,9 +327,21 @@ def render(dto: IngredientDTO, raw: dict, photo_src: str) -> str:
     )
 
 
+def _photo_data_uri(photo_path: str) -> str:
+    """Embed photo bytes so the HTML is self-contained.
+
+    A repo-relative `src` breaks wherever the preview panel does not serve
+    the working tree; a data URI renders anywhere.
+    """
+    suffix = Path(photo_path).suffix.lower().lstrip(".") or "png"
+    raw = Path(photo_path).read_bytes()
+    return f"data:image/{suffix};base64,{base64.b64encode(raw).decode()}"
+
+
 def main() -> int:
     raw = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-    photo_src, out = sys.argv[2], Path(sys.argv[3])
+    photo_src = _photo_data_uri(sys.argv[2])
+    out = Path(sys.argv[3])
     try:
         dto = build_dto(raw)
     except ValidationError as e:

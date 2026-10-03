@@ -26,28 +26,21 @@ transcription — parse it as JSON.
 ### 1. Extract the photo
 
 Chat attachments are embedded base64 in the event history, not files on
-disk. Pull the latest user message and decode. Never hardcode the
-conversation id — discover it dynamically (directory names are dashless;
-reinsert dashes at 8-4-4-4-12):
+disk. Run the extract script — one call, no manual conversation-id
+surgery (it discovers the newest conversation and searches newest-first):
 
 ```sh
-CID="$(ls -t "$OH_CONVERSATIONS_PATH" | head -1 | sed -E 's/(.{8})(.{4})(.{4})(.{4})(.{12})/\1-\2-\3-\4-\5/')"
-KEY="$(tr -d '\n' < ~/.openhands/agent-canvas/api-key.txt)"
-curl -sS -m 30 -H "X-Session-API-Key: $KEY" \
-  "http://127.0.0.1:18000/api/conversations/$CID/events/search?limit=5&sort_order=TIMESTAMP_DESC&source=user" \
-  | python -c "
-import json,sys,base64
-d=json.load(sys.stdin)
-for e in d.get('items',d.get('events',[])):
-    for x in e.get('llm_message',{}).get('content',[]):
-        if x.get('type')=='image':
-            for u in x.get('image_urls',[]):
-                fmt=u.split(';')[0].split('/')[-1]
-                raw=base64.b64decode(u.split(',',1)[1])
-                open('<dest>.'+fmt,'wb').write(raw)
-                raise SystemExit
-"
+python .agents/skills/label-vision/scripts/extract_chat_image.py .agent_tmp/label
 ```
+
+It saves `.agent_tmp/label.<fmt>` (extension from the upload MIME type)
+and prints the path + byte count. Nonzero exit with a plain error means
+no image found — the user hasn't dropped one yet.
+
+`.agent_tmp/` is shared across chats in the same repo: never trust files
+already there (another conversation's `draft.json` / `label.png` may be
+sitting in it). Always extract fresh, and use distinct names per run
+(`label-turkey`, `label-beans`) when juggling multiple photos.
 
 Dead ends (do not retry — all proven to fail):
 
@@ -55,17 +48,10 @@ Dead ends (do not retry — all proven to fail):
   attachments never land on disk. (`inspect_image_with_vision` does see the
   image — it is the triage path, but it cannot save bytes, so it cannot
   feed the proxy.)
-- Default event search order (oldest first, limit 100): recent messages sit
-  past the window; always pass `sort_order=TIMESTAMP_DESC`.
-- `kind=MessageEvent` (or any `kind`) filter: matches nothing. Filter by
-  `source=user` instead.
-- `start_page_id` / `next_page_id` paging with a stale id: returns the same
-  first page forever. Fresh newest-first search is the reliable path.
-
-Notes: the `data:image/<fmt>;base64,` prefix varies by upload format —
-adjust the prefix assertion to match (split on the first comma instead of
-hardcoding when unsure). Save under `.agent_tmp/` (scratch, swept after
-the trial).
+- Hand-rolled `curl /events/search` pipelines: the script already does
+  newest-first + `source=user` filtering. Reimplementing it in chat wastes
+  ~10 tool calls on CID discovery, stale-file forensics, and repeated
+  searches.
 
 ### 2. Call the recognizer
 
@@ -98,3 +84,11 @@ image.
   convert, or estimate.
 - Every read-back value needs user confirmation before drafting (show the
   side-by-side review page).
+
+## Scripts
+
+- **`scripts/extract_chat_image.py`** — extracts the latest user-attached
+  chat image to disk: `python scripts/extract_chat_image.py
+  .agent_tmp/label` → saves `.agent_tmp/label.<fmt>`, prints path + bytes.
+  Discovers the newest conversation, searches newest-first, decodes the
+  first image block. Nonzero exit = no image found. Stdlib only.
