@@ -47,19 +47,23 @@ USDA_KEY="$USDA_KEY" python .agents/skills/meal-usda/scripts/usda_lookup.py fetc
 
 ## Flow
 
-One search, at most two fetches, then move on:
+Keep it tight, not precious — the API budget is ~2000 calls/day, so an
+extra call with value is fine. What dies here is pointless thrash:
+re-running searches that already answered, fetching three candidates to
+compare, dumping full records to hand-filter nutrients.
 
-1. `search` once with a plain-food query (`"<food> raw"`, `"<food>"`).
-   Read the candidate list and pick the closest description yourself —
-   the script ranks nothing. Prefer SR Legacy (macro-complete) over
-   Foundation (sometimes a sparse analytical subset with no
-   energy/protein rows at all).
+1. `search` with a plain-food query (`"<food> raw"`, `"<food>"`), limit
+   5–10. Read the candidate list and pick the closest description
+   yourself — the script ranks nothing, so the right hit may sit at
+   rank 5. Prefer SR Legacy (macro-complete) over Foundation (sometimes
+   a sparse analytical subset with no energy/protein rows at all). If no
+   same-food SR Legacy hit is in the list, re-query once with different
+   wording.
 2. `fetch` the pick with `--macros`. Foundation and SR Legacy values
    are per 100 g and compare directly against enriched per-100g macros.
    If the result has no energy/protein (sparse record), fetch the
-   next-closest candidate once — then stop regardless. The cross-check
-   needs a reference record, not the best record. Never run a second
-   search, never fetch three candidates to compare.
+   next-closest candidate — then stop and reason from the best record
+   you have.
 3. Record the decision: cite the FDC ID (`fdcId`, description, dataType)
    in chat and in the close-out report. Staged USDA macros carry `usda`
    provenance and render green on the review card.
