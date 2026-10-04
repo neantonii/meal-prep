@@ -228,3 +228,33 @@
       to: g
       factor: 454
 
+- id: capellini-spezzati
+  name: Capellini Spezzati
+  step_name: capellini spezzati
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 730
+
+  reference:
+    brand: La Molisana
+    product: La Molisana Spezzatto 58A Cappellino 450 g
+    price: 2.49
+
+  macros:
+    unit: g
+    amount: 90
+    calories_kcal: 320.0
+    protein_g: 13.0
+    fat_g: 1.0
+    carbs_g: 65.0
+    fiber_g: 2.0
+    saturated_fat_g: 0.3
+    sugars_g: 3.0
+    sodium_mg: 0.0
+    potassium_mg: 225.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 450
+
