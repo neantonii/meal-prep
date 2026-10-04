@@ -75,15 +75,21 @@ agent-side below. Page-context fields (brand, product, price, pack) are
 small visible judgments — a wrong pick shows on the card for sign-off.
 Fall back to verbatim transcription only when no photo is available.
 
+Alongside transcription, always invoke the meal-usda skill: search
+FoodData Central for the closest plain-food match and fetch the record —
+in the same turn as vision transcription, once the food is identifiable
+from the photo or chat. Do not wait for transcription to finish; the two
+calls are independent. The panel (when present) stays source of truth;
+the USDA record is the reasoning reference behind staging decisions and
+the cross-check in §5 (see `references/sanity-checks.md`, USDA section).
+
 When the photo has no Nutrition Facts panel (fresh meat, produce, bakery —
-no label to read), fall back to USDA: invoke the meal-usda skill, search
-FoodData Central for the closest plain-food match, fetch the record, and
+no label to read), the USDA record becomes the macro source instead:
 stage the macros from it with `usda` provenance (green on the card).
 Say plainly that the panel was missing, cite the picked FDC ID
 (description + dataType) on the card read-back, and proceed with the
 normal review flow — the user corrects a wrong pick like any other guess.
-Never estimate macros silently; a USDA-sourced value gets challenged
-against the sanity bands like any other. Only stop and wait when the
+Never estimate macros silently. Only stop and wait when the
 food itself is unclear (ambiguous product, or the user must choose
 between candidate matches).
 
@@ -200,14 +206,19 @@ python .agents/skills/meal-ingredient/scripts/validate_ingredient.py \
 
 Fix `ValueError`s by correcting the draft, never by editing the validator.
 Review every `WARN` line with the user; proceed only on explicit confirmation.
+Then run the USDA cross-check per `references/sanity-checks.md` (compare the
+enriched per-100g macros against the fetched FDC record, challenge deltas
+like any other warning) — the FDC record from §1 is already in hand, so
+this is reasoning, not a second lookup.
 Re-run until no errors remain.
 
 ### 6. Close out
 
 Run the repo gate per `AGENTS.md`, then report derived values:
 `package_weight_g`, `price_per_100g`, per-100g macros. State which sanity
-warnings were accepted and why. When macros came from USDA, cite the FDC
-ID (description + dataType) in the report.
+warnings were accepted and why. Always cite the FDC record used
+(`fdcId`, description, dataType) — as macro source for no-label entries,
+as cross-check reference otherwise.
 
 ## Additional Resources
 

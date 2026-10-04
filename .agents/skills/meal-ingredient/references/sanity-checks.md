@@ -1,10 +1,12 @@
 # Sanity Checks Reference
 
-Warn-only challenges, implemented by `meal_prep.services.heuristics`
-(`check_ingredient`, taking a prepared `Ingredient` and returning warning
-strings). The validator prints one `WARN` line per warning; the agent raises
-each with the user and proceeds only on explicit confirmation. Never silently
-accept, never fail the run on these alone.
+Two layers of warn-only challenges. The naive bands below are implemented by
+`meal_prep.services.heuristics` (`check_ingredient`, taking a prepared
+`Ingredient` and returning warning strings); the validator prints one `WARN`
+line per warning. The USDA cross-check is agent reasoning over the FDC record
+fetched in SKILL.md §1 — no script, no thresholds in code. The agent raises
+each tripwire from either layer with the user and proceeds only on explicit
+confirmation. Never silently accept, never fail the run on these alone.
 
 ## Macros: Atwater Energy Check
 
@@ -54,6 +56,26 @@ already inside `carbs` on Canadian labels — do not add it).
   clove 2–5 g. Outside band, ask for reweigh.
 - `cup -> g`: flour ~120, sugar ~200, rice ~185, frozen veg ~145. Density is
   ingredient-specific; challenge only on order-of-magnitude errors.
+
+## USDA Cross-Check
+
+Compare the enriched per-100g macros against the FDC record fetched in
+SKILL.md §1 (Foundation/SR Legacy values are already per 100 g — no basis
+scaling). Read the record's `foodNutrients` yourself and decide which
+numbers answer each macro field; there is no mapping table to follow.
+
+- Panel entries: the panel wins, USDA challenges. A large delta usually
+  means a transcription error (re-check the photo) or a genuinely different
+  product (e.g. sweetened vs unsweetened, lean vs regular) — say which you
+  suspect and wait. A small delta is manufacturing variance; confirm it
+  stands and move on.
+- No-label entries: USDA is the macro source, so there is nothing to
+  compare against — instead, say why the picked record matches the food
+  (description, dataType) and flag any judgment calls (closest available
+  cut, cooked vs raw) for user sign-off.
+- Branded records are noisy label data, not a reference: prefer
+  Foundation/SR Legacy for the cross-check, and say so when the only
+  available match is Branded.
 
 ## Challenge Script
 
