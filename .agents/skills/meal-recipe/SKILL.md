@@ -26,6 +26,12 @@ batch multiple unrelated recipes in one pass.
 - Guess cooking judgment (times, temps, yield, storage) and say so on the
   read-back; the user corrects like any other guess. Never guess catalog
   facts — those go through the ingredient skill.
+- Everything the user posted during brainstorming — pasted specs, macro
+  tables, product names, costs — is inspiration, never a verified fact.
+  Check and verify each of it through the normal flow (label photo,
+  USDA cross-check, sanity bands) before it lands anywhere. Never stage
+  user-pasted numbers as `panel`, never skip verification because the
+  spec "looks complete".
 
 ## Workflow
 
@@ -35,15 +41,17 @@ Take the user's starting point — a rough idea, a pasted draft, a photo of
 a dish — and reason it into a cookable recipe: cuisine logic, technique
 order, balanced macros for the category, realistic batch size. The user is
 not a confident cook, so the agent carries the cooking judgment: always
-look up similar recipes online and ground technique, order, times, temps,
-and ratios in what working recipes do — never wing it from priors alone.
-Agree the shape with the user before touching files: title, category
-(`modular_protein`, `modular_carb`, `modular_cooked_veg`,
-`fresh_salad_veg`, `breakfast`), servings, and the ingredient list with
-quantities in concrete units. Paste the agreed list as an FYI — no formal
-sign-off needed. Every quantity's unit must already be gram-reachable on
-its catalog entry, or be reachable via an edge the agent judges worth
-authoring (see §2).
+look up similar recipes online (use the browser) and ground technique,
+order, times, temps, and ratios in what working recipes do — never wing
+it from priors alone. Agree the shape with the user before touching
+files: title, category (`modular_protein`, `modular_carb`,
+`modular_cooked_veg`, `fresh_salad_veg`, `breakfast`), servings, and the
+ingredient list with quantities in concrete units. Paste the agreed list
+as an FYI — no formal sign-off needed — with 2–3 similar recipes cited
+(URL + what was borrowed: technique, ratios, times/temps). No citations,
+no draft: the lookup is the proof the research happened. Every
+quantity's unit must already be gram-reachable on its catalog entry, or
+be reachable via an edge the agent judges worth authoring (see §2).
 
 ### 2. Match ingredients, report, fill gaps
 
@@ -69,8 +77,12 @@ test is whether recipes would ever name the unit again; a unit that only
 exists in this recipe is not a unit.
 
 Author each `to be added` item by invoking the meal-ingredient skill, one
-entry at a time — each validates and lands in its aisle file in the
-current tree before moving on. Return here after each entry validates.
+entry at a time, running its full flow every time: label photo (request
+it — never stage user-pasted numbers as `panel`, never render a card
+without a real photo), transcription, stage, review card, validate, land
+in the aisle file. No printf-and-placeholder shortcuts: the entry is done
+only when it validates in its aisle file in the current tree. Return here
+after each entry validates.
 
 ### 3. Draft the recipe
 
