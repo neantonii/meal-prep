@@ -43,7 +43,11 @@ order, balanced macros for the category, realistic batch size. The user is
 not a confident cook, so the agent carries the cooking judgment: always
 look up similar recipes online (use the browser) and ground technique,
 order, times, temps, and ratios in what working recipes do — never wing
-it from priors alone. Agree the shape with the user before touching
+it from priors alone. If search engines block (captcha/login wall), skip
+straight to curl: fetch 2–3 candidate recipe pages and extract their
+JSON-LD (`<script type="application/ld+json">`) for technique, ratios,
+and times — do not burn actions retrying the search box. Agree the shape
+with the user before touching
 files: title, category (`modular_protein`, `modular_carb`,
 `modular_cooked_veg`, `fresh_salad_veg`, `breakfast`), servings, and the
 ingredient list with quantities in concrete units. Paste the agreed list
@@ -93,6 +97,13 @@ body with `@ingredient{quantity%unit}` amounts, `#cookware` tokens, and
 shape — never re-specify it here. `fridge_days` must be `<=` the minimum
 ingredient shelf life (see the sanity-checks reference of the
 meal-ingredient skill).
+
+Write body prose for a human cook, not a lab notebook: plain-text liquid
+amounts use the friendliest unit (`1 liter`, not `1000 ml`; `1 tbsp`,
+not `15 ml`; `1/2 cup`, not `120 ml`). `@ingredient{}` quantities stay
+in catalog units (they must validate); prose amounts carry no such
+constraint, so pick whatever reads naturally. Never copy an awkward
+phrasing from a sibling recipe — match its technique, not its units.
 
 ### 4. Validate, regenerate cards, show
 
