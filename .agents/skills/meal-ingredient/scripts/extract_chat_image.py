@@ -1,16 +1,12 @@
 """Extract the latest user-attached chat image to disk.
 
-Chat attachments are embedded base64 in the conversation event history,
-not files on disk. This script discovers the current conversation,
-searches newest-first for the latest user message with an image block,
-and decodes the first image to <out-path>.<fmt> (extension from the
-data-URL MIME type).
+Chat attachments live in the conversation event history, not on disk.
 
 Usage:
     python extract_chat_image.py <out-path-without-extension>
 
-Prints the saved path on success; exits nonzero with a plain error when
-no image is found (no photo dropped yet, key file missing, API error).
+Saves to <out-path>.<fmt> (extension from the data-URL MIME type) and prints
+the saved path. Exits nonzero with a plain error when no image is found.
 """
 
 from __future__ import annotations
@@ -28,7 +24,7 @@ KEY_FILE = Path.home() / ".openhands" / "agent-canvas" / "api-key.txt"
 
 
 def discover_conversation_id(convs_path: Path) -> str:
-    """Newest conversation dir; names are dashless, reinsert at 8-4-4-4-12."""
+    """Newest conversation dir under `convs_path`."""
     entries = sorted(
         (p for p in convs_path.iterdir() if p.is_dir()),
         key=lambda p: p.stat().st_mtime,
@@ -44,7 +40,7 @@ def discover_conversation_id(convs_path: Path) -> str:
 
 
 def latest_user_image(conversation_id: str, session_key: str) -> tuple[str, bytes]:
-    """Newest-first user event search; return (fmt, raw bytes)."""
+    """Newest user-attached image; return (fmt, raw bytes)."""
     url = (
         f"{SERVER}/api/conversations/{conversation_id}/events/search"
         "?limit=5&sort_order=TIMESTAMP_DESC&source=user"
