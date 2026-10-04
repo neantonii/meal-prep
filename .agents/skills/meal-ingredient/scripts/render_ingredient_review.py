@@ -1,31 +1,31 @@
 """Ingredient draft review renderer.
 
-Pipeline: staged draft JSON -> ``IngredientDTO`` (shape validation) ->
-``prepare_ingredient`` (gram reachability, the real pipeline) -> standalone
-HTML review page. The page renders strictly from the DTO (authored basis)
-and the enriched ``Ingredient`` (derived per-100g, package weight, pricing);
-it owns formatting only, like ``renderer.py``.
+Pipeline: staged entry YAML (``IngredientDTO`` shape) + provenance YAML
+(``IngredientProvenance``) -> cross-check -> ``prepare_ingredient`` (gram
+reachability, the real pipeline) -> standalone HTML review page. Values
+come from the DTO, color from provenance, derived numbers from the
+enriched ``Ingredient``; the page owns formatting only, like
+``renderer.py``.
 
-The agent stages a best guess for every required value, so the draft is
-always complete: panel-literal facts render plain (white), staged guesses
-render inferred (yellow). A DTO that fails shape validation, or a model
-that fails enrichment, renders the errors instead of values — the page can
-never show unvalidated numbers.
+A DTO, provenance, or enrichment failure renders the errors instead of
+values — the page can never show unvalidated numbers.
 
-Usage:
-    python render_ingredient_review.py <draft.json> <photo> <out.html>
+Usage (run from the repo root so data/ and src/ resolve):
+    python .agents/skills/meal-ingredient/scripts/render_ingredient_review.py \\
+        <draft.yaml> <provenance.yaml> <photo> <out.html>
 """
 
 from __future__ import annotations
 
 import base64
 import html
-import json
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import yaml
+from ingredient_provenance import IngredientProvenance, Provenance, edge_key
 from pydantic import ValidationError
 
 from meal_prep.adapters.aisles import load_aisles
@@ -33,7 +33,7 @@ from meal_prep.adapters.units import load_units
 from meal_prep.dtos.ingredient import IngredientDTO
 from meal_prep.services.ingredients import prepare_ingredient
 
-REPO_ROOT = Path(__file__).resolve().parent
+REPO_ROOT = Path(__file__).resolve().parents[4]
 
 _CSS = """
 :root { --bg: #0f172a; --surface: #1e293b; --border: #334155;
@@ -71,24 +71,16 @@ border-radius: 10px; padding: 10px 12px; }
 """
 
 
-def _macro(value: str, unit: str, label: str) -> str:
-    return (
-        f'<div class="macro"><div class="v">{html.escape(value)}'
-        f' <span class="u">{html.escape(unit)}</span></div>'
-        f'<div class="k">{html.escape(label)}</div></div>'
-    )
-
-
-def _conf_val(value: str, confidence: str) -> str:
-    """Inline value HTML by provenance: panel (plain) or staged guess (yellow)."""
-    if confidence == "inferred":
+def _conf_val(value: str, provenance: Provenance) -> str:
+    """Inline value HTML by provenance: panel (plain) or staged (yellow)."""
+    if provenance == Provenance.STAGED:
         return f'<span class="inferred">{html.escape(value)}</span>'
     return html.escape(value)
 
 
-def _conf_fact(key: str, value: str, confidence: str) -> str:
-    """Render a fact by provenance: panel (plain) or staged guess (yellow)."""
-    if confidence == "inferred":
+def _conf_fact(key: str, value: str, provenance: Provenance) -> str:
+    """Render a fact by provenance: panel (plain) or staged (yellow)."""
+    if provenance == Provenance.STAGED:
         val = f'<span class="inferred">{html.escape(value)}</span>'
     else:
         val = html.escape(value)
@@ -108,28 +100,15 @@ def _package_edge(dto: IngredientDTO) -> str:
     return "no package edge authored"
 
 
-def _edge_confidence(raw: dict, from_unit: str, to_unit: str, default: str) -> str:
-    """Per-edge provenance from the authoring-only `guessed_edges` list.
-
-    Never touches the DTO: `guessed_edges` lives beside `conversions` in the
-    draft JSON and is stripped before validation. Listed edges render inferred.
-    """
-    for e in raw.get("guessed_edges", []):
-        if e.get("from") == from_unit and e.get("to") == to_unit:
-            return "inferred"
-    return default
-
-
-def _conversions_section(dto: IngredientDTO, raw: dict) -> str:
-    """List every authored conversion edge; empty string when none."""
+def _conversions_section(dto: IngredientDTO, provenance: IngredientProvenance) -> str:
+    """List every staged conversion edge with its own provenance."""
     if not dto.conversions:
         return ""
-    default = provenance("conversions")
     rows = "\n".join(
         _conf_fact(
             "Conversion",
             _edge_str(c.from_unit, c.to_unit, c.factor),
-            _edge_confidence(raw, c.from_unit, c.to_unit, default),
+            provenance.conversions[edge_key(c.from_unit, c.to_unit)],
         )
         for c in dto.conversions
     )
@@ -161,95 +140,12 @@ def _error_page(title: str, errors: list[str], photo: str) -> str:
     )
 
 
-PANEL_KEYS = {
-    "brand",
-    "product",
-    "price",
-    "calories_kcal",
-    "protein_g",
-    "fat_g",
-    "carbs_g",
-    "fiber_g",
-    "saturated_fat_g",
-    "sugars_g",
-    "sodium_mg",
-    "potassium_mg",
-    "basis",
-    "conversions",
-}
+def render(dto: IngredientDTO, provenance: IngredientProvenance, photo_src: str) -> str:
+    """Enrich via the real pipeline and render DTO + model as HTML.
 
-
-def provenance(key: str) -> str:
-    """Where a draft field came from: panel literal (white) or staged guess (yellow)."""
-    return "panel" if key in PANEL_KEYS else "inferred"
-
-
-REQUIRED_KEYS = (
-    "id",
-    "name",
-    "step_name",
-    "aisle",
-    "storage",
-    "shelf_life_days",
-    "brand",
-    "product",
-    "price",
-    "calories_kcal",
-    "protein_g",
-    "fat_g",
-    "carbs_g",
-    "fiber_g",
-)
-
-
-def build_dto(raw: dict) -> IngredientDTO:
-    """Shape a complete staged draft into an IngredientDTO.
-
-    The draft is always complete — the agent stages a best guess for every
-    required value. Missing keys fail loudly (error page), never silent
-    defaults: a fabricated 0 would render as a panel-literal fact.
+    Values come from the DTO, color from provenance; the DTO feeds
+    enrichment. ``provenance.check_against(dto)`` must pass first.
     """
-    basis = raw.get("basis", {})
-    missing = [k for k in REQUIRED_KEYS if k not in raw]
-    if "unit" not in basis or "amount" not in basis:
-        missing.append("basis.unit+amount")
-    if missing:
-        raise ValueError(f"draft missing required keys: {', '.join(missing)}")
-    macros = {
-        "unit": basis["unit"],
-        "amount": basis["amount"],
-        "calories_kcal": raw["calories_kcal"],
-        "protein_g": raw["protein_g"],
-        "fat_g": raw["fat_g"],
-        "carbs_g": raw["carbs_g"],
-        "fiber_g": raw["fiber_g"],
-        "saturated_fat_g": raw.get("saturated_fat_g"),
-        "sugars_g": raw.get("sugars_g"),
-        "sodium_mg": raw.get("sodium_mg"),
-        "potassium_mg": raw.get("potassium_mg"),
-    }
-    return IngredientDTO.model_validate(
-        {
-            "id": raw["id"],
-            "name": raw["name"],
-            "step_name": raw["step_name"],
-            "aisle": raw["aisle"],
-            "storage": raw["storage"],
-            "shelf_life_days": raw["shelf_life_days"],
-            "reference": {
-                "brand": raw["brand"],
-                "product": raw["product"],
-                "price": raw["price"],
-            },
-            "macros": macros,
-            "custom_units": raw.get("custom_units", {}),
-            "conversions": raw.get("conversions", []),
-        }
-    )
-
-
-def render(dto: IngredientDTO, raw: dict, photo_src: str) -> str:
-    """Enrich via the real pipeline and render DTO + model as HTML."""
     units = load_units(REPO_ROOT / "data" / "units.yaml")
     aisles = {a.id: a for a in load_aisles(REPO_ROOT / "data" / "aisles.yaml")}
     try:
@@ -264,52 +160,82 @@ def render(dto: IngredientDTO, raw: dict, photo_src: str) -> str:
         else None
     )
 
-    def _opt(v: float | None) -> str | None:
-        return None if v is None else str(v)
+    def _opt(v: float | None, prov: Provenance | None) -> tuple[str, Provenance] | None:
+        if v is None or prov is None:
+            return None
+        return str(v), prov
 
-    macros = [
-        ("calories_kcal", str(m.calories_kcal), "kcal", "Calories"),
-        ("protein_g", str(m.protein_g), "g", "Protein"),
-        ("fat_g", str(m.fat_g), "g", "Fat"),
-        ("carbs_g", str(m.carbs_g), "g", "Carbs"),
-        ("fiber_g", str(m.fiber_g), "g", "Fiber"),
-        ("saturated_fat_g", _opt(m.saturated_fat_g), "g", "Sat fat"),
-        ("sugars_g", _opt(m.sugars_g), "g", "Sugars"),
-        ("sodium_mg", _opt(m.sodium_mg), "mg", "Sodium"),
-        ("potassium_mg", _opt(m.potassium_mg), "mg", "Potassium"),
+    macros: list[tuple[Provenance, str, str, str]] = [
+        (provenance.calories_kcal_provenance, str(m.calories_kcal), "kcal", "Calories"),
+        (provenance.protein_g_provenance, str(m.protein_g), "g", "Protein"),
+        (provenance.fat_g_provenance, str(m.fat_g), "g", "Fat"),
+        (provenance.carbs_g_provenance, str(m.carbs_g), "g", "Carbs"),
+        (provenance.fiber_g_provenance, str(m.fiber_g), "g", "Fiber"),
     ]
+    for field, unit, label in [
+        ("saturated_fat_g", "g", "Sat fat"),
+        ("sugars_g", "g", "Sugars"),
+        ("sodium_mg", "mg", "Sodium"),
+        ("potassium_mg", "mg", "Potassium"),
+    ]:
+        opt = _opt(
+            getattr(m, field),
+            getattr(provenance, f"{field}_provenance"),
+        )
+        if opt is not None:
+            value, prov = opt
+            macros.append((prov, value, unit, label))
     macro_grid = (
         '<div class="macro-grid">\n'
-        + "\n".join(_macro(v, u, label) for _, v, u, label in macros if v is not None)
+        + "\n".join(
+            f'<div class="macro"><div class="v">{_conf_val(v, prov)}'
+            f' <span class="u">{html.escape(unit)}</span></div>'
+            f'<div class="k">{html.escape(label)}</div></div>'
+            for prov, v, unit, label in macros
+        )
         + "\n</div>"
     )
     facts = [
         _conf_fact(
             "Aisle / storage",
             f"{dto.aisle} / {dto.storage.value}",
-            provenance("aisle")
-            if provenance("aisle") == provenance("storage")
-            else "inferred",
+            provenance.aisle_provenance
+            if provenance.aisle_provenance == provenance.storage_provenance
+            else Provenance.STAGED,
         ),
         _conf_fact(
             "Shelf life",
             f"{dto.shelf_life_days} days",
-            provenance("shelf_life_days"),
+            provenance.shelf_life_days_provenance,
         ),
     ]
     for field in ["id", "name", "step_name"]:
-        facts.append(_conf_fact(field, getattr(dto, field), provenance(field)))
+        facts.append(
+            _conf_fact(
+                field,
+                getattr(dto, field),
+                getattr(provenance, f"{field}_provenance"),
+            )
+        )
     facts_html = '<ul class="facts">\n' + "\n".join(facts) + "\n</ul>"
-    conversions_html = _conversions_section(dto, raw)
+    conversions_html = _conversions_section(dto, provenance)
 
+    package_provenance = next(
+        (
+            provenance.conversions[edge_key(c.from_unit, c.to_unit)]
+            for c in dto.conversions
+            if c.from_unit == "package"
+        ),
+        Provenance.STAGED,
+    )
     head = (
         '<div class="card-head">\n'
         f'<div class="slug">{html.escape(dto.id)}</div>\n'
         f"<h1>{html.escape(dto.name)}</h1>\n"
-        f'<div class="meta">{_conf_val(dto.reference.brand, provenance("brand"))} · '
-        f"{_conf_val(dto.reference.product, provenance('product'))}</div>\n"
-        f'<div class="meta">{_conf_val(f"${dto.reference.price:.2f}", provenance("price"))} · '
-        f"{_conf_val(_package_edge(dto), provenance('conversions'))}</div>\n"
+        f'<div class="meta">{_conf_val(dto.reference.brand, provenance.brand_provenance)} · '
+        f"{_conf_val(dto.reference.product, provenance.product_provenance)}</div>\n"
+        f'<div class="meta">{_conf_val(f"${dto.reference.price:.2f}", provenance.price_provenance)} · '
+        f"{_conf_val(_package_edge(dto), package_provenance)}</div>\n"
         "</div>"
     )
     return (
@@ -337,23 +263,36 @@ def _photo_data_uri(photo_path: str) -> str:
 
 
 def main() -> int:
-    raw = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-    photo_src = _photo_data_uri(sys.argv[2])
-    out = Path(sys.argv[3])
+    draft_raw = yaml.safe_load(Path(sys.argv[1]).read_text(encoding="utf-8"))
+    prov_raw = yaml.safe_load(Path(sys.argv[2]).read_text(encoding="utf-8"))
+    photo_src = _photo_data_uri(sys.argv[3])
+    out = Path(sys.argv[4])
     try:
-        dto = build_dto(raw)
+        dto = IngredientDTO.model_validate(draft_raw)
     except ValidationError as e:
         errs = [f"{'.'.join(map(str, x['loc']))}: {x['msg']}" for x in e.errors()]
-        out.write_text(_error_page("invalid DTO", errs, photo_src), encoding="utf-8")
-        print(f"DTO errors: {errs}")
+        out.write_text(_error_page("invalid draft", errs, photo_src), encoding="utf-8")
+        print(f"draft errors: {errs}")
         return 1
+    try:
+        provenance = IngredientProvenance.model_validate(prov_raw)
+    except ValidationError as e:
+        errs = [f"{'.'.join(map(str, x['loc']))}: {x['msg']}" for x in e.errors()]
+        out.write_text(
+            _error_page("invalid provenance", errs, photo_src), encoding="utf-8"
+        )
+        print(f"provenance errors: {errs}")
+        return 1
+    try:
+        provenance.check_against(dto)
     except ValueError as e:
         out.write_text(
-            _error_page("incomplete draft", [str(e)], photo_src), encoding="utf-8"
+            _error_page("draft/provenance mismatch", [str(e)], photo_src),
+            encoding="utf-8",
         )
-        print(f"draft error: {e}")
+        print(f"mismatch: {e}")
         return 1
-    page = render(dto, raw, photo_src)
+    page = render(dto, provenance, photo_src)
     out.write_text(page, encoding="utf-8")
     print(f"review written to {out}")
     return 0

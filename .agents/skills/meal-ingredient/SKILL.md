@@ -17,24 +17,28 @@ Do not batch multiple unrelated ingredients in one pass.
 
 ## Core Rules
 
-- Guess every required value and flag it yellow. Panel-literal facts
-  (nutrition, price, serving line) render white; everything staged by
-  judgment (identity, storage, shelf life, edges) renders yellow for
-  sign-off. Guessing there is the flow, not a violation.
+- Guess every required value and mark its provenance explicitly: `panel`
+  for label literals, `staged` for agent judgment. Provenance has no
+  defaults — every rendered value carries the agent's call. Guessing is
+  the flow, not a violation.
 - The review card IS the collection flow, not a step after it. Transcription
   in hand, stage the draft and render immediately — never interrogate the
   user for identity/storage/edges first. The user corrects guesses on the
   card; chat questions are only for genuine ambiguities the card cannot show
   (e.g. an unclear serving line, new-entry vs update-existing).
-- The review card (`render_ingredient_review.py` at repo root) renders the
+- The review card (`scripts/render_ingredient_review.py`) renders the
   staged draft as HTML next to the label photo: `python
-  render_ingredient_review.py <draft.json> <photo> <out.html>`. It shapes
-  the draft into an `IngredientDTO`, gates on `prepare_ingredient` (gram
-  reachability), and renders strictly from validated fields — a DTO or
-  enrichment failure renders errors instead of values. The page owns
-  formatting only; no domain check may live in it. Always open it with
-  `show_preview` the moment it renders — never report transcription results
-  without the card beside them.
+  scripts/render_ingredient_review.py <draft.yaml> <provenance.yaml>
+  <photo> <out.html>` (run from the repo root). It validates the entry as
+  an `IngredientDTO`, cross-checks the provenance file
+  (`scripts/ingredient_provenance.py` — per-value `panel`/`staged`
+  markers, nothing else), gates on `prepare_ingredient` (gram
+  reachability), and renders values from the DTO with color from
+  provenance — a draft, provenance, or enrichment failure renders
+  errors instead of values. The page owns formatting only; no domain
+  check may live in it. Always open it with `show_preview` the moment it
+  renders — never report transcription results without the card
+  beside them.
 - Write YAML only. Never edit `src/`, `data/units.yaml`, `data/aisles.yaml`, or
   `data/equipment.yaml` from this flow.
 - Challenge weird data (see `references/sanity-checks.md`). Warn, do not
@@ -87,7 +91,22 @@ never a decomposed triple, which is not panel text.
 ### 2. Stage the draft and show the card
 
 Transcription in hand, stage the full draft at once — no staged
-questioning. Propose `id` (kebab-case slug; collision-check with `grep -rn
+questioning. Stage two files (ephemeral scratch under `.agent_tmp/` —
+never committed):
+
+- `.agent_tmp/draft.yaml` — the entry in `IngredientDTO` shape, the
+  exact mapping that graduates into `data/ingredients/` in §5. Field
+  shapes come from `schemas/ingredient.schema.json` (the contract) and
+  `references/ingredient-catalog.md` (worked exemplars) — never
+  re-specify them here.
+- `.agent_tmp/provenance.yaml` — one `panel`/`staged` marker per
+  rendered value (`scripts/ingredient_provenance.py` is the source of
+  truth for the shape): scalar `<field>_provenance` markers plus a
+  `conversions` map keyed `from->to` with one entry per draft edge. Null
+  optional nutrients carry no marker; `id` is the join key and must match
+  the draft.
+
+Propose `id` (kebab-case slug; collision-check with `grep -rn
 "id: <slug>" data/ingredients/`), `aisle`, `name` (Title Case verbose, copy
 sibling style), `step_name` (lowercase concise), `storage`, `shelf_life_days`,
 and conversion edges (§3), all as best guesses. The card also needs the
@@ -97,7 +116,7 @@ file), so save it fresh every run — never reuse a stale file from
 
 ```sh
 python .agents/skills/meal-ingredient/scripts/extract_chat_image.py .agent_tmp/label
-python render_ingredient_review.py .agent_tmp/draft.json .agent_tmp/label.png .agent_tmp/review.html
+python .agents/skills/meal-ingredient/scripts/render_ingredient_review.py .agent_tmp/draft.yaml .agent_tmp/provenance.yaml .agent_tmp/label.png .agent_tmp/review.html
 ```
 
 The renderer embeds the photo as a data URI, so the HTML renders wherever
@@ -135,25 +154,28 @@ at review time (`cup, tbsp, count, piece, ...`). Author per
 - Register non-standard units under `custom_units` as
   `canonical: [canonical, plural, ...]` (canonical listed explicitly).
 - Split panel facts from guesses into separate edges. When the panel gives a
-  countable in volume (`1 can = 222 ml`), author that edge as printed, then
-  bridge to grams with an explicit density edge (`ml -> g = 1`) rather than
-  folding the guess into the panel edge (`can -> g = 222`). The guess stays
-  visible and challengeable instead of hiding inside a white row.
-- Provenance is authoring-only and never enters the DTO or catalog YAML.
-  Track guesses in a sidecar list (`guessed_edges: [{from, to}]`) that the
-  review report reads for yellow highlighting. When the draft graduates,
-  either the user confirms the guess (edge becomes plain) or it gets weighed
-  properly. `src/` and `data/ingredients/` never carry provenance fields.
+  countable in volume (`1 can = 222 ml`), author that edge as printed
+  (`provenance: panel`), then bridge to grams with an explicit density edge
+  (`ml -> g = 1`, `provenance: staged`) rather than folding the guess into
+  the panel edge (`can -> g = 222`). The guess stays visible and
+  challengeable instead of hiding inside a white row.
+- Mark an edge `panel` when its numbers are printed on the panel
+  (`2 tbsp = 30 g` → `tbsp -> g` is a panel fact, not a guess); `staged`
+  is only for weighed or estimated factors.
+- Provenance never enters the DTO or catalog YAML: `to_ingredient_dto()`
+  drops it on the way into `IngredientDTO`. When the draft graduates,
+  either the user confirms the guess or it gets weighed properly. `src/`
+  and `data/ingredients/` never carry provenance fields.
 
 For field shapes and worked examples (simple, custom-unit, count-chain), see
 `references/ingredient-catalog.md`.
 
 ### 4. Review card contract
 
-The card renders strictly from validated fields — no free text. Panel
-literals render white, staged guesses (identity rows, `guessed_edges`
-sidecar) render yellow. A DTO or enrichment failure renders errors
-instead of values. Layout lives in `render_ingredient_review.py`; do not
+The card renders values from the DTO with color from provenance — no
+free text. `panel` values render white, `staged` values render yellow. A
+draft, provenance, or enrichment failure renders errors instead of
+values. Layout lives in `scripts/render_ingredient_review.py`; do not
 re-specify it here.
 
 ### 5. Draft, validate, challenge
@@ -199,11 +221,16 @@ warnings were accepted and why.
 - **`scripts/validate_ingredient.py`** — enrich one entry via the real
   pipeline and print `check_ingredient` warnings. Usage:
   `python scripts/validate_ingredient.py data/ingredients/<aisle>.yaml --id <slug>`.
-- **`render_ingredient_review.py`** (repo root) — side-by-side review card:
-  staged draft JSON + label photo in, standalone HTML out. Shapes the
-  draft into an `IngredientDTO`, gates on `prepare_ingredient`, renders per
-  the §4 contract. Draft JSON may carry an authoring-only `guessed_edges` sidecar
-  (never passed to validation) for yellow edge highlighting.
+- **`scripts/ingredient_provenance.py`** — `IngredientProvenance`:
+  per-value `panel`/`staged` markers only (no value fields, no defaults),
+  plus a `conversions` map keyed `from->to`. Cross-checks itself against
+  the staged DTO via `check_against()`; provenance never enters the DTO.
+  The source of truth for the provenance shape.
+- **`scripts/render_ingredient_review.py`** — side-by-side review card:
+  staged entry YAML + provenance YAML + label photo in, standalone HTML
+  out. Validates the entry as `IngredientDTO`, cross-checks provenance,
+  gates on `prepare_ingredient`, renders values from the DTO with color
+  from provenance per the §4 contract.
 - **`schemas/ingredient.schema.json`** (repo-level) — committed field schema
   generated from `IngredientDTO`. Read directly; refresh via
   `python scripts/refresh_schemas.py` when stale.
