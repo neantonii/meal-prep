@@ -18,8 +18,9 @@ Do not batch multiple unrelated ingredients in one pass.
 ## Core Rules
 
 - Guess every required value and mark its provenance explicitly: `panel`
-  for label literals, `staged` for agent judgment. Provenance has no
-  defaults — every rendered value carries the agent's call. Guessing is
+  for label literals, `staged` for agent judgment, `usda` for values taken
+  from a FoodData Central record (see the meal-usda skill). Provenance has
+  no defaults — every rendered value carries the agent's call. Guessing is
   the flow, not a violation.
 - The review card IS the collection flow, not a step after it. Transcription
   in hand, stage the draft and render immediately — never interrogate the
@@ -31,7 +32,7 @@ Do not batch multiple unrelated ingredients in one pass.
   scripts/render_ingredient_review.py <draft.yaml> <provenance.yaml>
   <photo> <out.html>` (run from the repo root). It validates the entry as
   an `IngredientDTO`, cross-checks the provenance file
-  (`scripts/ingredient_provenance.py` — per-value `panel`/`staged`
+  (`scripts/ingredient_provenance.py` — per-value `panel`/`staged`/`usda`
   markers, nothing else), gates on `prepare_ingredient` (gram
   reachability), and renders values from the DTO with color from
   provenance — a draft, provenance, or enrichment failure renders
@@ -75,11 +76,16 @@ small visible judgments — a wrong pick shows on the card for sign-off.
 Fall back to verbatim transcription only when no photo is available.
 
 When the photo has no Nutrition Facts panel (fresh meat, produce, bakery —
-no label to read), say so plainly and stop: show what the photo did contain
-(product, weight, price if printed) and wait. The user either fills macros
-manually from a reference source they name, or uploads a different image.
-Never estimate macros silently; a sourced manual value gets challenged
-against the sanity bands like any other.
+no label to read), fall back to USDA: invoke the meal-usda skill, search
+FoodData Central for the closest plain-food match, fetch the record, and
+stage the macros from it with `usda` provenance (green on the card).
+Say plainly that the panel was missing, cite the picked FDC ID
+(description + dataType) on the card read-back, and proceed with the
+normal review flow — the user corrects a wrong pick like any other guess.
+Never estimate macros silently; a USDA-sourced value gets challenged
+against the sanity bands like any other. Only stop and wait when the
+food itself is unclear (ambiguous product, or the user must choose
+between candidate matches).
 
 Parse the answer as JSON. Expected keys: `brand`, `product`, `pack_size`,
 `price`, `serving_text` (verbatim serving line), flat macro nutrients.
@@ -99,12 +105,13 @@ never committed):
   shapes come from `schemas/ingredient.schema.json` (the contract) and
   `references/ingredient-catalog.md` (worked exemplars) — never
   re-specify them here.
-- `.agent_tmp/provenance.yaml` — one `panel`/`staged` marker per
+- `.agent_tmp/provenance.yaml` — one `panel`/`staged`/`usda` marker per
   rendered value (`scripts/ingredient_provenance.py` is the source of
   truth for the shape): scalar `<field>_provenance` markers plus a
   `conversions` map keyed `from->to` with one entry per draft edge. Null
   optional nutrients carry no marker; `id` is the join key and must match
-  the draft.
+  the draft. Macro values taken from a FoodData Central record are marked
+  `usda`, never `panel`.
 
 Propose `id` (kebab-case slug; collision-check with `grep -rn
 "id: <slug>" data/ingredients/`), `aisle`, `name` (Title Case verbose, copy
@@ -125,7 +132,8 @@ as printed by the script); never a bare filename.
 Open with `show_preview` the moment it renders.
 
 Present the read-back with the card: panel-literal values (white) vs your
-guesses (yellow), Atwater and macro-sum results, price-band flag. The
+guesses (yellow) vs USDA-sourced values (green, with the cited FDC ID),
+Atwater and macro-sum results, price-band flag. The
 user corrects what's wrong on the card. Chat follow-ups are only for
 genuine ambiguities: an unclear serving line, new-entry vs
 update-existing, a price that needs confirming as paid vs shelf-tag.
@@ -173,7 +181,8 @@ For field shapes and worked examples (simple, custom-unit, count-chain), see
 ### 4. Review card contract
 
 The card renders values from the DTO with color from provenance — no
-free text. `panel` values render white, `staged` values render yellow. A
+free text. `panel` values render white, `staged` values render yellow,
+`usda` values render green. A
 draft, provenance, or enrichment failure renders errors instead of
 values. Layout lives in `scripts/render_ingredient_review.py`; do not
 re-specify it here.
@@ -197,7 +206,8 @@ Re-run until no errors remain.
 
 Run the repo gate per `AGENTS.md`, then report derived values:
 `package_weight_g`, `price_per_100g`, per-100g macros. State which sanity
-warnings were accepted and why.
+warnings were accepted and why. When macros came from USDA, cite the FDC
+ID (description + dataType) in the report.
 
 ## Additional Resources
 
@@ -222,7 +232,7 @@ warnings were accepted and why.
   pipeline and print `check_ingredient` warnings. Usage:
   `python scripts/validate_ingredient.py data/ingredients/<aisle>.yaml --id <slug>`.
 - **`scripts/ingredient_provenance.py`** — `IngredientProvenance`:
-  per-value `panel`/`staged` markers only (no value fields, no defaults),
+  per-value `panel`/`staged`/`usda` markers only (no value fields, no defaults),
   plus a `conversions` map keyed `from->to`. Cross-checks itself against
   the staged DTO via `check_against()`; provenance never enters the DTO.
   The source of truth for the provenance shape.
