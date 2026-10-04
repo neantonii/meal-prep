@@ -12,16 +12,15 @@ agent work, not script work.
 
 ## When to Use
 
-Invoke when ingredient authoring needs a USDA reference:
+The meal-ingredient skill invokes this on every entry, in parallel with
+label transcription — not as a fallback. Two roles for the fetched record:
 
+- Panel entries: the panel stays source of truth; the USDA record is the
+  reasoning reference behind staging decisions and the cross-check in
+  `meal-ingredient/references/sanity-checks.md`.
 - No-label ingredients (fresh meat, produce, bakery): USDA is the macro
   source. Fetch the record, reason about the closest match, and stage the
   macros as `usda` provenance.
-- Panel cross-check: a second opinion on transcribed label macros. The
-  panel stays source of truth; USDA only challenges it.
-
-Do not invoke for packaged foods with a readable panel unless the macros
-look suspicious.
 
 ## Script
 
