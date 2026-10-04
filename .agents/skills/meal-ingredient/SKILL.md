@@ -175,10 +175,13 @@ at review time (`cup, tbsp, count, piece, ...`). Author per
   challengeable instead of hiding inside a white row.
 - Mark an edge `panel` when its numbers are printed on the panel
   (`2 tbsp = 30 g` → `tbsp -> g` is a panel fact, not a guess); `staged`
-  is only for weighed or estimated factors.
+  is only for factors measured with proper equipment — scale, cups,
+  spoons — never eyeballed or estimated. Anything can be weighed, but
+  volume is usually more convenient at cook time; use discretion per
+  ingredient (flour begs for the scale, oil for the spoon).
 - Provenance never enters the DTO or catalog YAML: `to_ingredient_dto()`
   drops it on the way into `IngredientDTO`. When the draft graduates,
-  either the user confirms the guess or it gets weighed properly. `src/`
+  either the user confirms the guess or it gets measured properly. `src/`
   and `data/ingredients/` never carry provenance fields.
 
 For field shapes and worked examples (simple, custom-unit, count-chain), see
