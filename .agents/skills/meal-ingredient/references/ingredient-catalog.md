@@ -1,24 +1,10 @@
 # Ingredient Catalog Reference
 
-Conventions for one `data/ingredients/<aisle>.yaml` list entry. Authored form
-is `IngredientDTO`; enrichment (`prepare_ingredient`) derives the frozen
-`Ingredient`. Keep the two forms distinct.
-
-## Field Schema (committed, never hand-edit)
-
-Read `schemas/ingredient.schema.json` directly. It is generated from
-`meal_prep.dtos.ingredient.IngredientDTO` and carries every field, type,
-constraint, and `Field(description=...)`. `extra="forbid"` on every model:
-unknown keys fail shape validation. If the file looks stale, run
-`python scripts/refresh_schemas.py` and commit the diff
-(`tests/test_schemas.py` guards freshness in CI).
-
-## Drafting
-
-Draft from the schema (the contract: fields, types, bounds, defaults,
-validators) and the exemplar entries below (the shape: conversion chains,
-custom-unit layout, sibling style). On any conflict with skill text, the
-schema wins. Replace every unknown with a user-supplied fact — never invent.
+Net-new authoring conventions for one `data/ingredients/<aisle>.yaml` list
+entry. Field definitions live in `schemas/ingredient.schema.json` (generated
+from `meal_prep.dtos.ingredient.IngredientDTO` — the contract; on any conflict
+with skill text, the schema wins). `name` vs `step_name` semantics live in
+`src/meal_prep/dtos/README.md`. Read both there, not here.
 
 ## File Placement
 
@@ -26,16 +12,6 @@ schema wins. Replace every unknown with a user-supplied fact — never invent.
 - `aisle` field must equal the file stem (`load_ingredients_file` enforces).
 - `id` globally unique across all aisle files (`load_all_ingredients` enforces).
 - Append in id-sorted position to match file convention.
-
-## Naming
-
-- `name` is for tables and lists; `step_name` is for flowing instruction text
-  and renderer badges. Copy the casing/style of sibling rows; casing is
-  convention observed in data, not a validation rule.
-- `id` mirrors the retail item, not the recipe usage: `boneless-chicken-breast`,
-  not `chicken`.
-- Custom-unit canonicals are slugs (`clove`); aliases cover plurals and
-  variants (`[clove, cloves]`).
 
 ## Exemplar Entries (read live, never copy here)
 

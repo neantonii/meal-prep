@@ -44,8 +44,7 @@ already inside `carbs` on Canadian labels — do not add it).
 - Fresh meat `> 7` days refrigerated: challenge (should be frozen or shorter).
 - `frozen` with `< 30` days: challenge (freezer burn policy, not safety).
 - Cross-check against the calling recipe: recipe `fridge_days` must be `<=`
-  `min(ingredient shelf_life_days)`; flag chicken-breast-style smells
-  (shelf 3 vs recipe 4).
+  `min(ingredient shelf_life_days)`.
 
 ## Conversion Plausibility
 
