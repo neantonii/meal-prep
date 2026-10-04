@@ -38,7 +38,7 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 _CSS = """
 :root { --bg: #0f172a; --surface: #1e293b; --border: #334155;
 --text: #f8fafc; --muted: #94a3b8; --warn: #facc15; --err: #f87171;
---accent: #38bdf8; }
+--accent: #38bdf8; --ok: #4ade80; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg); color: var(--text);
 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -66,22 +66,27 @@ border-radius: 10px; padding: 10px 12px; }
 .facts li:last-child { border-bottom: none; }
 .facts .k { color: var(--muted); }
 .inferred { color: var(--warn); }
+.sourced { color: var(--ok); }
 .err { color: var(--err); }
 .note { color: var(--muted); font-size: 0.85rem; margin-top: 10px; }
 """
 
 
 def _conf_val(value: str, provenance: Provenance) -> str:
-    """Inline value HTML by provenance: panel (plain) or staged (yellow)."""
+    """Inline value HTML by provenance: panel (plain), staged (yellow), usda (green)."""
     if provenance == Provenance.STAGED:
         return f'<span class="inferred">{html.escape(value)}</span>'
+    if provenance == Provenance.USDA:
+        return f'<span class="sourced">{html.escape(value)}</span>'
     return html.escape(value)
 
 
 def _conf_fact(key: str, value: str, provenance: Provenance) -> str:
-    """Render a fact by provenance: panel (plain) or staged (yellow)."""
+    """Render a fact by provenance: panel (plain), staged (yellow), usda (green)."""
     if provenance == Provenance.STAGED:
         val = f'<span class="inferred">{html.escape(value)}</span>'
+    elif provenance == Provenance.USDA:
+        val = f'<span class="sourced">{html.escape(value)}</span>'
     else:
         val = html.escape(value)
     return f'<li><span class="k">{html.escape(key)}:</span> {val}</li>'
