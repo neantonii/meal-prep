@@ -1,4 +1,34 @@
 
+- id: light-old-cheddar
+  name: Light Old Cheddar Cheese
+  step_name: cheddar
+  aisle: dairy
+  storage: refrigerated
+  shelf_life_days: 60
+
+  reference:
+    brand: Compliments
+    product: Compliments Cheese Light Old Cheddar Block 400 g
+    price: 6.99
+
+  macros:
+    unit: g
+    amount: 30
+    calories_kcal: 90.0
+    protein_g: 9.0
+    fat_g: 6.0
+    carbs_g: 1.0
+    fiber_g: 0.0
+    saturated_fat_g: 3.5
+    sugars_g: 0.0
+    sodium_mg: 220.0
+    potassium_mg: 20.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 400
+
 - id: unsalted-butter
   name: Unsalted Butter
   step_name: butter
