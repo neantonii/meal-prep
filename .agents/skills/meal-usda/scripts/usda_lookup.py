@@ -6,7 +6,7 @@ the match and reasons about the nutrients itself.
 
 Usage:
     python usda_lookup.py search <query> [--limit N] [--data-types ...]
-    python usda_lookup.py fetch <fdcId> [--out PATH]
+    python usda_lookup.py fetch <fdcId> [--out PATH] [--macros]
 
 Reads the API key from the USDA_KEY environment variable. Run from the
 repo root so relative --out paths land under .agent_tmp/ as usual.
@@ -24,6 +24,38 @@ import urllib.request
 
 BASE = "https://api.nal.usda.gov/fdc/v1"
 TIMEOUT = 30
+
+MACRO_NUMBERS = {
+    "208": "calories_kcal",
+    "203": "protein_g",
+    "204": "fat_g",
+    "205": "carbs_g",
+    "291": "fiber_g",
+    "269": "sugars_g",
+    "307": "sodium_mg",
+    "306": "potassium_mg",
+    "606": "sat_fat_g",
+}
+
+
+def macros(record: dict) -> dict:
+    """Pick the macro nutrients out of a fetched record.
+
+    Foundation records carry string nutrient numbers and amount-less header
+    rows — compare as strings and skip entries without an amount.
+    """
+    out: dict[str, object] = {
+        "fdcId": record.get("fdcId"),
+        "description": record.get("description"),
+        "dataType": record.get("dataType"),
+    }
+    for entry in record.get("foodNutrients", []):
+        nutrient = entry.get("nutrient", {})
+        field = MACRO_NUMBERS.get(str(nutrient.get("number")))
+        if field is None or entry.get("amount") is None:
+            continue
+        out[field] = entry["amount"]
+    return out
 
 
 def _key() -> str:
@@ -87,6 +119,11 @@ def main() -> int:
     p_fetch = sub.add_parser("fetch", help="Fetch one record by FDC ID.")
     p_fetch.add_argument("fdc_id", type=int)
     p_fetch.add_argument("--out", help="Write the record JSON here instead of stdout.")
+    p_fetch.add_argument(
+        "--macros",
+        action="store_true",
+        help="Print only identity plus macro nutrients instead of the full record.",
+    )
 
     args = parser.parse_args()
     try:
@@ -94,6 +131,8 @@ def main() -> int:
             print(json.dumps(search(args.query, args.limit, args.data_types), indent=2))
         else:
             record = fetch(args.fdc_id)
+            if args.macros:
+                record = macros(record)
             text = json.dumps(record, indent=2)
             if args.out:
                 with open(args.out, "w", encoding="utf-8") as f:

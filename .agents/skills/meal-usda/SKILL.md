@@ -24,37 +24,42 @@ label transcription — not as a fallback. Two roles for the fetched record:
 
 ## Script
 
-`scripts/usda_lookup.py` (stdlib only). The `USDA_KEY` secret is
-auto-injected — just reference `$USDA_KEY` in the command; never
-`export` it, never probe the environment for it:
+`scripts/usda_lookup.py` (stdlib only). Copy these invocations exactly —
+the `USDA_KEY=...` prefix is the auth, not decoration. Never run a bare
+command (it fails with `USDA_KEY is not set`), never `export` the key,
+never probe the environment for it, never invent flags like `--api-key`
+(the script takes none):
 
 ```sh
-python .agents/skills/meal-usda/scripts/usda_lookup.py search "<query>" [--limit N] [--data-types Foundation "SR Legacy"]
-python .agents/skills/meal-usda/scripts/usda_lookup.py fetch <fdcId> [--out .agent_tmp/usda.json]
+USDA_KEY="$USDA_KEY" python .agents/skills/meal-usda/scripts/usda_lookup.py search "<query>" [--limit N] [--data-types Foundation "SR Legacy"]
+USDA_KEY="$USDA_KEY" python .agents/skills/meal-usda/scripts/usda_lookup.py fetch <fdcId> --macros [--out .agent_tmp/usda.json]
 ```
 
 - `search` prints `totalHits` plus identity fields per hit (`fdcId`,
   `description`, `dataType`, `brandOwner`). Defaults to
   `--data-types Foundation "SR Legacy"` — baseline whole-food records.
   Pass `--data-types` empty to include Branded; expect noisy label data.
-- `fetch` prints the full record verbatim (nutrients, portions, serving
-  info), or writes it to `--out` for longer sessions.
+- `fetch --macros` prints identity plus macro nutrients only
+  (energy, protein, fat, carbs, fiber, sugars, sodium, potassium,
+  sat fat) — the numbers that answer the draft's macro fields. Omit the
+  flag only when you need the full record (portions, serving info);
+  never dump full JSON to hand-filter nutrients.
 
 ## Flow
 
-One search, one fetch, then move on:
+One search, at most two fetches, then move on:
 
-1. `search` with a plain-food query (`"<food> raw"`, `"<food>"`). Read
-   the candidate list and pick the closest description + dataType
-   yourself — the script ranks nothing. Never fetch several candidates
-   to compare; commit to the closest match.
-2. `fetch` the pick. Read only the macro nutrients out of
-   `foodNutrients` (each entry carries `nutrient.number`,
-   `nutrient.name`, `nutrient.unitName`, `amount`) — e.g. print the
-   entries whose numbers answer the draft's macro fields, not the whole
-   record — and decide which numbers answer them. Foundation and
-   SR Legacy values are per 100 g and compare directly against enriched
-   per-100g macros.
+1. `search` once with a plain-food query (`"<food> raw"`, `"<food>"`).
+   Read the candidate list and pick the closest description yourself —
+   the script ranks nothing. Prefer SR Legacy (macro-complete) over
+   Foundation (sometimes a sparse analytical subset with no
+   energy/protein rows at all).
+2. `fetch` the pick with `--macros`. Foundation and SR Legacy values
+   are per 100 g and compare directly against enriched per-100g macros.
+   If the result has no energy/protein (sparse record), fetch the
+   next-closest candidate once — then stop regardless. The cross-check
+   needs a reference record, not the best record. Never run a second
+   search, never fetch three candidates to compare.
 3. Record the decision: cite the FDC ID (`fdcId`, description, dataType)
    in chat and in the close-out report. Staged USDA macros carry `usda`
    provenance and render green on the review card.
