@@ -145,3 +145,32 @@
       to: g
       factor: 150.0
 
+- id: yellow-fleshed-potatoes
+  name: Yellow-Fleshed Mashing Potatoes
+  step_name: mashing potato
+  aisle: produce
+  storage: ambient
+  shelf_life_days: 21
+
+  reference:
+    brand: Compliments
+    product: Yellow-Fleshed Potatoes Mashing
+    price: 4.99
+
+  macros:
+    unit: g
+    amount: 110
+    calories_kcal: 80.0
+    protein_g: 2.0
+    fat_g: 0.1
+    carbs_g: 19.0
+    fiber_g: 2.0
+    sugars_g: 1.0
+    sodium_mg: 5.0
+    potassium_mg: 450.0
+
+  conversions:
+    - from: package
+      to: kg
+      factor: 2.27
+
