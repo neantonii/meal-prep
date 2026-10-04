@@ -24,8 +24,9 @@ label transcription — not as a fallback. Two roles for the fetched record:
 
 ## Script
 
-`scripts/usda_lookup.py` (stdlib only; reads `USDA_KEY` from the
-environment):
+`scripts/usda_lookup.py` (stdlib only). The `USDA_KEY` secret is
+auto-injected — just reference `$USDA_KEY` in the command; never
+`export` it, never probe the environment for it:
 
 ```sh
 python .agents/skills/meal-usda/scripts/usda_lookup.py search "<query>" [--limit N] [--data-types Foundation "SR Legacy"]
@@ -41,12 +42,17 @@ python .agents/skills/meal-usda/scripts/usda_lookup.py fetch <fdcId> [--out .age
 
 ## Flow
 
+One search, one fetch, then move on:
+
 1. `search` with a plain-food query (`"<food> raw"`, `"<food>"`). Read
    the candidate list and pick the closest description + dataType
-   yourself — the script ranks nothing.
-2. `fetch` the pick. Read `foodNutrients` (each entry carries
-   `nutrient.number`, `nutrient.name`, `nutrient.unitName`, `amount`) and
-   decide which numbers answer the draft's macro fields. Foundation and
+   yourself — the script ranks nothing. Never fetch several candidates
+   to compare; commit to the closest match.
+2. `fetch` the pick. Read only the macro nutrients out of
+   `foodNutrients` (each entry carries `nutrient.number`,
+   `nutrient.name`, `nutrient.unitName`, `amount`) — e.g. print the
+   entries whose numbers answer the draft's macro fields, not the whole
+   record — and decide which numbers answer them. Foundation and
    SR Legacy values are per 100 g and compare directly against enriched
    per-100g macros.
 3. Record the decision: cite the FDC ID (`fdcId`, description, dataType)

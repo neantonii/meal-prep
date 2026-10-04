@@ -18,10 +18,17 @@ Do not batch multiple unrelated ingredients in one pass.
 ## Core Rules
 
 - Guess every required value and mark its provenance explicitly: `panel`
-  for label literals, `staged` for agent judgment, `usda` for values taken
-  from a FoodData Central record (see the meal-usda skill). Provenance has
-  no defaults — every rendered value carries the agent's call. Guessing is
-  the flow, not a violation.
+  for label literals read from a photo with vision, `staged` for agent
+  judgment, `usda` for values taken from a FoodData Central record (see
+  the meal-usda skill). Provenance has no defaults — every rendered value
+  carries the agent's call. Guessing is the flow, not a violation.
+  Anything the user pasted — spec tables, grocery text, macros from chat —
+  is inspiration, never a label literal: stage it as `staged` (yellow)
+  until a photo confirms it. No white without a photo. Only values
+  printed on the panel (macros, serving line, brand, product, price) may
+  ever be `panel`; identity and judgment fields (`id`, `name`,
+  `step_name`, `aisle`, `storage`, `shelf_life_days`, conversion factors)
+  are always `staged` or `usda`.
 - The review card IS the collection flow, not a step after it. Transcription
   in hand, stage the draft and render immediately — never interrogate the
   user for identity/storage/edges first. The user corrects guesses on the
@@ -124,12 +131,16 @@ Propose `id` (kebab-case slug; collision-check with `grep -rn
 sibling style), `step_name` (lowercase concise), `storage`, `shelf_life_days`,
 and conversion edges (§3), all as best guesses. The card also needs the
 photo bytes on disk (vision reads from the message, the renderer reads a
-file), so save it fresh every run — never reuse a stale file from
-`.agent_tmp/`; use distinct names per run when juggling photos:
+file), so save it fresh every run with `extract_chat_image.py` — never
+reuse a stale file from `.agent_tmp/`, and never fabricate image bytes
+(no placeholders, no 1px PNGs) to satisfy the renderer. No photo means
+no card yet: request the photo first. Use distinct per-run filenames
+(`draft-<slug>.yaml`, never a bare `draft.yaml` that collides with other
+sessions):
 
 ```sh
-python .agents/skills/meal-ingredient/scripts/extract_chat_image.py .agent_tmp/label
-python .agents/skills/meal-ingredient/scripts/render_ingredient_review.py .agent_tmp/draft.yaml .agent_tmp/provenance.yaml .agent_tmp/label.png .agent_tmp/review.html
+python .agents/skills/meal-ingredient/scripts/extract_chat_image.py .agent_tmp/label-<slug>
+python .agents/skills/meal-ingredient/scripts/render_ingredient_review.py .agent_tmp/draft-<slug>.yaml .agent_tmp/provenance-<slug>.yaml .agent_tmp/label-<slug>.png .agent_tmp/review-<slug>.html
 ```
 
 The renderer embeds the photo as a data URI, so the HTML renders wherever
@@ -200,7 +211,9 @@ re-specify it here.
 
 Draft the entry from `schemas/ingredient.schema.json` (the contract) and the
 exemplar entries in `references/ingredient-catalog.md` (the shape). Append to
-the aisle file in id-sorted position (match file convention). Then run:
+the aisle file in id-sorted position (match file convention). Then validate
+the entry you just staged — `--id <slug>` names your new id, not some
+existing entry you already trust:
 
 ```sh
 python .agents/skills/meal-ingredient/scripts/validate_ingredient.py \
