@@ -112,6 +112,39 @@
       to: g
       factor: 145.0
 
+- id: frozen-cauliflower-florets
+  name: Frozen Cauliflower Florets
+  step_name: cauliflower floret
+  aisle: produce
+  storage: frozen
+  shelf_life_days: 365
+
+  reference:
+    brand: Compliments
+    product: Compliments Frozen Cauliflower Florets 500 g
+    price: 5.29
+
+  macros:
+    unit: g
+    amount: 85
+    calories_kcal: 20.0
+    protein_g: 1.0
+    fat_g: 0.0
+    carbs_g: 4.0
+    fiber_g: 2.0
+    saturated_fat_g: 0.0
+    sugars_g: 2.0
+    sodium_mg: 10.0
+    potassium_mg: 175.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 500
+    - from: cup
+      to: g
+      factor: 85
+
 - id: frozen-green-peas
   name: Frozen Green Peas
   step_name: green pea
