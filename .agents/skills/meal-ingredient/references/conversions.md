@@ -18,7 +18,10 @@ lives in code — read it there, not here:
   belongs to this entry, measured for this product. An unweighed factor is a
   guess: stage it and flag it yellow on the review card.
 - One edge per fact. `package -> g = 454` for a 454 g pack; `count -> g` from
-  weighing N pieces and dividing.
+  weighing N pieces and dividing. Author the `package` edge in the
+  friendliest standard unit: the largest unit (`kg` over `g`, `l` over
+  `ml`) that keeps the factor ≥ 1 and < 1000 and matches how the pack is
+  sold (`package -> l = 4` for a 4 L jug, never `package -> ml = 4000`).
 - Keep chains minimal: `package -> count -> g` covers count-based recipes and
   pricing in two edges. Add `cup -> g` only when recipes or the macros basis
   need cups.

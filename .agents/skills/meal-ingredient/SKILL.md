@@ -103,7 +103,13 @@ between candidate matches).
 Parse the answer as JSON. Expected keys: `brand`, `product`, `pack_size`,
 `price`, `serving_text` (verbatim serving line), flat macro nutrients.
 Missing/optional nutrients are `null` (not printed) — never 0 unless the
-panel prints zero. Map `serving_text` to the DTO's `unit` + `amount`
+panel prints zero. Source hierarchy for nutrients: `panel` beats `usda`
+beats `staged`. The FDC record has been in hand since §1 — never guess
+(`staged`) a nutrient number the record already reports. If the panel
+prints it, stage `panel`; else if a number is needed that the panel
+omits, take it from the record and stage `usda`; `staged` is only for
+nutrients when neither source has it — rare, and say so on the read-back.
+Map `serving_text` to the DTO's `unit` + `amount`
 yourself. If the line is ambiguous, quote the verbatim line at the user —
 never a decomposed triple, which is not panel text.
 
@@ -172,7 +178,13 @@ Propose edges as guesses on the card; confirm recipe units with the user
 at review time (`cup, tbsp, count, piece, ...`). Author per
 `references/conversions.md`:
 
-- Always author `package -> <unit>` with the weighed pack size.
+- Always author `package -> <unit>` with the weighed pack size, in the
+  friendliest standard unit: the largest unit (`kg` over `g`, `l` over
+  `ml`) that keeps the factor ≥ 1 and < 1000 and matches how the pack is
+  sold. A "4 L" jug is `package -> l = 4`, never `package -> ml = 4000`;
+  a "2.27 kg" bag is `package -> kg = 2.27`, never `package -> g = 2270`.
+  The universal `l -> ml` / `kg -> g` hop preserves gram reachability, so
+  friendliness costs nothing.
 - Author `<unit> -> g` for every unit used (including `count` when recipes use
   `@id{N}` with no unit, and every `custom_units` canonical).
 - Author `macros basis -> g` when the basis is not already `g`.
