@@ -29,6 +29,39 @@
       to: g
       factor: 400
 
+- id: partly-skimmed-milk-2pct
+  name: Partly Skimmed Milk 2% M.F.
+  step_name: 2% milk
+  aisle: dairy
+  storage: refrigerated
+  shelf_life_days: 14
+
+  reference:
+    brand: Natrel
+    product: Natrel 2% Milk Partly Skimmed 4 L
+    price: 7.69
+
+  macros:
+    unit: ml
+    amount: 250
+    calories_kcal: 130.0
+    protein_g: 9.0
+    fat_g: 5.0
+    carbs_g: 13.0
+    fiber_g: 0.0
+    saturated_fat_g: 3.0
+    sugars_g: 13.0
+    sodium_mg: 105.0
+    potassium_mg: 350.0
+
+  conversions:
+    - from: package
+      to: l
+      factor: 4
+    - from: ml
+      to: g
+      factor: 1.03
+
 - id: unsalted-butter
   name: Unsalted Butter
   step_name: butter
