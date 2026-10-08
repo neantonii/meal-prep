@@ -255,14 +255,11 @@
     sodium_mg: 0.0
     potassium_mg: 10.0
 
-  custom_units:
-    leaf: [leaf, leaves]
-
   conversions:
     - from: package
       to: g
       factor: 22
-    - from: leaf
+    - from: count
       to: g
       factor: 0.5
 
