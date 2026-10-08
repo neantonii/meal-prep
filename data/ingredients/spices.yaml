@@ -230,3 +230,39 @@
       to: g
       factor: 1.0
 
+- id: bay-leaves
+  name: Bay Leaves
+  step_name: bay leaf
+  aisle: spices
+  storage: ambient
+  shelf_life_days: 365
+
+  reference:
+    brand: Compliments
+    product: Compliments Spices Bay Leaves 22 g
+    price: 4.69
+
+  macros:
+    unit: g
+    amount: 1
+    calories_kcal: 3.0
+    protein_g: 0.1
+    fat_g: 0.1
+    carbs_g: 0.7
+    fiber_g: 0.3
+    saturated_fat_g: 0.0
+    sugars_g: 0.0
+    sodium_mg: 0.0
+    potassium_mg: 10.0
+
+  custom_units:
+    leaf: [leaf, leaves]
+
+  conversions:
+    - from: package
+      to: g
+      factor: 22
+    - from: leaf
+      to: g
+      factor: 0.5
+

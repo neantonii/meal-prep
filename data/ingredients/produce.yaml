@@ -178,6 +178,111 @@
       to: g
       factor: 150.0
 
+- id: green-cabbage
+  name: Green Cabbage
+  step_name: cabbage
+  aisle: produce
+  storage: refrigerated
+  shelf_life_days: 14
+
+  reference:
+    brand: Voilà by Sobeys
+    product: Flat Cabbage Large 1 Count
+    price: 6.99
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 25.0
+    protein_g: 1.3
+    fat_g: 0.1
+    carbs_g: 5.8
+    fiber_g: 2.5
+    saturated_fat_g: 0.0
+    sugars_g: 3.2
+    sodium_mg: 18.0
+    potassium_mg: 170.0
+
+  custom_units:
+    head: [head, heads]
+
+  conversions:
+    - from: package
+      to: count
+      factor: 1
+    - from: count
+      to: g
+      factor: 1200
+    - from: head
+      to: g
+      factor: 1200
+
+- id: yellow-onion
+  name: Yellow Onion
+  step_name: yellow onion
+  aisle: produce
+  storage: ambient
+  shelf_life_days: 30
+
+  reference:
+    brand: Compliments
+    product: Compliments Onions Yellow 1.36 kg
+    price: 4.99
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 38.0
+    protein_g: 0.8
+    fat_g: 0.1
+    carbs_g: 8.6
+    fiber_g: 1.9
+    saturated_fat_g: 0.0
+    sugars_g: 4.2
+    sodium_mg: 1.0
+    potassium_mg: 182.0
+
+  custom_units:
+    onion: [onion, onions]
+
+  conversions:
+    - from: package
+      to: g
+      factor: 1362
+    - from: onion
+      to: g
+      factor: 150
+
+- id: carrots
+  name: Carrots
+  step_name: carrot
+  aisle: produce
+  storage: refrigerated
+  shelf_life_days: 21
+
+  reference:
+    brand: Compliments
+    product: Compliments Carrots Mini Peeled 340 g
+    price: 3.49
+
+  macros:
+    unit: g
+    amount: 85
+    calories_kcal: 30.0
+    protein_g: 1.0
+    fat_g: 0.1
+    carbs_g: 7.0
+    fiber_g: 2.0
+    saturated_fat_g: 0.0
+    sugars_g: 4.0
+    sodium_mg: 65.0
+    potassium_mg: 200.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 340
+
 - id: yellow-fleshed-potatoes
   name: Yellow-Fleshed Mashing Potatoes
   step_name: mashing potato

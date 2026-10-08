@@ -98,6 +98,39 @@
       to: g
       factor: 1.0
 
+- id: tomato-paste
+  name: Tomato Paste
+  step_name: tomato paste
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 365
+
+  reference:
+    brand: Longo's
+    product: Longo's Tomato Paste No Salt Added 156 ml
+    price: 0.99
+
+  macros:
+    unit: ml
+    amount: 30
+    calories_kcal: 20.0
+    protein_g: 1.0
+    fat_g: 0.0
+    carbs_g: 5.0
+    fiber_g: 1.0
+    saturated_fat_g: 0.0
+    sugars_g: 2.0
+    sodium_mg: 5.0
+    potassium_mg: 250.0
+
+  conversions:
+    - from: package
+      to: ml
+      factor: 156
+    - from: ml
+      to: g
+      factor: 1.1
+
 - id: dijon-mustard
   name: Prepared Dijon Mustard
   step_name: dijon mustard
