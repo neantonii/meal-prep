@@ -1,4 +1,40 @@
 
+- id: mini-cucumbers
+  name: Mini Seedless Cucumbers
+  step_name: mini cucumber
+  aisle: produce
+  storage: refrigerated
+  shelf_life_days: 7
+
+  reference:
+    brand: Voilà by Sobeys
+    product: Mini Cucumbers Seedless 6 Pack
+    price: 3.99
+
+  macros:
+    unit: g
+    amount: 140
+    calories_kcal: 20.0
+    protein_g: 1.0
+    fat_g: 0.2
+    carbs_g: 5.0
+    fiber_g: 1.0
+    saturated_fat_g: 0.1
+    sugars_g: 2.0
+    sodium_mg: 3.0
+    potassium_mg: 200.0
+
+  custom_units:
+    cucumber: [cucumber, cucumbers]
+
+  conversions:
+    - from: package
+      to: g
+      factor: 510
+    - from: cucumber
+      to: g
+      factor: 85
+
 - id: fresh-garlic
   name: Fresh Garlic
   step_name: garlic
@@ -341,4 +377,40 @@
     - from: package
       to: kg
       factor: 2.27
+
+- id: campari-tomatoes
+  name: Campari Tomatoes
+  step_name: Campari tomato
+  aisle: produce
+  storage: refrigerated
+  shelf_life_days: 7
+
+  reference:
+    brand: Nature Fresh Farms
+    product: Tomatoes Cocktail/Campari 454 g
+    price: 5.99
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 18.0
+    protein_g: 0.88
+    fat_g: 0.2
+    carbs_g: 3.89
+    fiber_g: 1.2
+    saturated_fat_g: 0.028
+    sugars_g: 2.63
+    sodium_mg: 5.0
+    potassium_mg: 237.0
+
+  custom_units:
+    tomato: [tomato, tomatoes]
+
+  conversions:
+    - from: package
+      to: g
+      factor: 454
+    - from: tomato
+      to: g
+      factor: 40
 
