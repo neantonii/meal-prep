@@ -94,3 +94,37 @@
     - from: tbsp
       to: g
       factor: 14.2
+
+- id: greek-yogurt-2pct
+  name: Greek Yogurt 2% Plain
+  step_name: Greek yogurt
+  aisle: dairy
+  storage: refrigerated
+  shelf_life_days: 14
+
+  reference:
+    brand: Liberté
+    product: Liberté Greek 2% Yogurt Plain High Protein 750 g
+    price: 8.49
+
+  macros:
+    unit: g
+    amount: 175
+    calories_kcal: 120.0
+    protein_g: 16.0
+    fat_g: 4.0
+    carbs_g: 6.0
+    fiber_g: 0.0
+    saturated_fat_g: 2.5
+    sugars_g: 6.0
+    sodium_mg: 65.0
+    potassium_mg: 250.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 750
+    - from: ml
+      to: g
+      factor: 0.97
+
