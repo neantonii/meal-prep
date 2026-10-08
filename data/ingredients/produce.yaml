@@ -24,14 +24,11 @@
     sodium_mg: 3.0
     potassium_mg: 200.0
 
-  custom_units:
-    cucumber: [cucumber, cucumbers]
-
   conversions:
     - from: package
       to: g
       factor: 510
-    - from: cucumber
+    - from: count
       to: g
       factor: 85
 
@@ -269,17 +266,11 @@
     sodium_mg: 18.0
     potassium_mg: 170.0
 
-  custom_units:
-    head: [head, heads]
-
   conversions:
     - from: package
       to: count
       factor: 1
     - from: count
-      to: g
-      factor: 1200
-    - from: head
       to: g
       factor: 1200
 
@@ -308,14 +299,11 @@
     sodium_mg: 1.0
     potassium_mg: 182.0
 
-  custom_units:
-    onion: [onion, onions]
-
   conversions:
     - from: package
       to: g
       factor: 1362
-    - from: onion
+    - from: count
       to: g
       factor: 150
 
@@ -403,14 +391,143 @@
     sodium_mg: 5.0
     potassium_mg: 237.0
 
-  custom_units:
-    tomato: [tomato, tomatoes]
-
   conversions:
     - from: package
       to: g
       factor: 454
-    - from: tomato
+    - from: count
       to: g
       factor: 40
+
+- id: red-onion
+  name: Red Onion
+  step_name: red onion
+  aisle: produce
+  storage: ambient
+  shelf_life_days: 30
+
+  reference:
+    brand: Voilà by Sobeys
+    product: Organic Onion Red
+    price: 6.99
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 44.0
+    protein_g: 0.94
+    fat_g: 0.1
+    carbs_g: 9.93
+    fiber_g: 2.2
+    saturated_fat_g: 0.0
+    sugars_g: 4.5
+    sodium_mg: 1.0
+    potassium_mg: 197.0
+
+  conversions:
+    - from: package
+      to: kg
+      factor: 1.36
+    - from: count
+      to: g
+      factor: 150
+
+- id: italian-parsley
+  name: Italian Parsley
+  step_name: parsley
+  aisle: produce
+  storage: refrigerated
+  shelf_life_days: 7
+
+  reference:
+    brand: Voilà by Sobeys
+    product: Parsley Italian 1 Bunch
+    price: 2.49
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 36.0
+    protein_g: 2.97
+    fat_g: 0.79
+    carbs_g: 6.33
+    fiber_g: 3.3
+    saturated_fat_g: 0.132
+    sugars_g: 0.85
+    sodium_mg: 56.0
+    potassium_mg: 554.0
+
+  custom_units:
+    bunch: [bunch, bunches]
+
+  conversions:
+    - from: package
+      to: bunch
+      factor: 1
+    - from: bunch
+      to: g
+      factor: 60
+
+- id: mixed-bell-peppers
+  name: Mixed Bell Peppers
+  step_name: bell pepper
+  aisle: produce
+  storage: refrigerated
+  shelf_life_days: 7
+
+  reference:
+    brand: Voilà by Sobeys
+    product: Bell Peppers Mix 4 Pack
+    price: 4.99
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 26.0
+    protein_g: 0.99
+    fat_g: 0.3
+    carbs_g: 6.03
+    fiber_g: 2.1
+    saturated_fat_g: 0.059
+    sugars_g: 4.2
+    sodium_mg: 4.0
+    potassium_mg: 211.0
+
+  conversions:
+    - from: package
+      to: count
+      factor: 4
+    - from: count
+      to: g
+      factor: 150
+
+- id: fresh-dill
+  name: Fresh Dill
+  step_name: fresh dill
+  aisle: produce
+  storage: refrigerated
+  shelf_life_days: 7
+
+  reference:
+    brand: Compliments
+    product: Compliments Fresh Dill 20 g
+    price: 2.75
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 43.0
+    protein_g: 3.46
+    fat_g: 1.12
+    carbs_g: 7.02
+    fiber_g: 2.1
+    saturated_fat_g: 0.06
+    sugars_g: 0.0
+    sodium_mg: 61.0
+    potassium_mg: 738.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 20
 
