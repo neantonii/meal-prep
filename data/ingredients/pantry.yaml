@@ -291,3 +291,35 @@
       to: g
       factor: 450
 
+- id: apple-cider-vinegar
+  name: Apple Cider Vinegar
+  step_name: apple cider vinegar
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 720
+
+  reference:
+    brand: Compliments
+    product: Compliments Apple Cider Vinegar 500 ml
+    price: 1.79
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 21.0
+    protein_g: 0.0
+    fat_g: 0.0
+    carbs_g: 0.93
+    fiber_g: 0.0
+    saturated_fat_g: 0.0
+    sugars_g: 0.4
+    sodium_mg: 5.0
+    potassium_mg: 73.0
+
+  conversions:
+    - from: package
+      to: ml
+      factor: 500
+    - from: ml
+      to: g
+      factor: 1.01
