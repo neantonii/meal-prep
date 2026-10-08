@@ -178,6 +178,36 @@
       to: g
       factor: 150.0
 
+- id: frozen-green-beans
+  name: Frozen Whole Green Beans
+  step_name: green beans
+  aisle: produce
+  storage: frozen
+  shelf_life_days: 180
+
+  reference:
+    brand: Compliments
+    product: Frozen Beans Whole Green Extra Fine 500 g
+    price: 5.29
+
+  macros:
+    unit: g
+    amount: 85
+    calories_kcal: 35.0
+    protein_g: 2.0
+    fat_g: 0.0
+    carbs_g: 8.0
+    fiber_g: 3.0
+    saturated_fat_g: 0.0
+    sugars_g: 2.0
+    sodium_mg: 0.0
+    potassium_mg: 125.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 500
+
 - id: green-cabbage
   name: Green Cabbage
   step_name: cabbage
