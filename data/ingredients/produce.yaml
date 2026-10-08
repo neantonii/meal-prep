@@ -531,3 +531,72 @@
       to: g
       factor: 20
 
+- id: red-radishes
+  name: Red Radishes
+  step_name: radish
+  aisle: produce
+  storage: refrigerated
+  shelf_life_days: 14
+
+  reference:
+    brand: Voilà by Sobeys
+    product: Radish Red 454 g
+    price: 2.99
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 16.0
+    protein_g: 0.68
+    fat_g: 0.1
+    carbs_g: 3.4
+    fiber_g: 1.6
+    saturated_fat_g: 0.032
+    sugars_g: 1.86
+    sodium_mg: 39.0
+    potassium_mg: 233.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 454
+    - from: count
+      to: g
+      factor: 12.1
+
+- id: green-onions
+  name: Green Onions
+  step_name: green onion
+  aisle: produce
+  storage: refrigerated
+  shelf_life_days: 7
+
+  reference:
+    brand: Voilà by Sobeys
+    product: Green Onions 2 Bunch
+    price: 3.49
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 27.0
+    protein_g: 0.97
+    fat_g: 0.47
+    carbs_g: 5.74
+    fiber_g: 1.8
+    saturated_fat_g: 0.165
+    sugars_g: 3.91
+    sodium_mg: 15.0
+    potassium_mg: 159.0
+
+  custom_units:
+    bunch: [bunch, bunches]
+
+  conversions:
+    - from: package
+      to: bunch
+      factor: 2
+    - from: bunch
+      to: g
+      factor: 75
+
