@@ -8,6 +8,17 @@ them.
 """
 
 from meal_prep.models.ingredient import Ingredient, MacrosInfo
+from meal_prep.models.log import LogDay, LoggedSlot, LogWeek
+from meal_prep.models.meal import Meal
 from meal_prep.models.recipe import Recipe, RecipeIngredient
 
-__all__ = ["Ingredient", "MacrosInfo", "Recipe", "RecipeIngredient"]
+__all__ = [
+    "Ingredient",
+    "LogDay",
+    "LogWeek",
+    "LoggedSlot",
+    "MacrosInfo",
+    "Meal",
+    "Recipe",
+    "RecipeIngredient",
+]
