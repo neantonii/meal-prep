@@ -1,0 +1,45 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "description": "Unique slug matching the file stem",
+      "title": "Id",
+      "type": "string"
+    },
+    "recipes": {
+      "description": "Ordered recipe ids, one serving each; duplicates allowed",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Recipes",
+      "type": "array"
+    },
+    "source_path": {
+      "anyOf": [
+        {
+          "format": "path",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Path"
+    },
+    "title": {
+      "description": "Human-readable meal title",
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "recipes"
+  ],
+  "title": "MealDTO",
+  "type": "object"
+}

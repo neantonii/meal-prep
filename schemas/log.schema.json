@@ -1,0 +1,125 @@
+{
+  "$defs": {
+    "LogDayDTO": {
+      "additionalProperties": false,
+      "properties": {
+        "breakfast": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Breakfast recipe ids in eaten order",
+          "title": "Breakfast"
+        },
+        "date": {
+          "description": "Calendar day this entry records",
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "dinner": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Dinner recipe ids in eaten order",
+          "title": "Dinner"
+        },
+        "lunch": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Lunch recipe ids in eaten order",
+          "title": "Lunch"
+        },
+        "snacks": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Snacks recipe ids in eaten order",
+          "title": "Snacks"
+        }
+      },
+      "required": [
+        "date"
+      ],
+      "title": "LogDayDTO",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "days": {
+      "description": "Logged days in date order",
+      "items": {
+        "$ref": "#/$defs/LogDayDTO"
+      },
+      "minItems": 1,
+      "title": "Days",
+      "type": "array"
+    },
+    "source_path": {
+      "anyOf": [
+        {
+          "format": "path",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Path"
+    },
+    "week": {
+      "description": "ISO week label, e.g. 2026-W42",
+      "pattern": "^\\d{4}-W\\d{2}$",
+      "title": "Week",
+      "type": "string"
+    }
+  },
+  "required": [
+    "week",
+    "days"
+  ],
+  "title": "LogWeekDTO",
+  "type": "object"
+}

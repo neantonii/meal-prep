@@ -3,7 +3,8 @@
 Usage:
     python scripts/refresh_schemas.py
 
-Writes schemas/ingredient.schema.json and schemas/recipe.schema.json.
+Writes schemas/ingredient.schema.json, schemas/log.schema.json,
+schemas/meal.schema.json, and schemas/recipe.schema.json.
 Run after any DTO change and commit the diff; tests/test_schemas.py
 fails CI when the committed files drift from the live models.
 """
@@ -14,11 +15,18 @@ import json
 from pathlib import Path
 
 from meal_prep.dtos.ingredient import IngredientDTO
+from meal_prep.dtos.log import LogWeekDTO
+from meal_prep.dtos.meal import MealDTO
 from meal_prep.dtos.recipe import RecipeDTO
 
 SCHEMA_DIR = Path(__file__).resolve().parents[1] / "schemas"
 
-_DTOS = {"ingredient": IngredientDTO, "recipe": RecipeDTO}
+_DTOS = {
+    "ingredient": IngredientDTO,
+    "log": LogWeekDTO,
+    "meal": MealDTO,
+    "recipe": RecipeDTO,
+}
 
 
 def main() -> None:
