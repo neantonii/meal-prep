@@ -22,6 +22,22 @@ class StorageType(str, Enum):
         }[self]
 
 
+class Mealtime(str, Enum):
+    BREAKFAST = "breakfast"
+    LUNCH = "lunch"
+    DINNER = "dinner"
+    SNACKS = "snacks"
+
+    @property
+    def display_name(self) -> str:
+        return {
+            Mealtime.BREAKFAST: "Breakfast",
+            Mealtime.LUNCH: "Lunch",
+            Mealtime.DINNER: "Dinner",
+            Mealtime.SNACKS: "Snacks",
+        }[self]
+
+
 class RecipeCategory(str, Enum):
     MODULAR_PROTEIN = "modular_protein"
     MODULAR_CARB = "modular_carb"

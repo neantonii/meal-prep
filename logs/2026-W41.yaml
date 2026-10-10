@@ -1,0 +1,112 @@
+week: 2026-W41
+days:
+  - date: 2026-10-06
+    slots:
+      - mealtime: breakfast
+        recipes: [fake-buckwheat-porridge]
+      - mealtime: lunch
+        recipes:
+          - air-fried-chicken-breast
+          - boiled-basmati-rice
+          - vitaminka-cabbage-carrot-salad
+      - mealtime: dinner
+        recipes:
+          - pan-fried-ground-turkey
+          - boiled-roasted-buckwheat
+          - skillet-blistered-green-beans
+      - mealtime: snacks
+        recipes: [radish-scallion-yogurt-salad]
+
+  - date: 2026-10-07
+    slots:
+      - mealtime: breakfast
+        recipes: [fake-buckwheat-porridge]
+      - mealtime: lunch
+        recipes:
+          - pan-fried-ground-beef
+          - avocado-oil-mashed-potatoes
+          - mediterranean-garden-salad-lemon-dijon
+      - mealtime: dinner
+        recipes:
+          - air-grilled-rainbow-trout
+          - boiled-rice-stick-noodles
+          - cucumber-campari-greek-yogurt-salad
+
+  - date: 2026-10-08
+    slots:
+      - mealtime: breakfast
+        recipes: [fake-buckwheat-porridge]
+      - mealtime: lunch
+        recipes:
+          - pan-seared-roasted-pork-tenderloin
+          - boiled-roasted-buckwheat
+          - braised-cabbage-tomato-aromatics
+      - mealtime: dinner
+        recipes:
+          - butter-glazed-argentine-shrimp
+          - capellini-spezzati-with-light-cheddar
+          - vitaminka-cabbage-carrot-salad
+      - mealtime: snacks
+        recipes: [sweet-corn-and-green-peas]
+
+  - date: 2026-10-09
+    slots:
+      - mealtime: breakfast
+        recipes: [fake-buckwheat-porridge]
+      - mealtime: lunch
+        recipes:
+          - spiced-butter-glazed-wild-pollock
+          - boiled-basmati-rice
+          - skillet-blistered-cauliflower-florets
+      - mealtime: dinner
+        recipes:
+          - air-fried-chicken-breast
+          - avocado-oil-mashed-potatoes
+          - radish-scallion-yogurt-salad
+
+  - date: 2026-10-10
+    slots:
+      - mealtime: breakfast
+        recipes: [fake-buckwheat-porridge]
+      - mealtime: lunch
+        recipes:
+          - pan-fried-ground-turkey
+          - boiled-rice-stick-noodles
+          - mediterranean-garden-salad-lemon-dijon
+      - mealtime: dinner
+        recipes:
+          - air-grilled-rainbow-trout
+          - boiled-roasted-buckwheat
+          - skillet-blistered-green-beans
+      - mealtime: snacks
+        recipes: [cucumber-campari-greek-yogurt-salad]
+
+  - date: 2026-10-11
+    slots:
+      - mealtime: breakfast
+        recipes: [fake-buckwheat-porridge]
+      - mealtime: lunch
+        recipes:
+          - pan-fried-ground-beef
+          - capellini-spezzati-with-light-cheddar
+          - braised-cabbage-tomato-aromatics
+      - mealtime: dinner
+        recipes:
+          - pan-seared-roasted-pork-tenderloin
+          - boiled-basmati-rice
+          - skillet-blistered-cauliflower-florets
+
+  - date: 2026-10-12
+    slots:
+      - mealtime: breakfast
+        recipes: [fake-buckwheat-porridge]
+      - mealtime: lunch
+        recipes:
+          - butter-glazed-argentine-shrimp
+          - sweet-corn-and-green-peas
+          - vitaminka-cabbage-carrot-salad
+      - mealtime: dinner
+        recipes:
+          - spiced-butter-glazed-wild-pollock
+          - avocado-oil-mashed-potatoes
+          - mediterranean-garden-salad-lemon-dijon

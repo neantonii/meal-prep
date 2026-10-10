@@ -60,3 +60,8 @@ recipes/*.html
 # Generated Week-Plan Reports
 weekly_plan/
 
+# Personal eating logs (gitignored data, validated by DTO pipeline).
+# Never `git clean -fdx` blindly — it deletes this directory. Prefer
+# `git clean -fdx -e logs -e .agent_tmp` or clean specific paths.
+logs/
+

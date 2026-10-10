@@ -1,0 +1,99 @@
+{
+  "$defs": {
+    "LogDayDTO": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "description": "Calendar day this entry records",
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "slots": {
+          "description": "Eaten slots in mealtime order",
+          "items": {
+            "$ref": "#/$defs/LoggedSlotDTO"
+          },
+          "title": "Slots",
+          "type": "array"
+        }
+      },
+      "required": [
+        "date"
+      ],
+      "title": "LogDayDTO",
+      "type": "object"
+    },
+    "LoggedSlotDTO": {
+      "additionalProperties": false,
+      "properties": {
+        "mealtime": {
+          "$ref": "#/$defs/Mealtime",
+          "description": "Which of the four daily slots"
+        },
+        "recipes": {
+          "description": "Ordered recipe ids, one serving each; duplicates allowed",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Recipes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "mealtime",
+        "recipes"
+      ],
+      "title": "LoggedSlotDTO",
+      "type": "object"
+    },
+    "Mealtime": {
+      "enum": [
+        "breakfast",
+        "lunch",
+        "dinner",
+        "snacks"
+      ],
+      "title": "Mealtime",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "days": {
+      "description": "Logged days in date order",
+      "items": {
+        "$ref": "#/$defs/LogDayDTO"
+      },
+      "minItems": 1,
+      "title": "Days",
+      "type": "array"
+    },
+    "source_path": {
+      "anyOf": [
+        {
+          "format": "path",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Path"
+    },
+    "week": {
+      "description": "ISO week label, e.g. 2026-W42",
+      "pattern": "^\\d{4}-W\\d{2}$",
+      "title": "Week",
+      "type": "string"
+    }
+  },
+  "required": [
+    "week",
+    "days"
+  ],
+  "title": "LogWeekDTO",
+  "type": "object"
+}
