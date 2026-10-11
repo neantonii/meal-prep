@@ -600,3 +600,35 @@
       to: g
       factor: 75
 
+- id: frozen-blueberries
+  name: Frozen Blueberries
+  step_name: blueberries
+  aisle: produce
+  storage: frozen
+  shelf_life_days: 365
+  
+  reference:
+    brand: Compliments
+    product: Frozen Blueberries 600 g
+    price: 5.49
+  
+  macros:
+    unit: cup
+    amount: 0.6667
+    calories_kcal: 45.0
+    protein_g: 0.3
+    fat_g: 0.5
+    carbs_g: 10.0
+    fiber_g: 1.0
+    saturated_fat_g: 0.0
+    sugars_g: 7.0
+    sodium_mg: 0.0
+    potassium_mg: 40.0
+  
+  conversions:
+    - from: package
+      to: g
+      factor: 600
+    - from: cup
+      to: g
+      factor: 120

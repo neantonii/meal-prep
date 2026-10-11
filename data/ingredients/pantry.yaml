@@ -323,3 +323,134 @@
     - from: ml
       to: g
       factor: 1.01
+
+- id: rolled-oats
+  name: Old Fashioned Rolled Oats
+  step_name: rolled oats
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 365
+  
+  reference:
+    brand: Quaker
+    product: Quaker Old Fashioned Large Flake Oats 1 kg
+    price: 6.29
+  
+  macros:
+    unit: cup
+    amount: 0.3333
+    calories_kcal: 150.0
+    protein_g: 5.0
+    fat_g: 3.0
+    carbs_g: 28.0
+    fiber_g: 4.0
+    saturated_fat_g: 0.5
+    sugars_g: 1.0
+    potassium_mg: 150.0
+  
+  conversions:
+    - from: package
+      to: g
+      factor: 1000
+    - from: cup
+      to: g
+      factor: 120
+
+- id: chia-seeds
+  name: Chia Seeds
+  step_name: chia seeds
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 365
+  
+  reference:
+    brand: Marco's World Of Snacks
+    product: Marco's World Of Snacks Chia Seeds 220 g
+    price: 4.00
+  
+  macros:
+    unit: cup
+    amount: 0.125
+    calories_kcal: 60.0
+    protein_g: 2.0
+    fat_g: 4.5
+    carbs_g: 6.0
+    fiber_g: 5.0
+    saturated_fat_g: 0.5
+    sugars_g: 0.0
+    sodium_mg: 2.0
+    potassium_mg: 50.0
+  
+  conversions:
+    - from: package
+      to: g
+      factor: 220
+    - from: cup
+      to: g
+      factor: 120
+
+- id: crunchy-peanut-butter
+  name: Crunchy Peanut Butter
+  step_name: peanut butter
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 365
+  
+  reference:
+    brand: Longo's
+    product: Longo's Peanut Butter Crunchy 1 kg
+    price: 5.49
+  
+  macros:
+    unit: tbsp
+    amount: 1
+    calories_kcal: 90.0
+    protein_g: 3.0
+    fat_g: 7.0
+    carbs_g: 4.0
+    fiber_g: 1.0
+    saturated_fat_g: 1.0
+    sugars_g: 2.0
+    sodium_mg: 35.0
+    potassium_mg: 100.0
+  
+  conversions:
+    - from: package
+      to: g
+      factor: 1000
+    - from: tbsp
+      to: g
+      factor: 15
+
+- id: golden-raisins
+  name: Golden Raisins
+  step_name: golden raisins
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 365
+  
+  reference:
+    brand: Compliments
+    product: Compliments Golden Raisins Seedless 375 g
+    price: 6.79
+  
+  macros:
+    unit: cup
+    amount: 0.25
+    calories_kcal: 130.0
+    protein_g: 1.0
+    fat_g: 0.0
+    carbs_g: 32.0
+    fiber_g: 2.0
+    saturated_fat_g: 0.0
+    sugars_g: 24.0
+    sodium_mg: 5.0
+    potassium_mg: 300.0
+  
+  conversions:
+    - from: package
+      to: g
+      factor: 375
+    - from: cup
+      to: g
+      factor: 160

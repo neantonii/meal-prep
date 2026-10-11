@@ -19,6 +19,8 @@ equipment:
   name: Oven
 - id: blender
   name: Blender / Food Processor
+- id: microwave
+  name: Microwave
 - id: meat-thermometer
   name: Meat Thermometer
 - id: wire-rack
