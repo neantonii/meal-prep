@@ -152,7 +152,10 @@ python .agents/skills/meal-ingredient/scripts/render_ingredient_review.py .agent
 The renderer embeds the photo as a data URI, so the HTML renders wherever
 the preview opens. Pass the extracted file path (with its real extension,
 as printed by the script); never a bare filename.
-Open with `show_preview` the moment it renders.
+Open with `show_preview` the moment it renders. Before presenting,
+extract the card's own validation report (grep the HTML for
+"Validation errors") and fix or disclose every error — never present a
+card with unacknowledged errors.
 
 Present the read-back with the card: panel-literal values (white) vs your
 guesses (yellow) vs USDA-sourced values (green, with the cited FDC ID),
