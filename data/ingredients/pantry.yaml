@@ -454,3 +454,72 @@
     - from: cup
       to: g
       factor: 160
+
+- id: light-mayo
+  name: Light Mayonnaise Half Fat
+  step_name: mayo
+  aisle: pantry
+  storage: refrigerated
+  shelf_life_days: 60
+
+  reference:
+    brand: Hellmann's
+    product: Hellmann's Mayonnaise Type Dressing Light 1/2 Fat 750 ml
+    price: 7.79
+
+  macros:
+    unit: tbsp
+    amount: 1
+    calories_kcal: 40.0
+    protein_g: 0.0
+    fat_g: 4.0
+    carbs_g: 1.0
+    fiber_g: 0.0
+    saturated_fat_g: 0.3
+    sugars_g: 0.0
+    sodium_mg: 100.0
+    potassium_mg: 0.0
+
+  conversions:
+    - from: package
+      to: ml
+      factor: 750
+    - from: ml
+      to: g
+      factor: 1.0
+
+- id: sprouted-power-bread
+  name: Sprouted Power Squirrelly Bread
+  step_name: bread
+  aisle: pantry
+  storage: frozen
+  shelf_life_days: 90
+
+  reference:
+    brand: Silver Hills Bakery
+    product: Silver Hills Bakery Sprouted Power Squirrelly Bread 600 g (frozen)
+    price: 7.29
+
+  macros:
+    unit: slice
+    amount: 1
+    calories_kcal: 85.0
+    protein_g: 5.5
+    fat_g: 1.25
+    carbs_g: 14.5
+    fiber_g: 4.0
+    saturated_fat_g: 0.2
+    sugars_g: 1.0
+    sodium_mg: 170.0
+    potassium_mg: 75.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 600
+    - from: slice
+      to: g
+      factor: 37.5
+
+  custom_units:
+    slice: [slice, slices]

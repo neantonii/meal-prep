@@ -128,3 +128,36 @@
       to: g
       factor: 0.97
 
+
+- id: eggs
+  name: White Eggs Extra Large
+  step_name: eggs
+  aisle: dairy
+  storage: refrigerated
+  shelf_life_days: 21
+
+  reference:
+    brand: Gray Ridge Egg Farms
+    product: Gray Ridge Egg Farms White Eggs Grade A Extra Large 18 Count
+    price: 6.99
+
+  macros:
+    unit: count
+    amount: 1
+    calories_kcal: 80.1
+    protein_g: 7.03
+    fat_g: 5.33
+    carbs_g: 0.4
+    fiber_g: 0.0
+    saturated_fat_g: 1.75
+    sugars_g: 0.21
+    sodium_mg: 79.5
+    potassium_mg: 77.3
+
+  conversions:
+    - from: package
+      to: count
+      factor: 18
+    - from: count
+      to: g
+      factor: 56
