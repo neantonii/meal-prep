@@ -25,3 +25,5 @@ equipment:
   name: Meat Thermometer
 - id: wire-rack
   name: Wire Rack
+- id: toaster
+  name: Toaster
