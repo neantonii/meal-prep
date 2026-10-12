@@ -592,3 +592,39 @@
     - from: cup
       to: g
       factor: 176
+
+- id: lavazza-super-crema
+  name: Lavazza Super Crema Whole Bean Coffee
+  step_name: espresso
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 365
+
+  reference:
+    brand: Lavazza
+    product: Lavazza Super Crema Whole Bean Coffee 1 kg
+    price: 39.99
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 9.0
+    protein_g: 0.12
+    fat_g: 0.18
+    carbs_g: 1.67
+    fiber_g: 0.0
+    saturated_fat_g: 0.09
+    sugars_g: 0.0
+    sodium_mg: 14.0
+    potassium_mg: 115.0
+
+  custom_units:
+    shot: [shot, shots]
+
+  conversions:
+    - from: package
+      to: kg
+      factor: 1
+    - from: shot
+      to: g
+      factor: 30

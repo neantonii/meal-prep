@@ -27,3 +27,7 @@ equipment:
   name: Wire Rack
 - id: toaster
   name: Toaster
+- id: coffee-bean-grinder
+  name: Coffee Bean Grinder
+- id: espresso-machine
+  name: Espresso Machine
