@@ -161,3 +161,39 @@
 
   custom_units:
     slice: [slice, slices]
+
+- id: cheddar-smoked-sausage
+  name: Cheddar Smoked Sausage
+  step_name: sausage
+  aisle: meat
+  storage: refrigerated
+  shelf_life_days: 7
+
+  reference:
+    brand: Johnsonville
+    product: Johnsonville Sausage Cheddar Smoked 375 g
+    price: 5.99
+
+  macros:
+    unit: link
+    amount: 1
+    calories_kcal: 200.0
+    protein_g: 8.0
+    fat_g: 18.0
+    carbs_g: 2.0
+    fiber_g: 0.0
+    saturated_fat_g: 6.0
+    sugars_g: 1.0
+    sodium_mg: 510.0
+    potassium_mg: 350.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 375
+    - from: link
+      to: g
+      factor: 63
+
+  custom_units:
+    link: [link, links]

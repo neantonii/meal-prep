@@ -523,3 +523,72 @@
 
   custom_units:
     slice: [slice, slices]
+
+- id: bistro-sourdough-loaf
+  name: Bistro Loaf Sourdough Bread
+  step_name: sourdough
+  aisle: pantry
+  storage: frozen
+  shelf_life_days: 90
+
+  reference:
+    brand: Ace Bakery
+    product: Ace Bakery Bistro Loaf Bread Sourdough 595 g (frozen)
+    price: 5.49
+
+  macros:
+    unit: slice
+    amount: 1
+    calories_kcal: 130.0
+    protein_g: 5.0
+    fat_g: 0.75
+    carbs_g: 26.0
+    fiber_g: 1.5
+    saturated_fat_g: 0.15
+    sugars_g: 0.0
+    sodium_mg: 285.0
+    potassium_mg: 62.5
+
+  conversions:
+    - from: package
+      to: g
+      factor: 595
+    - from: slice
+      to: g
+      factor: 49.5
+
+  custom_units:
+    slice: [slice, slices]
+
+- id: canned-pinto-beans
+  name: Canned Pinto Beans
+  step_name: pinto beans
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 1095
+
+  reference:
+    brand: Compliments
+    product: Compliments Beans Pinto 540 ml
+    price: 2.69
+
+  macros:
+    unit: cup
+    amount: 0.5
+    calories_kcal: 90.0
+    protein_g: 6.0
+    fat_g: 0.5
+    carbs_g: 17.0
+    fiber_g: 5.0
+    saturated_fat_g: 0.1
+    sugars_g: 0.5
+    sodium_mg: 95.0
+    potassium_mg: 250.0
+
+  conversions:
+    - from: package
+      to: ml
+      factor: 540
+    - from: cup
+      to: g
+      factor: 176
