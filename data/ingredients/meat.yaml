@@ -126,3 +126,38 @@
       to: g
       factor: 600.0
 
+- id: cooked-ham-sliced
+  name: Cooked Ham Sliced
+  step_name: ham
+  aisle: meat
+  storage: refrigerated
+  shelf_life_days: 7
+
+  reference:
+    brand: Compliments
+    product: Compliments Cooked Ham Sliced 375 g
+    price: 8.29
+
+  macros:
+    unit: slice
+    amount: 2
+    calories_kcal: 50.0
+    protein_g: 7.0
+    fat_g: 2.0
+    carbs_g: 1.0
+    fiber_g: 0.0
+    saturated_fat_g: 1.0
+    sugars_g: 0.0
+    sodium_mg: 450.0
+    potassium_mg: 350.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 375
+    - from: slice
+      to: g
+      factor: 25
+
+  custom_units:
+    slice: [slice, slices]
