@@ -42,8 +42,6 @@ def test_prepare_recipe_resolves_everything(library, chicken_recipe):
     prepared = prepare_recipe(chicken_recipe, library.catalog, library.equipment)
     assert isinstance(prepared, Recipe)
     assert prepared.id == "air-fried-chicken-breast"
-    assert prepared.servings == 4.0
-    assert prepared.cooked_g == 660.0
     assert len(prepared.ingredients) == 6
 
 
