@@ -32,6 +32,35 @@
       to: g
       factor: 85
 
+- id: coleslaw-mix
+  name: Coleslaw Mix
+  step_name: coleslaw mix
+  aisle: produce
+  storage: refrigerated
+  shelf_life_days: 7
+
+  reference:
+    brand: Compliments
+    product: Salad Mix Coleslaw 397 g
+    price: 3.99
+
+  macros:
+    unit: g
+    amount: 85
+    calories_kcal: 20.0
+    protein_g: 1.0
+    fat_g: 0.1
+    carbs_g: 5.0
+    fiber_g: 5.0
+    sugars_g: 3.0
+    sodium_mg: 20.0
+    potassium_mg: 150.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 397
+
 - id: fresh-garlic
   name: Fresh Garlic
   step_name: garlic

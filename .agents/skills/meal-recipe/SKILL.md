@@ -75,10 +75,22 @@ ingredient (measured with proper equipment — scale, cups, spoons — never
 eyeballed or estimated; anything can be weighed, but volume is usually
 more convenient at cook time, so use discretion per ingredient). If it is
 exotic or
-one-off — a countable nobody cooks with, a package fraction — rewrite the
+one-off — a countable nobody cooks with — rewrite the
 recipe quantity in a common unit the entry already supports instead. The
 test is whether recipes would ever name the unit again; a unit that only
 exists in this recipe is not a unit.
+
+Whole-package quantities never need a new unit or a gram expansion: when
+the recipe consumes a whole package or half of one, write
+`@id{1%package}` / `@id{0.5%package}` directly — `package` is
+gram-reachable on every entry, so no edge is needed. Other fractions
+(thirds, quarters) are awkward to portion and do not divide most packs
+cleanly — scale the recipe to a whole or half package instead, or weigh
+out grams. Never expand a whole
+package into grams (`@coleslaw-mix{397%g}`): the gram figure is an awkward
+retail artifact, and the checklist renders `1 package` while the step text
+shows the ingredient name either way (amounts are omitted from step
+badges — see the custom-unit caveat in meal-ingredient §3).
 
 Author each `to be added` item by invoking the meal-ingredient skill, one
 entry at a time, running its full flow every time: label photo (request
