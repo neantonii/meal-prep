@@ -175,6 +175,16 @@ with: keep the basis in grams and skip the custom unit. Chips "per 26 chips
 portioned and cooked. The test is whether recipes would ever name the unit;
 a countable that only exists on the panel is not a unit.
 
+Do not register a custom unit that merely renames `package` for one
+recipe's prose (e.g. `bag` for a bagged salad the recipe consumes whole).
+The card's step text renders ingredient badges with amounts omitted — the
+checklist is the single source of truth for quantities — so a custom unit
+never reaches the step prose; it only relabels the checklist line (`1 bag`
+vs `1 package`) at the cost of two extra edges. When the recipe uses the
+whole package, `@id{1%package}` is already gram-reachable on every entry
+and needs no new unit. Reserve custom units for portionings the cook
+actually measures out (packets, scoops, fillets).
+
 ### 3. Author conversions
 
 Propose edges as guesses on the card; confirm recipe units with the user
