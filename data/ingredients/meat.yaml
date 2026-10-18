@@ -93,38 +93,38 @@
       to: g
       factor: 454
 
-- id: pork-tenderloin
-  name: Pork Tenderloin
-  step_name: pork tenderloin
+- id: boneless-pork-center-chops
+  name: Boneless Pork Center-Cut Chops
+  step_name: pork chops
   aisle: meat
   storage: refrigerated
   shelf_life_days: 3
 
   reference:
-    brand: Conestoga Meats
-    product: Conestoga Meats Pork Tenderloins 2 Pack
-    price: 23.78
+    brand: Compliments
+    product: Pork Chops Center Cut Boneless 4 Pack
+    price: 7.93
 
   macros:
     unit: g
     amount: 100
-    calories_kcal: 109.0
-    protein_g: 21.0
-    fat_g: 2.2
+    calories_kcal: 170.0
+    protein_g: 21.1
+    fat_g: 9.5
     carbs_g: 0.0
     fiber_g: 0.0
-    saturated_fat_g: 0.7
+    saturated_fat_g: 3.3
     sugars_g: 0.0
-    sodium_mg: 53.0
-    potassium_mg: 399.0
+    sodium_mg: 40.0
+    potassium_mg: 361.0
 
   conversions:
     - from: package
       to: count
-      factor: 2
+      factor: 4
     - from: count
       to: g
-      factor: 600.0
+      factor: 100.0
 
 - id: cooked-ham-sliced
   name: Cooked Ham Sliced
