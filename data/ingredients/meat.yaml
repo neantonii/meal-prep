@@ -8,8 +8,8 @@
 
   reference:
     brand: Compliments
-    product: Compliments Chicken Breasts Boneless Skinless Value Pack
-    price: 22.60
+    product: Compliments Chicken Breasts Boneless Skinless 2 Pieces
+    price: 10.71
 
   macros:
     unit: g
@@ -27,7 +27,7 @@
   conversions:
     - from: package
       to: count
-      factor: 4
+      factor: 2
     - from: count
       to: g
       factor: 237.5
