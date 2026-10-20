@@ -54,6 +54,20 @@ def test_split_recipe_file_valid():
     assert "Add @turkey" in body
 
 
+def test_split_recipe_file_ignores_delimiter_mid_line():
+    content = _cook(body="Add @turkey{450%g} --- stir well.\n")
+    frontmatter, body = split_recipe_file(content)
+    assert frontmatter["id"] == "pan-fried-ground-turkey"
+    assert "--- stir well." in body
+
+
+def test_split_recipe_file_ignores_delimiter_line_in_body():
+    content = _cook(body="Add @turkey{450%g}.\n---\nServe hot.\n")
+    frontmatter, body = split_recipe_file(content)
+    assert frontmatter["id"] == "pan-fried-ground-turkey"
+    assert "---\nServe hot." in body
+
+
 # ---------------------------------------------------------------------------
 # split_recipe_file — structure errors
 # ---------------------------------------------------------------------------

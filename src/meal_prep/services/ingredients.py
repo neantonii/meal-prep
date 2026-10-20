@@ -43,9 +43,14 @@ def _default_synonyms(units: UnitsFileSchema) -> dict[str, str]:
 
 
 def _universal_edges(units: UnitsFileSchema) -> list[ConversionEdge]:
-    """Universal physics edges (mass -> g, volume -> ml); ``package``/``count`` have none."""
+    """Universal physics edges (mass -> g, volume -> ml).
+
+    ``package`` and ``count`` are skipped explicitly: they carry no universal
+    conversions by design (every ``package``/``count`` edge is authored on the
+    ingredient itself), so they never contribute edges here.
+    """
     edges: list[ConversionEdge] = []
-    for group in (units.mass, units.volume, units.package, units.count):
+    for group in (units.mass, units.volume):
         for canonical, step in group.conversions.items():
             edges.append(ConversionEdge(canonical, step.unit, step.amount))
     return edges

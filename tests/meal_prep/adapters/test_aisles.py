@@ -62,6 +62,18 @@ def test_load_aisles_rejects_non_list_aisles(tmp_path):
         load_aisles(_write(tmp_path, "aisles: {id: produce}\n"))
 
 
+def test_load_aisles_rejects_duplicate_order(tmp_path):
+    with pytest.raises(ValueError, match="Duplicate aisle order 1"):
+        load_aisles(
+            _write(
+                tmp_path,
+                "aisles:\n"
+                "  - id: produce\n    name: Produce\n    order: 1\n"
+                "  - id: bakery\n    name: Bakery\n    order: 1\n",
+            )
+        )
+
+
 def test_load_aisles_missing_file():
     with pytest.raises(FileNotFoundError, match="Aisles configuration file not found"):
         load_aisles("/nonexistent/aisles.yaml")
