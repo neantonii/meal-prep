@@ -20,8 +20,8 @@ known cookware.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from types import MappingProxyType
-from typing import TypedDict
 
 from meal_prep.dtos.equipment import EquipmentItem
 from meal_prep.dtos.recipe import RecipeDTO
@@ -30,11 +30,27 @@ from meal_prep.models.ingredient import Ingredient
 from meal_prep.models.recipe import Recipe, RecipeIngredient
 
 
-class _IngredientTotals(TypedDict):
+@dataclass
+class _IngredientTotals:
+    """Running totals for one ingredient across duplicate references."""
+
     display_unit: str
     display_canonical: str
-    display_qty: float
-    grams: float
+    display_qty: float = 0.0
+    grams: float = 0.0
+
+    def merge(
+        self, ingredient: Ingredient, quantity: float, canonical: str, grams: float
+    ) -> None:
+        """Add one reference, converting into the first-authored unit.
+
+        Raises :class:`ConversionError` when the reference unit has no path to
+        the first-authored unit; the caller maps it to a recipe-scoped error.
+        """
+        self.display_qty += ingredient.convert(
+            quantity, canonical, self.display_canonical
+        )
+        self.grams += grams
 
 
 def prepare_recipe(
@@ -101,24 +117,16 @@ def prepare_recipe(
             ) from None
         entry = merged.get(ref.id)
         if entry is None:
-            entry = {
-                "display_unit": unit,
-                "display_canonical": canonical,
-                "display_qty": 0.0,
-                "grams": 0.0,
-            }
+            entry = _IngredientTotals(display_unit=unit, display_canonical=canonical)
             merged[ref.id] = entry
         try:
-            entry["display_qty"] += ingredient.convert(
-                ref.quantity, canonical, entry["display_canonical"]
-            )
+            entry.merge(ingredient, ref.quantity, canonical, grams)
         except ConversionError:
             raise ValueError(
                 f"Recipe '{recipe.id}' references ingredient '{ref.id}' "
                 f"with unit '{unit}' that has no conversion to "
-                f"'{entry['display_canonical']}'."
+                f"'{entry.display_canonical}'."
             ) from None
-        entry["grams"] += grams
 
     # Validate amount-less mentions: every mention must be backed by a
     # declaration (an ingredient with an actual amount) elsewhere in the recipe.
@@ -132,7 +140,7 @@ def prepare_recipe(
     resolved_ingredients = []
     for ing_id, entry in merged.items():
         ingredient = catalog[ing_id]
-        grams = entry["grams"]
+        grams = entry.grams
         resolved_ingredients.append(
             RecipeIngredient(
                 id=ing_id,
@@ -142,8 +150,8 @@ def prepare_recipe(
                 aisle_order=ingredient.aisle_order,
                 storage=ingredient.storage,
                 shelf_life_days=ingredient.shelf_life_days,
-                quantity=entry["display_qty"],
-                unit=entry["display_unit"],
+                quantity=entry.display_qty,
+                unit=entry.display_unit,
                 grams=grams,
                 cost=ingredient.price_per_100g * grams / 100.0,
                 macros=ingredient.macros_per_100g.scaled(grams / 100.0),
@@ -163,5 +171,4 @@ def prepare_recipe(
         cookware_by_token=MappingProxyType(cookware_by_token),
         ingredients=tuple(resolved_ingredients),
         instructions=recipe.instructions,
-        source_path=recipe.source_path,
     )
