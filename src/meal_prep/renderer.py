@@ -15,6 +15,7 @@ A ``Recipe`` is fully self-contained (it carries ``cookware_by_token``), so
 from __future__ import annotations
 
 import html
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -23,6 +24,7 @@ from meal_prep.engines.cooklang import (
     INGREDIENT_PATTERN,
     TIMER_PATTERN,
 )
+from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.recipe import Recipe, RecipeIngredient
 
 if TYPE_CHECKING:
@@ -391,7 +393,7 @@ def _format_step_text(
     # and word characters, so escaping does not disturb the patterns.
     text = html.escape(text)
 
-    def replace_ingredient(match) -> str:
+    def replace_ingredient(match: re.Match[str]) -> str:
         if match.group(1):
             raw_id = match.group(1).strip().lower()
             qty = (match.group(2) or "").strip()
@@ -417,7 +419,7 @@ def _format_step_text(
 
     formatted = INGREDIENT_PATTERN.sub(replace_ingredient, text)
 
-    def replace_cookware(match) -> str:
+    def replace_cookware(match: re.Match[str]) -> str:
         raw_id = (match.group(1) or match.group(2)).strip().lower()
         name = cookware_by_token.get(raw_id)
         if name is None:
@@ -428,7 +430,7 @@ def _format_step_text(
 
     formatted = COOKWARE_PATTERN.sub(replace_cookware, formatted)
 
-    def replace_timer(match) -> str:
+    def replace_timer(match: re.Match[str]) -> str:
         name = (match.group(1) or "").strip()
         duration = match.group(2).strip()
         unit = match.group(3).strip()
@@ -461,7 +463,7 @@ def _macro_item(value: str, unit: str, tag: str) -> str:
     )
 
 
-def _macro_items(macros) -> str:
+def _macro_items(macros: MacrosInfo) -> str:
     items = [
         _macro_item(f"{macros.calories_kcal:.0f}", "kcal", "Calories"),
         _macro_item(f"{macros.protein_g:.1f}", "grams", "Protein"),
@@ -481,7 +483,7 @@ def _macro_items(macros) -> str:
     return "\n".join(items)
 
 
-def _ingredient_row(item) -> str:
+def _ingredient_row(item: RecipeIngredient) -> str:
     """One checklist line, with storage/shelf-life detail on hover."""
     title = (
         f'title="{html.escape(item.storage.display_name)} · '

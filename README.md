@@ -8,7 +8,7 @@ enriched frozen models → rendered HTML cards.
 - `data/` — authored taxonomies and ingredient catalog (YAML)
 - `recipes/` — authored recipes (Cooklang, `<category>/<slug>.cook`)
 - `recipe_cards/` — rendered HTML output
-- `renderer.py` — HTML card renderer (reads enriched models, emits HTML)
+- `src/meal_prep/renderer.py` — HTML card renderer (reads enriched models, emits HTML)
 - `src/meal_prep/` — the Python package:
   - `dtos/` — Pydantic schemas for authored data; shape validation only
   - `adapters/` — reads files (YAML/Cooklang), produces DTOs
