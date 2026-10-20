@@ -41,4 +41,4 @@ def prepare_log_week(log: LogWeekDTO, recipes: Mapping[str, Recipe]) -> LogWeek:
                 entries.append(recipe)
             resolved[mealtime.value] = tuple(entries)
         days.append(LogDay(date=day_dto.date, **resolved))
-    return LogWeek(week=log.week, days=tuple(days), source_path=log.source_path)
+    return LogWeek(week=log.week, days=tuple(days))

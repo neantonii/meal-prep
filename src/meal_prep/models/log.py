@@ -17,7 +17,6 @@ from __future__ import annotations
 import datetime
 from dataclasses import dataclass
 from functools import reduce
-from pathlib import Path
 
 from meal_prep.enums import Mealtime
 from meal_prep.models.ingredient import MacrosInfo
@@ -95,7 +94,6 @@ class LogWeek:
 
     week: str
     days: tuple[LogDay, ...]
-    source_path: Path | None = None
 
     @property
     def total_cost(self) -> float:

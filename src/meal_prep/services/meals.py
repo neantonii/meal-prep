@@ -33,5 +33,4 @@ def prepare_meal(meal: MealDTO, recipes: Mapping[str, Recipe]) -> Meal:
         id=meal.id,
         title=meal.title,
         recipes=tuple(resolved),
-        source_path=meal.source_path,
     )
