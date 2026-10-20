@@ -87,3 +87,13 @@ def test_load_all_logs_rejects_duplicate_weeks(tmp_path: Path):
 def test_load_all_logs_missing_dir(tmp_path: Path):
     with pytest.raises(FileNotFoundError, match="Logs directory"):
         load_all_logs(tmp_path / "nope")
+
+
+def test_load_all_logs_defaults_to_plans_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    plans = tmp_path / "plans"
+    plans.mkdir()
+    _write(plans / "2026-W42.yaml", _LOG)
+    monkeypatch.chdir(tmp_path)
+    assert list(load_all_logs()) == ["2026-W42"]
