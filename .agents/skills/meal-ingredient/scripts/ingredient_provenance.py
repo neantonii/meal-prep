@@ -13,7 +13,7 @@ It never enters the DTO or the catalog YAML.
 from __future__ import annotations
 
 import sys
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -25,7 +25,7 @@ from meal_prep.dtos._normalize import clean_token, normalize_slug  # noqa: E402
 from meal_prep.dtos.ingredient import IngredientDTO  # noqa: E402
 
 
-class Provenance(str, Enum):
+class Provenance(StrEnum):
     """Where a staged value came from: label literal, agent judgment, or USDA."""
 
     PANEL = "panel"

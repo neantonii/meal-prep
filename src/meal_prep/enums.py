@@ -10,23 +10,23 @@ strings, ``meal_prep.logbook.report`` for mealtime headers), where exhaustive
 ``match`` statements keep them in sync with the members.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 
-class StorageType(str, Enum):
+class StorageType(StrEnum):
     AMBIENT = "ambient"
     REFRIGERATED = "refrigerated"
     FROZEN = "frozen"
 
 
-class Mealtime(str, Enum):
+class Mealtime(StrEnum):
     BREAKFAST = "breakfast"
     LUNCH = "lunch"
     DINNER = "dinner"
     SNACKS = "snacks"
 
 
-class RecipeCategory(str, Enum):
+class RecipeCategory(StrEnum):
     MODULAR_PROTEIN = "modular_protein"
     MODULAR_CARB = "modular_carb"
     MODULAR_COOKED_VEG = "modular_cooked_veg"
@@ -34,7 +34,7 @@ class RecipeCategory(str, Enum):
     BREAKFAST = "breakfast"
 
 
-class Aisle(str, Enum):
+class Aisle(StrEnum):
     """Supermarket aisles in walking order (definition order is the order)."""
 
     PRODUCE = "produce"
