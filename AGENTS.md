@@ -9,8 +9,7 @@
   environment, config in `pyproject.toml`. Run via `python -m ruff ...` (the
   `ruff` binary may not be on `PATH`).
 - **Types**: [mypy](https://mypy.readthedocs.io/) in `strict` mode over `src/`
-  only (`renderer.py`, `tests/` excluded — `renderer.py` is
-  slated to move into `src/`). Config in `pyproject.toml`. Run via
+  only (`tests/` excluded). Config in `pyproject.toml`. Run via
   `python -m mypy` (reads `files = "src"` from config, no path arg needed).
 - **Tests**: `python -m pytest -q`.
 - **Render a week**: `python scripts/render_week.py plans/2026-W43.yaml`
@@ -29,7 +28,7 @@
 - Line length 88; quotes `"` (double); import order via isort (first-party =
   `meal_prep`).
 - Layer convention: `dtos` (Pydantic, authored/raw, `...DTO` suffix) →
-  `models` (frozen enriched dataclasses, clean public names) → `renderer.py`.
+  `models` (frozen enriched dataclasses, clean public names) → `renderer`.
   DTO and model of the same concept are *different forms*; see
   `src/meal_prep/dtos/README.md`.
 

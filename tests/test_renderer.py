@@ -1,4 +1,4 @@
-"""Tests for the root-level recipe card renderer (``renderer.py``).
+"""Tests for the recipe card renderer (``meal_prep.renderer``).
 
 Covers the presentation concern this module owns: which name is shown where.
 The instruction-step badges use the ingredient's ``step_name`` (prose-friendly)
@@ -7,8 +7,7 @@ while the tooltip title and the shopping checklist keep the full ``name``.
 
 from __future__ import annotations
 
-import renderer
-
+from meal_prep import renderer
 from meal_prep.enums import RecipeCategory, StorageType
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.recipe import Recipe, RecipeIngredient
