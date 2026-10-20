@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from meal_prep import renderer
 from meal_prep.adapters.aisles import load_aisles
 from meal_prep.adapters.ingredients import load_all_ingredients
@@ -53,13 +55,14 @@ def test_all_recipes_prepare_without_error():
     assert prepared
 
 
-def test_render_all_recipe_cards():
+def test_render_all_recipe_cards(tmp_path):
     library = MealPrepLibrary.load(
         data_dir=_REPO_ROOT / "data",
         recipes_dir=_REPO_ROOT / "recipes",
     )
 
-    out_dir = _REPO_ROOT / "recipe_cards"
+    out_dir = tmp_path / "recipe_cards"
+    out_dir.mkdir()
 
     # Plant a stale card that corresponds to no authored recipe; it must be
     # removed by the regeneration's force cleanup.
@@ -78,6 +81,16 @@ def test_render_all_recipe_cards():
         assert path.is_relative_to(out_dir)
         content = path.read_text(encoding="utf-8")
         assert content.startswith("<!DOCTYPE html>")
+
+
+def test_render_all_recipe_cards_missing_output_dir_raises(tmp_path):
+    library = MealPrepLibrary.load(
+        data_dir=_REPO_ROOT / "data",
+        recipes_dir=_REPO_ROOT / "recipes",
+    )
+
+    with pytest.raises(FileNotFoundError):
+        renderer.render_all_recipe_cards(library, tmp_path / "no-such-dir")
 
 
 def test_solve_week_plan_and_render_page():
