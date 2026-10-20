@@ -33,11 +33,11 @@
 
 - Never push directly to `master`. All work goes on a feature branch +
   pull request (`git checkout -b <name>`, push, `gh pr create`).
-- `logs/` is gitignored personal data — never commit it, never force-add it
-  for PR review (TEMP log commits leak personal data into the PR history
-  even if dropped before merge). Demo/render locally only.
-- Never `git clean -fdx` blindly — it deletes `logs/` and `.agent_tmp/`.
-  Prefer `git clean -fdx -e logs -e .agent_tmp` or clean specific paths.
+- `plans/` and `diary/` are gitignored personal data — never commit them,
+  never force-add them for PR review (TEMP plan commits leak personal data
+  into the PR history even if dropped before merge). Demo/render locally only.
+- Never `git clean -fdx` blindly — it deletes `plans/`, `diary/`, and `.agent_tmp/`.
+  Prefer `git clean -fdx -e plans -e diary -e .agent_tmp` or clean specific paths.
 - Before raising a PR, squash local iterations into meaningful chunks —
   one commit per logical change. Only keep genuinely separate commits;
   never one commit per edit.
