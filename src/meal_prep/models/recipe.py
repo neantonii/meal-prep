@@ -17,7 +17,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import reduce
-from pathlib import Path
 
 from meal_prep.enums import RecipeCategory, StorageType
 from meal_prep.models.ingredient import MacrosInfo
@@ -67,7 +66,6 @@ class Recipe:
     cookware_by_token: Mapping[str, str]  # raw body token -> resolved display name
     ingredients: tuple[RecipeIngredient, ...]
     instructions: str
-    source_path: Path | None = None
 
     # ------------------------------------------------------------------
     # Pure aggregates of the fields above (raw, unrounded).
