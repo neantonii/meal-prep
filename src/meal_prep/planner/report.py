@@ -9,7 +9,9 @@ provided; otherwise they render as plain text.
 
 from __future__ import annotations
 
+import contextlib
 import html
+import os
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -361,10 +363,17 @@ def render_week_plan_page(
     recipes: Mapping[str, Recipe] | None = None,
     cards_dir: str | Path = "recipe_cards",
 ) -> Path:
-    """Write ``plan`` to ``output_path`` as standalone HTML; return the path."""
+    """Write ``plan`` to ``output_path`` as standalone HTML; return the path.
+
+    Card links are relativized against the output file's parent, so pages
+    nested under e.g. ``weekly_plan/`` link out to ``../recipe_cards/...``.
+    """
     target = Path(output_path)
     target.parent.mkdir(parents=True, exist_ok=True)
+    cards_root = Path(cards_dir)
+    with contextlib.suppress(ValueError):
+        cards_root = Path(os.path.relpath(cards_root, start=target.parent.resolve()))
     target.write_text(
-        render_week_plan(plan, recipes=recipes, cards_dir=cards_dir), encoding="utf-8"
+        render_week_plan(plan, recipes=recipes, cards_dir=cards_root), encoding="utf-8"
     )
     return target
