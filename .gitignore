@@ -64,3 +64,6 @@ weekly_plan/
 plans/
 diary/
 
+# Agent scratch (label photos, drafts, review pages).
+.agent_tmp/
+
