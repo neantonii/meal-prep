@@ -60,6 +60,7 @@ recipes/*.html
 # Generated Week-Plan Reports
 weekly_plan/
 
-# Personal eating logs (gitignored data, validated by DTO pipeline).
-logs/
+# Personal week plans + eating diary (gitignored data, validated by DTO pipeline).
+plans/
+diary/
 

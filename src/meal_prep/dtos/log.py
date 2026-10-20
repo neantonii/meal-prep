@@ -1,10 +1,10 @@
-"""Log DTOs — the shape of a gitignored weekly eating log.
+"""Log DTOs — the shape of a gitignored weekly plan or diary file.
 
-A log week is a dated record of what was eaten: days with four fixed
+A log week is a dated record of what was planned or eaten: days with four fixed
 mealtime fields (breakfast/lunch/dinner/snacks), each holding an ordered list
 of recipe ids (one serving each, duplicates allowed). Absent means not
-logged; present-but-empty is rejected. Parsing of ``logs/*.yaml`` files lives
-in ``meal_prep.adapters.logs``.
+logged; present-but-empty is rejected. Parsing of ``plans/*.yaml`` and
+``diary/*.yaml`` files lives in ``meal_prep.adapters.logs``.
 """
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
-"""YAML adapter for weekly eating logs (``logs/*.yaml``).
+"""YAML adapter for weekly plans and diary entries (``plans/*.yaml``, ``diary/*.yaml``).
 
-Logs are gitignored personal data, not authored repo content — but they go
+Plans and diary files are gitignored personal data, not authored repo content — but they go
 through the same deserialization + shape-validation pipeline as every other
 DTO. No cross-validation against prepared recipes happens here; that is
 enrichment, and lives in a service.
