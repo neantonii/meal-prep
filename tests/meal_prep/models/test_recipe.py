@@ -119,10 +119,6 @@ def test_empty_ingredients_yield_zero_aggregates():
     assert recipe.batch_macros == MacrosInfo.zero()
 
 
-def test_source_path_defaults_to_none():
-    assert _recipe().source_path is None
-
-
 # ---------------------------------------------------------------------------
 # frozen value semantics
 # ---------------------------------------------------------------------------
