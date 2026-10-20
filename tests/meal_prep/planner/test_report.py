@@ -10,7 +10,7 @@ from meal_prep.planner.plan import (
     PlannedMeal,
     WeekPlan,
 )
-from meal_prep.planner.report import render_week_plan
+from meal_prep.planner.report import render_week_plan, render_week_plan_page
 
 
 def _meal(recipe_id: str = "rice") -> PlannedMeal:
@@ -95,3 +95,29 @@ def test_report_links_recipe_cards_when_lookup_given():
     )
     page = render_week_plan(_plan(), recipes={"rice": recipe})
     assert "recipe_cards/modular_carb/rice.html" in page
+
+
+def test_page_relativizes_card_links_to_output_dir(tmp_path):
+    from meal_prep.models.recipe import Recipe
+
+    recipe = Recipe(
+        id="rice",
+        title="Boiled Rice",
+        category=RecipeCategory.MODULAR_CARB,
+        servings=1.0,
+        cooked_g=200.0,
+        fridge_days=4,
+        freezer_friendly=True,
+        equipment=(),
+        cookware_by_token={},
+        ingredients=(),
+        instructions="Cook.",
+    )
+    out = tmp_path / "weekly_plan" / "plan.html"
+    render_week_plan_page(
+        _plan(),
+        out,
+        recipes={"rice": recipe},
+        cards_dir=tmp_path / "recipe_cards",
+    )
+    assert "../recipe_cards/modular_carb/rice.html" in out.read_text()
