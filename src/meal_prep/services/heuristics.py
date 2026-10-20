@@ -8,7 +8,7 @@ takes a prepared ``Ingredient`` and returns human-readable warning strings
 
 from __future__ import annotations
 
-from meal_prep.enums import StorageType
+from meal_prep.enums import Aisle, StorageType
 from meal_prep.models.ingredient import Ingredient
 
 _ATWATER_TOLERANCE_KCAL = 25.0
@@ -20,13 +20,12 @@ _SHELF_BANDS: dict[StorageType, tuple[int, int]] = {
     StorageType.FROZEN: (180, 365),
 }
 
-# Keyed by lowercased aisle display name (matches the slug for current aisles).
-# Aisles without a band (dairy, produce, bakery) are not price-checked.
-_PRICE_BANDS: dict[str, tuple[float, float]] = {
-    "meat": (2.00, 6.00),
-    "seafood": (2.00, 6.00),
-    "pantry": (0.20, 2.00),
-    "spices": (2.00, 8.00),
+# Aisles without a band (dairy, produce) are not price-checked.
+_PRICE_BANDS: dict[Aisle, tuple[float, float]] = {
+    Aisle.MEAT: (2.00, 6.00),
+    Aisle.SEAFOOD: (2.00, 6.00),
+    Aisle.PANTRY: (0.20, 2.00),
+    Aisle.SPICES: (2.00, 8.00),
 }
 
 
@@ -51,11 +50,11 @@ def check_ingredient(ingredient: Ingredient) -> list[str]:
             f"per 100g exceeds {_MACRO_SUM_LIMIT_G:.0f}g"
         )
 
-    band = _PRICE_BANDS.get(ingredient.aisle_name.lower())
+    band = _PRICE_BANDS.get(ingredient.aisle)
     if band is not None and not band[0] <= ingredient.price_per_100g <= band[1]:
         warnings.append(
             f"price: ${ingredient.price_per_100g:.2f}/100g outside "
-            f"{ingredient.aisle_name} band ${band[0]:.2f}-${band[1]:.2f}"
+            f"{ingredient.aisle.value} band ${band[0]:.2f}-${band[1]:.2f}"
         )
 
     shelf_lo, shelf_hi = _SHELF_BANDS[ingredient.storage]

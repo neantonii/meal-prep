@@ -8,7 +8,7 @@ import pytest
 
 from meal_prep.dtos.log import LogDayDTO, LogWeekDTO
 from meal_prep.dtos.meal import MealDTO
-from meal_prep.enums import Mealtime, RecipeCategory, StorageType
+from meal_prep.enums import Aisle, Mealtime, RecipeCategory, StorageType
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.log import LogDay, LoggedMeal, LogWeek
 from meal_prep.models.meal import Meal
@@ -47,8 +47,7 @@ def _recipe(recipe_id: str, *, cost: float, cal: float) -> Recipe:
                 id="a",
                 name="A",
                 step_name="a",
-                aisle_name="Pantry",
-                aisle_order=6,
+                aisle=Aisle.PANTRY,
                 storage=StorageType.AMBIENT,
                 shelf_life_days=30,
                 quantity=200.0,

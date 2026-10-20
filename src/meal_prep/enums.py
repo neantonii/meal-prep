@@ -32,3 +32,14 @@ class RecipeCategory(str, Enum):
     MODULAR_COOKED_VEG = "modular_cooked_veg"
     FRESH_SALAD_VEG = "fresh_salad_veg"
     BREAKFAST = "breakfast"
+
+
+class Aisle(str, Enum):
+    """Supermarket aisles in walking order (definition order is the order)."""
+
+    PRODUCE = "produce"
+    MEAT = "meat"
+    SEAFOOD = "seafood"
+    DAIRY = "dairy"
+    PANTRY = "pantry"
+    SPICES = "spices"

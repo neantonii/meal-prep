@@ -18,7 +18,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import reduce
 
-from meal_prep.enums import RecipeCategory, StorageType
+from meal_prep.enums import Aisle, RecipeCategory, StorageType
 from meal_prep.models.ingredient import MacrosInfo
 
 
@@ -39,8 +39,7 @@ class RecipeIngredient:
     id: str
     name: str
     step_name: str
-    aisle_name: str
-    aisle_order: int
+    aisle: Aisle
     storage: StorageType
     shelf_life_days: int
     quantity: float

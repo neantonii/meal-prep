@@ -3,19 +3,18 @@
 Loads and validates all domain standards, ingredient catalogs, and recipes in a
 single call. Ingredients are enriched (resolved into frozen values) via the
 ingredient service; recipes remain authored documents until a later service
-prepares them.
+prepares them. The aisle taxonomy is a closed enum (``meal_prep.enums.Aisle``),
+not a data file — there is nothing to load.
 """
 
 from dataclasses import dataclass
 from pathlib import Path
 
-from meal_prep.adapters.aisles import load_aisles
 from meal_prep.adapters.equipment import load_equipment
 from meal_prep.adapters.ingredients import load_all_ingredients
 from meal_prep.adapters.meals import load_all_meals
 from meal_prep.adapters.recipes import load_all_recipes
 from meal_prep.adapters.units import load_units
-from meal_prep.dtos.aisle import Aisle
 from meal_prep.dtos.equipment import EquipmentItem
 from meal_prep.dtos.meal import MealDTO
 from meal_prep.dtos.recipe import RecipeDTO
@@ -30,7 +29,6 @@ class MealPrepLibrary:
 
     units: UnitsFileSchema
     equipment: list[EquipmentItem]
-    aisles: list[Aisle]
     catalog: dict[str, Ingredient]
     recipes: dict[str, RecipeDTO]
     meals: dict[str, MealDTO]
@@ -45,7 +43,7 @@ class MealPrepLibrary:
         """Load and validate the entire meal prep workspace in a single line.
 
         Args:
-            data_dir: Directory containing taxonomy YAMLs (units.yaml, equipment.yaml, aisles.yaml, ingredients/).
+            data_dir: Directory containing taxonomy YAMLs (units.yaml, equipment.yaml, ingredients/).
             recipes_dir: Directory containing .cook recipe files.
             meals_dir: Directory containing authored meal YAML files.
 
@@ -58,11 +56,9 @@ class MealPrepLibrary:
 
         units = load_units(data_path / "units.yaml")
         equipment = load_equipment(data_path / "equipment.yaml")
-        aisles = load_aisles(data_path / "aisles.yaml")
         catalog = prepare_catalog(
             load_all_ingredients(data_path / "ingredients"),
             units,
-            {aisle.id: aisle for aisle in aisles},
         )
 
         recipes: dict[str, RecipeDTO] = {}
@@ -76,7 +72,6 @@ class MealPrepLibrary:
         return cls(
             units=units,
             equipment=equipment,
-            aisles=aisles,
             catalog=catalog,
             recipes=recipes,
             meals=meals,

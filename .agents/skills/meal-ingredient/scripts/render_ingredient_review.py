@@ -28,7 +28,6 @@ import yaml
 from ingredient_provenance import IngredientProvenance, Provenance, edge_key
 from pydantic import ValidationError
 
-from meal_prep.adapters.aisles import load_aisles
 from meal_prep.adapters.units import load_units
 from meal_prep.dtos.ingredient import IngredientDTO
 from meal_prep.services.ingredients import prepare_ingredient
@@ -152,9 +151,8 @@ def render(dto: IngredientDTO, provenance: IngredientProvenance, photo_src: str)
     enrichment. ``provenance.check_against(dto)`` must pass first.
     """
     units = load_units(REPO_ROOT / "data" / "units.yaml")
-    aisles = {a.id: a for a in load_aisles(REPO_ROOT / "data" / "aisles.yaml")}
     try:
-        ing = prepare_ingredient(dto, units, aisles)
+        ing = prepare_ingredient(dto, units)
     except ValueError as e:
         return _error_page(dto.id, [str(e)], photo_src)
 
@@ -203,7 +201,7 @@ def render(dto: IngredientDTO, provenance: IngredientProvenance, photo_src: str)
     facts = [
         _conf_fact(
             "Aisle / storage",
-            f"{dto.aisle} / {dto.storage.value}",
+            f"{dto.aisle.value} / {dto.storage.value}",
             provenance.aisle_provenance
             if provenance.aisle_provenance == provenance.storage_provenance
             else Provenance.STAGED,

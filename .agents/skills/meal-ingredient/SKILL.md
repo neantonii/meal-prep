@@ -47,8 +47,10 @@ Do not batch multiple unrelated ingredients in one pass.
   check may live in it. Always open it with `show_preview` the moment it
   renders — never report transcription results without the card
   beside them.
-- Write YAML only. Never edit `src/`, `data/units.yaml`, `data/aisles.yaml`, or
-  `data/equipment.yaml` from this flow.
+- Write YAML only. Never edit `src/`, `data/units.yaml`, or
+  `data/equipment.yaml` from this flow. Aisles are a closed enum in
+  `src/meal_prep/enums.py` (`Aisle`) — to use one, set the `aisle` field to a
+  valid member; adding a new aisle is a code change outside this flow.
 - Challenge weird data (see `references/sanity-checks.md`). Warn, do not
   silently accept; proceed only on explicit user confirmation.
 - Keep `name` vs `step_name` semantically distinct, never derived one from
