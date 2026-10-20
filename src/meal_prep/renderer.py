@@ -17,18 +17,67 @@ from __future__ import annotations
 import html
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, assert_never
 
 from meal_prep.engines.cooklang import (
     COOKWARE_PATTERN,
     INGREDIENT_PATTERN,
     TIMER_PATTERN,
 )
+from meal_prep.enums import RecipeCategory, StorageType
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.recipe import Recipe, RecipeIngredient
 
 if TYPE_CHECKING:
     from meal_prep.library import MealPrepLibrary
+
+
+def storage_display_name(storage: StorageType) -> str:
+    """Human-facing storage label for ingredient hover text."""
+    match storage:
+        case StorageType.AMBIENT:
+            return "Pantry (Ambient)"
+        case StorageType.REFRIGERATED:
+            return "Refrigerated (Chilled)"
+        case StorageType.FROZEN:
+            return "Frozen"
+        case _ as unreachable:
+            assert_never(unreachable)
+
+
+def category_display_name(category: RecipeCategory) -> str:
+    """Human-facing category label for the recipe card badge."""
+    match category:
+        case RecipeCategory.MODULAR_PROTEIN:
+            return "Modular Protein"
+        case RecipeCategory.MODULAR_CARB:
+            return "Modular Side (Carbs)"
+        case RecipeCategory.MODULAR_COOKED_VEG:
+            return "Modular Side (Cooked Veg)"
+        case RecipeCategory.FRESH_SALAD_VEG:
+            return "Fresh Vegetables & Salads"
+        case RecipeCategory.BREAKFAST:
+            return "Breakfast"
+        case _ as unreachable:
+            assert_never(unreachable)
+
+
+def category_description(category: RecipeCategory) -> str:
+    """Hover text for the recipe card category badge."""
+    match category:
+        case RecipeCategory.MODULAR_PROTEIN:
+            return "High-protein core batch prep (chicken, beef, fish, turkey)"
+        case RecipeCategory.MODULAR_CARB:
+            return "Starchy sides (rice, buckwheat, potatoes, pasta)"
+        case RecipeCategory.MODULAR_COOKED_VEG:
+            return "Cooked vegetable sides (green beans, cauliflower, corn & peas)"
+        case RecipeCategory.FRESH_SALAD_VEG:
+            return "Raw crunchy salads and fresh veg (vitaminka, cucumber-tomato)"
+        case RecipeCategory.BREAKFAST:
+            return "Quick-cook morning meals (oatmeal, eggs & toast)"
+        case _ as unreachable:
+            assert_never(unreachable)
+
 
 _CSS = """
         :root {
@@ -486,7 +535,7 @@ def _macro_items(macros: MacrosInfo) -> str:
 def _ingredient_row(item: RecipeIngredient) -> str:
     """One checklist line, with storage/shelf-life detail on hover."""
     title = (
-        f'title="{html.escape(item.storage.display_name)} · '
+        f'title="{html.escape(storage_display_name(item.storage))} · '
         f'keeps {item.shelf_life_days} days"'
     )
     return (
@@ -506,7 +555,7 @@ def _ingredient_row(item: RecipeIngredient) -> str:
 
 def render_recipe_card(recipe: Recipe) -> str:
     """Render one enriched recipe into a standalone HTML card."""
-    cat_label = recipe.category.display_name
+    cat_label = category_display_name(recipe.category)
     portion_g = recipe.portion_cooked_g
     serving_macros = recipe.per_serving_macros
     batch_macros = recipe.batch_macros
@@ -564,7 +613,7 @@ def render_recipe_card(recipe: Recipe) -> str:
     <div class="container">
         <!-- Header -->
         <header class="recipe-header">
-            <span class="recipe-category" title="{html.escape(recipe.category.description)}">{html.escape(cat_label)}</span>
+            <span class="recipe-category" title="{html.escape(category_description(recipe.category))}">{html.escape(cat_label)}</span>
             <h1 class="recipe-title">{html.escape(recipe.title)}</h1>
 
             <div class="stats-grid">

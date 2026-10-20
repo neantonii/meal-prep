@@ -16,10 +16,27 @@ import html
 import os
 from collections.abc import Mapping
 from pathlib import Path
+from typing import assert_never
 
 from meal_prep.enums import Mealtime
 from meal_prep.models.log import LoggedMeal, LogWeek
 from meal_prep.models.recipe import Recipe
+
+
+def mealtime_header(mealtime: Mealtime) -> str:
+    """Human-facing column header for one mealtime slot."""
+    match mealtime:
+        case Mealtime.BREAKFAST:
+            return "Breakfast"
+        case Mealtime.LUNCH:
+            return "Lunch"
+        case Mealtime.DINNER:
+            return "Dinner"
+        case Mealtime.SNACKS:
+            return "Snacks"
+        case _ as unreachable:
+            assert_never(unreachable)
+
 
 _CSS = """
         :root {
@@ -268,7 +285,7 @@ def render_log_week(
     body_html = "\n".join(rows)
     total = week.total_macros
     headers = "".join(
-        f"<th>{html.escape(mealtime.display_name)}</th>" for mealtime in Mealtime
+        f"<th>{html.escape(mealtime_header(mealtime))}</th>" for mealtime in Mealtime
     )
 
     return f"""<!DOCTYPE html>

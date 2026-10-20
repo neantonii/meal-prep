@@ -3,6 +3,11 @@
 These are dependency-free leaves (stdlib ``enum`` only). They are neither DTOs
 (decoded authored documents) nor enriched values, and they never change across
 the DTO/enrichment boundary. For now they may be imported from anywhere.
+
+The members are bare values with no presentation strings: human-facing labels
+live with their consumers (``meal_prep.renderer`` for storage and category
+strings, ``meal_prep.logbook.report`` for mealtime headers), where exhaustive
+``match`` statements keep them in sync with the members.
 """
 
 from enum import Enum
@@ -13,29 +18,12 @@ class StorageType(str, Enum):
     REFRIGERATED = "refrigerated"
     FROZEN = "frozen"
 
-    @property
-    def display_name(self) -> str:
-        return {
-            StorageType.AMBIENT: "Pantry (Ambient)",
-            StorageType.REFRIGERATED: "Refrigerated (Chilled)",
-            StorageType.FROZEN: "Frozen",
-        }[self]
-
 
 class Mealtime(str, Enum):
     BREAKFAST = "breakfast"
     LUNCH = "lunch"
     DINNER = "dinner"
     SNACKS = "snacks"
-
-    @property
-    def display_name(self) -> str:
-        return {
-            Mealtime.BREAKFAST: "Breakfast",
-            Mealtime.LUNCH: "Lunch",
-            Mealtime.DINNER: "Dinner",
-            Mealtime.SNACKS: "Snacks",
-        }[self]
 
 
 class RecipeCategory(str, Enum):
@@ -44,23 +32,3 @@ class RecipeCategory(str, Enum):
     MODULAR_COOKED_VEG = "modular_cooked_veg"
     FRESH_SALAD_VEG = "fresh_salad_veg"
     BREAKFAST = "breakfast"
-
-    @property
-    def display_name(self) -> str:
-        return {
-            RecipeCategory.MODULAR_PROTEIN: "Modular Protein",
-            RecipeCategory.MODULAR_CARB: "Modular Side (Carbs)",
-            RecipeCategory.MODULAR_COOKED_VEG: "Modular Side (Cooked Veg)",
-            RecipeCategory.FRESH_SALAD_VEG: "Fresh Vegetables & Salads",
-            RecipeCategory.BREAKFAST: "Breakfast",
-        }[self]
-
-    @property
-    def description(self) -> str:
-        return {
-            RecipeCategory.MODULAR_PROTEIN: "High-protein core batch prep (chicken, beef, fish, turkey)",
-            RecipeCategory.MODULAR_CARB: "Starchy sides (rice, buckwheat, potatoes, pasta)",
-            RecipeCategory.MODULAR_COOKED_VEG: "Cooked vegetable sides (green beans, cauliflower, corn & peas)",
-            RecipeCategory.FRESH_SALAD_VEG: "Raw crunchy salads and fresh veg (vitaminka, cucumber-tomato)",
-            RecipeCategory.BREAKFAST: "Quick-cook morning meals (oatmeal, eggs & toast)",
-        }[self]
