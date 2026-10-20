@@ -25,8 +25,14 @@ def load_log_file(path: Path | str) -> LogWeekDTO:
     return log
 
 
-def load_all_logs(logs_dir: Path | str = Path("logs")) -> dict[str, LogWeekDTO]:
-    """Load and validate all weekly log files and ensure week uniqueness."""
+def load_all_logs(logs_dir: Path | str = Path("plans")) -> dict[str, LogWeekDTO]:
+    """Load and validate all weekly log files and ensure week uniqueness.
+
+    Defaults to ``plans/`` (the current layout; the old ``logs/`` dir was
+    renamed to ``plans/``/``diary/``). Pass ``diary/`` explicitly for diary
+    entries; the default has no production caller (``render_week.py`` uses
+    ``load_log_file``), so it is just a sane CWD-relative starting point.
+    """
     directory = Path(logs_dir)
     if not directory.exists() or not directory.is_dir():
         raise FileNotFoundError(f"Logs directory not found: {directory}")
