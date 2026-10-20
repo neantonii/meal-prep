@@ -28,6 +28,11 @@ COOKWARE_PATTERN = re.compile(
 )
 TIMER_PATTERN = re.compile(r"~([a-zA-Z0-9_-]+)?\s*\{\s*([^}%]+)\s*%\s*([^}]+)\s*\}")
 
+# A `~` whose whitespace-delimited token contains `%` but is not a valid
+# timer: the `%` marks an attempted timer with missing braces (`~8%hour`).
+# Prose approximations (`~160 g`) contain no `%` and never match.
+STRAY_TIMER_PATTERN = re.compile(r"~\s*\S*%\S*")
+
 # Valid timer duration units. Self-contained: the `time` dimension has been
 # removed from units.yaml, so this engine carries its own canonical set rather
 # than depending on an external registry.
@@ -88,8 +93,8 @@ def parse_cooklang(text: str) -> CooklangDocument:
 
     Raises ``ValueError`` on syntax errors: a quantity-less declaration with a
     unit (``@name{%unit}``), a non-numeric/non-positive quantity, or a malformed
-    timer (non-numeric or non-positive duration, or an unrecognized time unit).
-    Timers are validated but not returned.
+    timer (non-numeric or non-positive duration, an unrecognized time unit, or
+    a braceless ``~...%...`` sequence). Timers are validated but not returned.
     """
     ingredients: list[CooklangIngredient] = []
     mentions: list[CooklangMention] = []
@@ -144,6 +149,7 @@ def parse_cooklang(text: str) -> CooklangDocument:
             cookware.append(CooklangCookware(id=item_id))
 
     _validate_timers(text)
+    _reject_stray_timers(text)
 
     return CooklangDocument(
         ingredients=tuple(ingredients),
@@ -176,3 +182,18 @@ def _validate_timers(text: str) -> None:
                 f"Timer '{name}' uses unknown time unit '{unit_raw}'. "
                 f"Must be one of: {', '.join(sorted(_TIME_UNITS))}."
             )
+
+
+def _reject_stray_timers(text: str) -> None:
+    """Reject braceless timer attempts (``~8%hour``) that no pattern matches.
+
+    Valid timers are scrubbed first so only unmatched ``~...%...`` sequences
+    remain. A bare ``~`` without ``%`` (prose approximation, ``~160 g``) is
+    not a timer attempt and passes through.
+    """
+    scrubbed = TIMER_PATTERN.sub("", text)
+    if stray := STRAY_TIMER_PATTERN.search(scrubbed):
+        raise ValueError(
+            f"Malformed timer '{stray.group(0)}'. "
+            "A timer needs braces: '~name{duration%unit}', e.g. '~chill{8%hour}'."
+        )

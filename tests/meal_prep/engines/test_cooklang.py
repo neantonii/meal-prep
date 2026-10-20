@@ -198,3 +198,19 @@ def test_timer_negative_duration_is_rejected():
 def test_timer_unknown_time_unit_is_rejected():
     with pytest.raises(ValueError, match="unknown time unit 'fortnight'"):
         parse_cooklang("~rest{5%fortnight}")
+
+
+def test_braceless_timer_is_rejected():
+    with pytest.raises(ValueError, match=re.escape("Malformed timer '~8%hour'")):
+        parse_cooklang("Chill ~8%hour then serve")
+
+
+def test_braceless_timer_with_name_is_rejected():
+    with pytest.raises(ValueError, match=re.escape("Malformed timer '~chill%hour'")):
+        parse_cooklang("~chill%hour")
+
+
+def test_prose_approximation_without_percent_passes_through():
+    doc = parse_cooklang("Divide into containers (~160 g cooked each)")
+    assert doc.ingredients == ()
+    assert doc.cookware == ()

@@ -105,7 +105,9 @@ after each entry validates.
 Write `recipes/<category>/<slug>.cook`: YAML frontmatter (`id` matching
 the file stem, `title`, `category`, `yield`, `storage`) plus a Cooklang
 body with `@ingredient{quantity%unit}` amounts, `#cookware` tokens, and
-`~timer{name%amount%unit}` timers. See an existing `.cook` file for the
+`~timer{name%amount%unit}` timers — the name is mandatory
+(`~chill{8%hour}`, never bare `~8%hour`: braceless timers fail validation).
+See an existing `.cook` file for the
 shape — never re-specify it here. `fridge_days` must be `<=` the minimum
 ingredient shelf life (see the sanity-checks reference of the
 meal-ingredient skill).
@@ -128,7 +130,8 @@ python -c "from pathlib import Path; import renderer; from meal_prep.library imp
 
 Fix `ValueError`s by correcting the draft, never the service. Then run
 the repo gate per `AGENTS.md`, regenerate all cards (force-cleans stale
-ones), and open the new card with `show_preview`:
+ones), grep the new card for stray `%` strings (unparsed timer residue),
+and open the new card with `show_preview`:
 
 ```sh
 python -c "from pathlib import Path; import renderer; from meal_prep.library import MealPrepLibrary; lib = MealPrepLibrary.load(data_dir=Path('data'), recipes_dir=Path('recipes')); renderer.render_all_recipe_cards(lib, Path('recipe_cards'))"
