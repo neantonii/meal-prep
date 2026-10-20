@@ -16,7 +16,6 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from meal_prep.adapters.aisles import load_aisles  # noqa: E402
 from meal_prep.adapters.ingredients import load_ingredients_file  # noqa: E402
 from meal_prep.adapters.units import load_units  # noqa: E402
 from meal_prep.dtos.ingredient import IngredientDTO  # noqa: E402
@@ -26,8 +25,7 @@ from meal_prep.services.ingredients import prepare_ingredient  # noqa: E402
 
 def _enrich(dto: IngredientDTO) -> dict:
     units = load_units(REPO_ROOT / "data" / "units.yaml")
-    aisles = {a.id: a for a in load_aisles(REPO_ROOT / "data" / "aisles.yaml")}
-    ingredient = prepare_ingredient(dto, units, aisles)
+    ingredient = prepare_ingredient(dto, units)
     macros = ingredient.macros_per_100g
     return {
         "ok": True,

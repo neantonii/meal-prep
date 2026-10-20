@@ -12,7 +12,6 @@ from pathlib import Path
 
 import pytest
 
-from meal_prep.adapters.aisles import load_aisles
 from meal_prep.adapters.ingredients import load_all_ingredients
 from meal_prep.adapters.units import load_units
 from meal_prep.services.heuristics import check_ingredient
@@ -24,9 +23,8 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 @pytest.fixture(scope="module")
 def catalog():
     units = load_units(_REPO_ROOT / "data" / "units.yaml")
-    aisle_map = {a.id: a for a in load_aisles(_REPO_ROOT / "data" / "aisles.yaml")}
     dtos = load_all_ingredients(_REPO_ROOT / "data" / "ingredients")
-    return {i: prepare_ingredient(d, units, aisle_map) for i, d in dtos.items()}
+    return {i: prepare_ingredient(d, units) for i, d in dtos.items()}
 
 
 def test_clean_entries_produce_no_warnings(catalog):

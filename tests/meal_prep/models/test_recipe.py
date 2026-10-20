@@ -7,7 +7,7 @@ separately in ``tests/meal_prep/services/test_recipes.py``.
 
 from __future__ import annotations
 
-from meal_prep.enums import RecipeCategory, StorageType
+from meal_prep.enums import Aisle, RecipeCategory, StorageType
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.recipe import Recipe, RecipeIngredient
 
@@ -42,8 +42,7 @@ def _recipe() -> Recipe:
                 id="a",
                 name="A",
                 step_name="A",
-                aisle_name="Meat",
-                aisle_order=3,
+                aisle=Aisle.MEAT,
                 storage=StorageType.REFRIGERATED,
                 shelf_life_days=3,
                 quantity=200.0,
@@ -56,8 +55,7 @@ def _recipe() -> Recipe:
                 id="b",
                 name="B",
                 step_name="B",
-                aisle_name="Pantry",
-                aisle_order=6,
+                aisle=Aisle.PANTRY,
                 storage=StorageType.AMBIENT,
                 shelf_life_days=365,
                 quantity=100.0,
@@ -129,8 +127,7 @@ def test_recipe_ingredient_is_frozen():
         id="a",
         name="A",
         step_name="A",
-        aisle_name="Meat",
-        aisle_order=3,
+        aisle=Aisle.MEAT,
         storage=StorageType.REFRIGERATED,
         shelf_life_days=3,
         quantity=1.0,

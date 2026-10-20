@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from meal_prep.dtos._normalize import clean_token, normalize_slug
-from meal_prep.enums import StorageType
+from meal_prep.enums import Aisle, StorageType
 
 
 class ReferenceInfo(BaseModel):
@@ -115,7 +115,7 @@ class IngredientDTO(BaseModel):
         description="Prose noun for flowing instruction text (e.g. 'chicken breast') — "
         "lowercase and concise. Required; never derived from `name`.",
     )
-    aisle: str = Field(..., description="Supermarket aisle slug")
+    aisle: Aisle = Field(..., description="Supermarket aisle (closed vocabulary)")
     storage: StorageType = Field(..., description="Storage temperature classification")
     shelf_life_days: int = Field(
         ..., gt=0, description="Mandatory shelf life in days under this storage mode"

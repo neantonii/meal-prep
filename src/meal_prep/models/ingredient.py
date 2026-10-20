@@ -17,7 +17,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from meal_prep.engines.conversion_graph import ConversionGraph
-from meal_prep.enums import StorageType
+from meal_prep.enums import Aisle, StorageType
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,8 +80,7 @@ class Ingredient:
     id: str
     name: str
     step_name: str
-    aisle_name: str
-    aisle_order: int
+    aisle: Aisle
     storage: StorageType
     shelf_life_days: int
 

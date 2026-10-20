@@ -20,9 +20,9 @@ def load_ingredients_file(path: Path | str) -> list[IngredientDTO]:
     ingredients = []
     for item_data in data:
         ingredient = IngredientDTO.model_validate(item_data)
-        if ingredient.aisle != expected_aisle:
+        if ingredient.aisle.value != expected_aisle:
             raise ValueError(
-                f"Ingredient '{ingredient.id}' declares aisle '{ingredient.aisle}', "
+                f"Ingredient '{ingredient.id}' declares aisle '{ingredient.aisle.value}', "
                 f"which does not match file stem '{expected_aisle}' in {file_path}"
             )
         ingredients.append(ingredient)
@@ -45,7 +45,7 @@ def load_all_ingredients(
             if item.id in all_ingredients:
                 raise ValueError(
                     f"Duplicate ingredient ID '{item.id}' found across multiple files! "
-                    f"Already loaded from {all_ingredients[item.id].aisle}.yaml, duplicate in {yaml_file.name}"
+                    f"Already loaded from {all_ingredients[item.id].aisle.value}.yaml, duplicate in {yaml_file.name}"
                 )
             all_ingredients[item.id] = item
 

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import pytest
 
-from meal_prep.enums import RecipeCategory, StorageType
+from meal_prep.enums import Aisle, RecipeCategory, StorageType
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.recipe import Recipe, RecipeIngredient
 from meal_prep.planner.plan import WeekPlan
@@ -50,8 +50,7 @@ def _recipe(
                 id="a",
                 name="A",
                 step_name="a",
-                aisle_name="Meat",
-                aisle_order=3,
+                aisle=Aisle.MEAT,
                 storage=StorageType.REFRIGERATED,
                 shelf_life_days=3,
                 quantity=200.0,

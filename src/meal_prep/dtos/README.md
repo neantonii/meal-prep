@@ -2,9 +2,9 @@
 
 Pydantic models that define the authored-data schemas and validate shape.
 
-Mirrors the authored files — `data/aisles.yaml`, `data/equipment.yaml`,
+Mirrors the authored files — `data/equipment.yaml`,
 `data/units.yaml`, `data/ingredients/*.yaml`, `recipes/**/*.cook` — without
-reading them.
+reading them. (Aisles are a closed enum in `meal_prep.enums`, not a data file.)
 
 ## Role & Imports
 

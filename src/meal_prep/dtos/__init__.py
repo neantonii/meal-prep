@@ -6,7 +6,6 @@ cross-validation logic lives here. The conversion graph lives in
 ``meal_prep.engines``; enriched values and registries are built by services.
 """
 
-from meal_prep.dtos.aisle import Aisle
 from meal_prep.dtos.equipment import EquipmentItem
 from meal_prep.dtos.ingredient import (
     IngredientDTO,
@@ -29,7 +28,6 @@ from meal_prep.dtos.units import ConversionStep, DimensionGroup, UnitsFileSchema
 from meal_prep.enums import RecipeCategory, StorageType
 
 __all__ = [
-    "Aisle",
     "ConversionStep",
     "DimensionGroup",
     "EquipmentItem",

@@ -14,7 +14,6 @@ from pathlib import Path
 import pytest
 
 from meal_prep import renderer
-from meal_prep.adapters.aisles import load_aisles
 from meal_prep.adapters.ingredients import load_all_ingredients
 from meal_prep.adapters.units import load_units
 from meal_prep.library import MealPrepLibrary
@@ -28,9 +27,8 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 
 def test_all_ingredients_enrich_without_error():
     units = load_units(_REPO_ROOT / "data" / "units.yaml")
-    aisles = load_aisles(_REPO_ROOT / "data" / "aisles.yaml")
     dtos = load_all_ingredients(_REPO_ROOT / "data" / "ingredients")
-    catalog = prepare_catalog(dtos, units, {a.id: a for a in aisles})
+    catalog = prepare_catalog(dtos, units)
 
     # No per-value assertions: merely that every authored ingredient enriched
     # without raising. This single guard only prevents a vacuous pass if the

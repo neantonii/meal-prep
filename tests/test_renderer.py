@@ -8,7 +8,7 @@ while the tooltip title and the shopping checklist keep the full ``name``.
 from __future__ import annotations
 
 from meal_prep import renderer
-from meal_prep.enums import RecipeCategory, StorageType
+from meal_prep.enums import Aisle, RecipeCategory, StorageType
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.recipe import Recipe, RecipeIngredient
 
@@ -43,8 +43,7 @@ def _recipe() -> Recipe:
                 id="boneless-chicken-breast",
                 name="Boneless, Skinless Chicken Breast",
                 step_name="chicken breasts",
-                aisle_name="Meat",
-                aisle_order=3,
+                aisle=Aisle.MEAT,
                 storage=StorageType.REFRIGERATED,
                 shelf_life_days=3,
                 quantity=4.0,

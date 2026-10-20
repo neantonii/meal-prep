@@ -24,7 +24,7 @@ from meal_prep.engines.cooklang import (
     INGREDIENT_PATTERN,
     TIMER_PATTERN,
 )
-from meal_prep.enums import RecipeCategory, StorageType
+from meal_prep.enums import Aisle, RecipeCategory, StorageType
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.recipe import Recipe, RecipeIngredient
 
@@ -564,20 +564,22 @@ def render_recipe_card(recipe: Recipe) -> str:
     ingredient_step_names = {item.id: item.step_name for item in recipe.ingredients}
     ingredient_repeated = {item.id: item.repeated for item in recipe.ingredients}
 
-    # Group the checklist by aisle, ordered by supermarket walking order, and
-    # keep authored (first-appearance) order within each aisle.
-    by_aisle: dict[tuple[int, str], list[RecipeIngredient]] = {}
+    # Group the checklist by aisle, ordered by supermarket walking order
+    # (Aisle definition order), and keep authored (first-appearance) order
+    # within each aisle. Display names are just the capitalized slug.
+    by_aisle: dict[Aisle, list[RecipeIngredient]] = {}
     for item in recipe.ingredients:
-        by_aisle.setdefault((item.aisle_order, item.aisle_name), []).append(item)
+        by_aisle.setdefault(item.aisle, []).append(item)
 
+    walking_order = list(Aisle)
     aisle_blocks = []
-    for (_order, aisle_name), items in sorted(
-        by_aisle.items(), key=lambda kv: kv[0][0]
+    for aisle, items in sorted(
+        by_aisle.items(), key=lambda kv: walking_order.index(kv[0])
     ):
         rows = "\n".join(_ingredient_row(item) for item in items)
         aisle_blocks.append(
             f'<div class="aisle-group">\n'
-            f'    <h3 class="aisle-title">{html.escape(aisle_name)}</h3>\n'
+            f'    <h3 class="aisle-title">{html.escape(aisle.value.capitalize())}</h3>\n'
             f'    <ul class="ingredient-list">\n{rows}\n    </ul>\n'
             f"</div>"
         )

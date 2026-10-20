@@ -11,6 +11,7 @@ import pytest
 
 from meal_prep.adapters.ingredients import load_all_ingredients, load_ingredients_file
 from meal_prep.dtos.ingredient import IngredientDTO
+from meal_prep.enums import Aisle
 
 
 def _ingredient_yaml(aisle: str = "dairy", id_: str = "unsalted-butter"):
@@ -40,7 +41,7 @@ def test_load_ingredients_file_valid(tmp_path):
     assert len(items) == 1
     assert isinstance(items[0], IngredientDTO)
     assert items[0].id == "unsalted-butter"
-    assert items[0].aisle == "dairy"
+    assert items[0].aisle is Aisle.DAIRY
 
 
 # ---------------------------------------------------------------------------
