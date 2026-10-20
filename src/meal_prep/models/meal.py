@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import reduce
-from pathlib import Path
 
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.recipe import Recipe
@@ -29,7 +28,6 @@ class Meal:
     id: str
     title: str
     recipes: tuple[Recipe, ...]
-    source_path: Path | None = None
 
     @property
     def recipe_ids(self) -> tuple[str, ...]:
