@@ -75,7 +75,7 @@ def _check_edge(source: str, target: str, factor: float) -> None:
 
 @dataclass(frozen=True, slots=True)
 class ConversionEdge:
-    """A directed conversion edge: 1 ``source`` equals ``factor`` × ``target``.
+    """A directed conversion edge: 1 ``source`` equals ``factor`` x ``target``.
 
     Frozen so a validated edge cannot be mutated after construction. The
     per-edge invariant (positive finite factor, distinct non-empty endpoints)
