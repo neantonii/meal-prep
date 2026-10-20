@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 
 from meal_prep.enums import RecipeCategory
-from meal_prep.logbook import render_log_week
+from meal_prep.logbook import render_log_week, render_log_week_page
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.log import LogDay, LogWeek
 from meal_prep.models.recipe import Recipe
@@ -74,3 +74,14 @@ def test_report_renders_plain_titles_without_lookup():
     page = render_log_week(_week())
     assert "Oatmeal" in page
     assert "recipe_cards" not in page
+
+
+def test_page_relativizes_card_links_to_output_dir(tmp_path):
+    out = tmp_path / "weekly_plan" / "log-2026-W42.html"
+    render_log_week_page(
+        _week(),
+        out,
+        recipes={"oatmeal": _recipe()},
+        cards_dir=tmp_path / "recipe_cards",
+    )
+    assert "../recipe_cards/breakfast/oatmeal.html" in out.read_text()
