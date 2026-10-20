@@ -93,6 +93,24 @@ def test_render_all_recipe_cards_missing_output_dir_raises(tmp_path):
         renderer.render_all_recipe_cards(library, tmp_path / "no-such-dir")
 
 
+def test_air_fried_chicken_breast_totals():
+    """Golden totals for a real recipe: catch silent math/data regressions."""
+    library = MealPrepLibrary.load(
+        data_dir=_REPO_ROOT / "data",
+        recipes_dir=_REPO_ROOT / "recipes",
+    )
+
+    recipe = prepare_recipe(
+        library.recipes["air-fried-chicken-breast"],
+        library.catalog,
+        library.equipment,
+    )
+
+    assert recipe.total_cost == pytest.approx(10.91, abs=0.01)
+    assert recipe.batch_macros.calories_kcal == pytest.approx(572.98, abs=0.01)
+    assert recipe.per_serving_macros.protein_g == pytest.approx(54.86, abs=0.01)
+
+
 def test_solve_week_plan_and_render_page():
     library = MealPrepLibrary.load(
         data_dir=_REPO_ROOT / "data",
