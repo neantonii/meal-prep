@@ -651,24 +651,36 @@ def render_all_recipe_cards(
 ) -> list[Path]:
     """Render every recipe in ``library`` into ``output_dir/<category>/<slug>.html``.
 
-    The output directory is force-cleaned first: any pre-existing ``*.html`` file
-    under ``output_dir`` is removed before regeneration, so stale cards for
-    recipes that no longer exist (e.g. a deleted ``.cook`` file) never linger.
+    All recipes are prepared and rendered to memory first; only then are stale
+    ``*.html`` files removed and fresh cards written. A mid-run ``prepare_recipe``
+    failure therefore leaves the existing output untouched instead of half-deleted.
+
+    The output directory must already exist — a typo'd path raises
+    ``FileNotFoundError`` rather than silently "succeeding" with zero cards
+    (``Path.rglob`` on a missing directory yields nothing). Category
+    subdirectories are still created as needed.
     """
     from meal_prep.services.recipes import prepare_recipe
 
     target_root = Path(output_dir)
+    if not target_root.is_dir():
+        raise FileNotFoundError(f"output directory does not exist: {target_root}")
 
-    # Force cleanup: drop every stale card before regenerating.
+    # Prepare + render everything before touching the filesystem, so a failure
+    # partway through cannot destroy previously good output.
+    rendered: list[tuple[Path, str]] = []
+    for dto in library.recipes.values():
+        prepared = prepare_recipe(dto, library.catalog, library.equipment)
+        target = target_root / prepared.category.value / f"{prepared.id}.html"
+        rendered.append((target, render_recipe_card(prepared)))
+
+    # Force cleanup: drop every stale card only after all renders succeeded.
     for stale in target_root.rglob("*.html"):
         stale.unlink()
 
     written: list[Path] = []
-    for dto in library.recipes.values():
-        prepared = prepare_recipe(dto, library.catalog, library.equipment)
-        category_dir = target_root / prepared.category.value
-        category_dir.mkdir(parents=True, exist_ok=True)
-        target = category_dir / f"{prepared.id}.html"
-        target.write_text(render_recipe_card(prepared), encoding="utf-8")
+    for target, card in rendered:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(card, encoding="utf-8")
         written.append(target)
     return written
