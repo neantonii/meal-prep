@@ -13,6 +13,10 @@
   slated to move into `src/`). Config in `pyproject.toml`. Run via
   `python -m mypy` (reads `files = "src"` from config, no path arg needed).
 - **Tests**: `python -m pytest -q`.
+- **Render a week**: `python scripts/render_week.py plans/2026-W43.yaml`
+  (plan → `weekly_plan/log-2026-W43.html`; regenerates cards, relativizes
+  links). Diary needs `-o weekly_plan/diary-2026-W43.html`. Never hand-roll
+  the load/prepare/render chain inline — the script is the entry point.
 - **GitHub CLI**: `gh` is available but needs auth — export `GH_TOKEN="$GITHUB_TOKEN"`
   first (e.g. `export GH_TOKEN="$GITHUB_TOKEN" && gh issue list`). The `GITHUB_TOKEN`
   env var alone is not picked up by `gh`.
