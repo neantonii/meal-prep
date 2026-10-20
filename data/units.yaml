@@ -13,6 +13,8 @@ units:
       kg:
         amount: 1000
         unit: g
+      # Deliberately rounded to 2 decimals (exact: 453.592 and 28.3495) —
+      # kitchen-scale precision; the sub-gram difference never matters here.
       lb:
         amount: 453.59
         unit: g

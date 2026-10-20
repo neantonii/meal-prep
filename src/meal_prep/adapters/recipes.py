@@ -43,21 +43,25 @@ def parse_cooklang_body(
 
 
 def split_recipe_file(content: str) -> tuple[dict[str, Any], str]:
-    """Split .cook file into YAML frontmatter dictionary and instructions body text."""
-    stripped = content.strip()
-    if not stripped.startswith("---"):
+    """Split .cook file into YAML frontmatter dictionary and instructions body text.
+
+    Only the first two delimiter *lines* count: a ``---`` appearing mid-line
+    (or on a later body line) never splits the file.
+    """
+    lines = content.strip().split("\n")
+    if not lines or lines[0].strip() != "---":
         raise ValueError(
             "Invalid recipe file: must begin with YAML frontmatter delimiter '---'"
         )
 
-    parts = stripped.split("---", 2)
-    if len(parts) < 3:
+    closing = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
+    if closing is None:
         raise ValueError(
             "Invalid recipe file: missing closing frontmatter delimiter '---'"
         )
 
-    frontmatter_yaml = parts[1]
-    instructions = parts[2].strip()
+    frontmatter_yaml = "\n".join(lines[1:closing])
+    instructions = "\n".join(lines[closing + 1 :]).strip()
 
     try:
         raw_frontmatter = yaml.safe_load(frontmatter_yaml)
