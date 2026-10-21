@@ -436,7 +436,7 @@
   
   macros:
     unit: cup
-    amount: 0.25
+    amount: 1/4
     calories_kcal: 130.0
     protein_g: 1.0
     fat_g: 0.0
@@ -574,7 +574,7 @@
 
   macros:
     unit: cup
-    amount: 0.5
+    amount: 1/2
     calories_kcal: 90.0
     protein_g: 6.0
     fat_g: 0.5
