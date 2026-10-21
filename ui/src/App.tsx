@@ -19,10 +19,12 @@ function weekFromUrl(): string | null {
 function toPayload(week: DiaryWeek) {
   return {
     week: week.week,
-    days: week.days.map((d) => {
+    days: week.days.flatMap((d) => {
+      const meals = d.meals.filter((m) => m.recipes.length > 0);
+      if (meals.length === 0) return [];
       const o: Record<string, string[] | string> = { date: d.date };
-      for (const m of d.meals) o[m.mealtime] = m.recipes;
-      return o;
+      for (const m of meals) o[m.mealtime] = m.recipes;
+      return [o];
     }),
   };
 }
