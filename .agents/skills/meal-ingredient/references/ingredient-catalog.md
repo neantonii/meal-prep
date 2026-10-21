@@ -8,7 +8,10 @@ with skill text, the schema wins). `name` vs `step_name` semantics live in
 
 ## File Placement
 
-- One file per aisle: `data/ingredients/<aisle>.yaml` (top-level YAML list).
+- Closed set: one file per `Aisle` member (`data/ingredients/<aisle>.yaml`,
+  top-level YAML list). New entries go into the *existing* file — never
+  create a file; a new file means a new aisle, which is a code change
+  outside this flow (a pinned test fails until it is explicitly reviewed).
 - `aisle` field must equal the file stem (`load_ingredients_file` enforces).
 - `id` globally unique across all aisle files (`load_all_ingredients` enforces).
 - Append in id-sorted position to match file convention.
