@@ -1,12 +1,11 @@
 # Meal-prep diary server + React SPA.
 # Build:  docker build -t meal-prep .
 # Serve:  docker run --rm -p 8000:8000 \
-#           -v "$PWD/data:/app/data:ro" \
-#           -v "$PWD/recipes:/app/recipes:ro" \
 #           -v "$PWD/diary:/app/diary" \
 #           -v "$PWD/logs:/app/logs" \
 #           meal-prep
-# Data dirs are mounted at runtime; the image only carries code + built UI.
+# Reference data (data/, recipes/) is baked into the image; only writable
+# state (diary weeks, server logs) is mounted. Pull + redeploy for updates.
 # Logs go to stdout (docker logs) and to /app/logs/diary-server.log.
 
 # ---- UI build ----
@@ -24,6 +23,8 @@ COPY pyproject.toml ./
 RUN pip install --no-cache-dir -e . "fastapi>=0.115" "uvicorn>=0.30"
 COPY src/ ./src/
 COPY scripts/ ./scripts/
+COPY data/ ./data/
+COPY recipes/ ./recipes/
 # UI bundle built above -> served by FastAPI StaticFiles mount.
 COPY --from=ui /build/src/meal_prep/server/static/ ./src/meal_prep/server/static/
 EXPOSE 8000
