@@ -10,7 +10,7 @@ from typing import Any, cast
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from meal_prep import renderer
 from meal_prep.adapters.logs import delete_log_week, load_log_week, save_log_week
@@ -217,6 +217,10 @@ def create_app(data_dir: Path, recipes_dir: Path, diary_dir: Path) -> FastAPI:
             dto = load_log_week(state.diary_dir, week)
         except FileNotFoundError:
             return JSONResponse(_scaffold_response(week).model_dump())
+        except (ValueError, ValidationError) as e:
+            raise HTTPException(
+                status_code=422, detail=f"invalid diary file for week '{week}': {e}"
+            ) from e
         try:
             totals = _totals(week, dto, state)
         except ValueError as e:

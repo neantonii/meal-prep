@@ -84,6 +84,15 @@ def test_save_returns_full_week(client: TestClient):
     assert all(d["meals"] == [] for d in days[1:])
 
 
+def test_corrupt_week_file_returns_422(client: TestClient, tmp_path: Path):
+    diary = tmp_path / "diary"
+    diary.mkdir(parents=True, exist_ok=True)
+    (diary / "2026-W43.yaml").write_text("eek: 2026-W43\ndays: []\n")
+    r = client.get("/api/diary/2026-W43")
+    assert r.status_code == 422
+    assert "invalid diary file" in r.json()["detail"]
+
+
 def test_save_unknown_recipe_rejected(client: TestClient, tmp_path: Path):
     payload = {
         "week": "2026-W43",
