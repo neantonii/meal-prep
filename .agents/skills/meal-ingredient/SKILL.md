@@ -169,13 +169,31 @@ update-existing, a price that needs confirming as paid vs shelf-tag.
 Record the basis as `unit` + `amount` only — never a free-text label
 passthrough. Enrichment scales to per-100g via the conversion graph.
 
-Exercise discretion when the printed serving is a countable nobody cooks
-with: keep the basis in grams and skip the custom unit. Chips "per 26 chips
-(50 g)" stay `per 50 g` — no one measures chips in individual pieces, so a
-`chip` unit would be dead weight. But oatmeal "per 1 packet (28 g)" becomes
+When a countable appears — on the panel ("per 7 radishes"), in the recipe
+("3 stalks", "1/2 bunch") — stop and think about the cook's hands before
+authoring a unit. Reason it through on the card, don't pattern-match:
+
+- What does the cook actually pick up? The retail unit (bunch, packet,
+  fillet) is what the package puts in their hand; subdivisions (stalk,
+  clove-splits) are real only if the cook measures with them.
+- What does the recipe need? A quantity the cook can portion without a
+  scale — half a bunch, one packet — beats a precise gram figure they
+  cannot.
+- What bridges the two with the fewest guesses? Every edge is a claim;
+  prefer the chain with fewer of them. A panel-backed `count -> g` beats
+  two staged guesses through an invented intermediate.
+
+Chips "per 26 chips (50 g)" stay `per 50 g` — no one counts chips, so a
+`chip` unit would be dead weight. Oatmeal "per 1 packet (28 g)" becomes
 `per 1 packet` with a `packet -> g` edge — packets are how the food is
-portioned and cooked. The test is whether recipes would ever name the unit;
-a countable that only exists on the panel is not a unit.
+portioned and cooked. Green onions sold as "2 Bunch" become `bunch`, not
+`stalk`: nobody counts stalks, and `0.5 bunch` is portionable while the
+stalk chain was two guesses. When panel and recipe disagree on piece
+weight, the panel's weighed number wins and the recipe quantity gets
+re-expressed — note the conflict on the read-back.
+
+The test is whether anyone would measure with the unit again; a countable
+nobody cooks with is not a unit.
 
 Do not register a custom unit that merely renames `package` for one
 recipe's prose (e.g. `bag` for a bagged salad the recipe consumes whole).
