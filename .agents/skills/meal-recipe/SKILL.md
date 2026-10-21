@@ -65,7 +65,7 @@ every recipe ingredient with its status — `existing` (catalog id + unit
 available) or `to be added` (new entry, or new unit edge on an existing
 entry):
 
-- `@basmati-rice{0.33%cup}` — existing (`cup -> g` on the entry)
+- `@basmati-rice{1/3%cup}` — existing (`cup -> g` on the entry)
 - `@miso-paste{2%tbsp}` — to be added (no catalog entry)
 - `@chicken-breast{1%fillet}` — to be added (`fillet -> g` edge missing)
 
@@ -86,7 +86,7 @@ wording — before asking for a new edge (see meal-ingredient §2).
 
 Whole-package quantities never need a new unit or a gram expansion: when
 the recipe consumes a whole package or half of one, write
-`@id{1%package}` / `@id{0.5%package}` directly — `package` is
+`@id{1%package}` / `@id{1/2%package}` directly — `package` is
 gram-reachable on every entry, so no edge is needed. Other fractions
 (thirds, quarters) are awkward to portion and do not divide most packs
 cleanly — scale the recipe to a whole or half package instead, or weigh
