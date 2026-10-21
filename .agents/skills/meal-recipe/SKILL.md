@@ -110,6 +110,8 @@ Write `recipes/<category>/<slug>.cook`: YAML frontmatter (`id` matching
 the file stem, `title`, `category`, `yield`, `storage`) plus a Cooklang
 body with `@ingredient{quantity%unit}` amounts, `#cookware` tokens, and
 `~timer{name%amount%unit}` timers — the name is mandatory
+(quantities accept fractions and mixed numbers: `@syrup{1/2%tbsp}`,
+`@flour{1 1/2%cup}`)
 (`~chill{8%hour}`, never bare `~8%hour`: braceless timers fail validation).
 See an existing `.cook` file for the
 shape — never re-specify it here. `fridge_days` must be `<=` the minimum

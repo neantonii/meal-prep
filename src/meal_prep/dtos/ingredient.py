@@ -1,7 +1,24 @@
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from typing import Annotated
+
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from meal_prep.dtos._normalize import clean_token, normalize_slug
+from meal_prep.engines.quantities import parse_quantity
 from meal_prep.enums import Aisle, StorageType
+
+
+def _coerce_quantity(v: object) -> object:
+    return parse_quantity(v) if isinstance(v, str) else v
+
+
+Quantity = Annotated[float, BeforeValidator(_coerce_quantity)]
 
 
 class ReferenceInfo(BaseModel):
@@ -26,8 +43,8 @@ class MacrosInfoDTO(BaseModel):
     unit: str = Field(
         ..., min_length=1, description="Serving basis unit, e.g. 'g' or 'cup'"
     )
-    amount: float = Field(
-        ..., gt=0, description="Serving basis quantity, e.g. 100 or 0.333"
+    amount: Quantity = Field(
+        ..., gt=0, description="Serving basis quantity, e.g. 100 or '2/3'"
     )
 
     calories_kcal: float = Field(
@@ -71,7 +88,7 @@ class UnitConversion(BaseModel):
 
     from_unit: str = Field(..., alias="from", description="Source measurement unit")
     to_unit: str = Field(..., alias="to", description="Target measurement unit")
-    factor: float = Field(
+    factor: Quantity = Field(
         ..., gt=0, description="Multiplier such that 1 from_unit = factor * to_unit"
     )
 
