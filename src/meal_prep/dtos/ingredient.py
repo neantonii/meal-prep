@@ -44,7 +44,7 @@ class MacrosInfoDTO(BaseModel):
         ..., min_length=1, description="Serving basis unit, e.g. 'g' or 'cup'"
     )
     amount: Quantity = Field(
-        ..., gt=0, description="Serving basis quantity, e.g. 100, 0.25 or '2/3'"
+        ..., gt=0, description="Serving basis quantity, e.g. 100, 0.123 or '2/3'"
     )
 
     calories_kcal: float = Field(
