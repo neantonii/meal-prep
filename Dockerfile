@@ -4,8 +4,10 @@
 #           -v "$PWD/data:/app/data:ro" \
 #           -v "$PWD/recipes:/app/recipes:ro" \
 #           -v "$PWD/diary:/app/diary" \
+#           -v "$PWD/logs:/app/logs" \
 #           meal-prep
 # Data dirs are mounted at runtime; the image only carries code + built UI.
+# Logs go to stdout (docker logs) and to /app/logs/diary-server.log.
 
 # ---- UI build ----
 FROM node:24-slim AS ui
@@ -27,4 +29,5 @@ COPY --from=ui /build/src/meal_prep/server/static/ ./src/meal_prep/server/static
 EXPOSE 8000
 ENTRYPOINT ["python", "scripts/serve_diary.py"]
 CMD ["--data-dir", "/app/data", "--recipes-dir", "/app/recipes", \
-     "--diary-dir", "/app/diary", "--host", "0.0.0.0", "--port", "8000"]
+     "--diary-dir", "/app/diary", "--log-dir", "/app/logs", \
+     "--host", "0.0.0.0", "--port", "8000"]

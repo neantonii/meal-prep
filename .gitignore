@@ -73,3 +73,6 @@ diary/
 # Agent scratch (label photos, drafts, review pages).
 .agent_tmp/
 
+# Server runtime logs (plain operational logging, not meal data).
+logs/
+

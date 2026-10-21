@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import logging
+import time
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -20,6 +22,8 @@ from meal_prep.models.recipe import Recipe
 from meal_prep.server.weeks import current_week, week_dates
 from meal_prep.services.logs import prepare_log_week
 from meal_prep.services.recipes import prepare_recipe
+
+logger = logging.getLogger("meal_prep.server")
 
 
 class _State:
@@ -126,6 +130,41 @@ def create_app(data_dir: Path, recipes_dir: Path, diary_dir: Path) -> FastAPI:
 
     app = FastAPI(title="Meal Prep Diary")
 
+    @app.middleware("http")
+    async def access_log(request: Request, call_next: Any) -> Response:
+        started = time.perf_counter()
+        try:
+            response = cast("Response", await call_next(request))
+        except Exception:
+            logger.exception("%s %s -> 500", request.method, request.url.path)
+            raise
+        elapsed_ms = (time.perf_counter() - started) * 1000
+        if response.status_code >= 500:
+            logger.error(
+                "%s %s -> %d (%.1fms)",
+                request.method,
+                request.url.path,
+                response.status_code,
+                elapsed_ms,
+            )
+        elif response.status_code >= 400:
+            logger.warning(
+                "%s %s -> %d (%.1fms)",
+                request.method,
+                request.url.path,
+                response.status_code,
+                elapsed_ms,
+            )
+        else:
+            logger.info(
+                "%s %s -> %d (%.1fms)",
+                request.method,
+                request.url.path,
+                response.status_code,
+                elapsed_ms,
+            )
+        return response
+
     @app.get("/api/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
@@ -209,6 +248,10 @@ def create_app(data_dir: Path, recipes_dir: Path, diary_dir: Path) -> FastAPI:
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e)) from e
         save_log_week(state.diary_dir, dto)
+        n_recipes = sum(
+            len(getattr(d, m.value) or []) for d in dto.days for m in Mealtime
+        )
+        logger.info("saved week %s (%d recipes)", week, n_recipes)
         body = _dto_to_response(week, dto, exists=True)
         body.totals = totals
         return JSONResponse(body.model_dump())
@@ -219,7 +262,8 @@ def create_app(data_dir: Path, recipes_dir: Path, diary_dir: Path) -> FastAPI:
             week_dates(week)
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e)) from e
-        delete_log_week(state.diary_dir, week)
+        deleted = delete_log_week(state.diary_dir, week)
+        logger.info("deleted week %s (existed=%s)", week, deleted)
         return Response(status_code=204)
 
     @app.get("/cards/recipe/{category}/{slug}.html", response_class=HTMLResponse)
