@@ -20,13 +20,13 @@ RUN npm run build
 FROM python:3.13-slim
 WORKDIR /app
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir -e . "fastapi>=0.115" "uvicorn>=0.30"
 COPY src/ ./src/
 COPY scripts/ ./scripts/
 COPY data/ ./data/
 COPY recipes/ ./recipes/
 # UI bundle built above -> served by FastAPI StaticFiles mount.
 COPY --from=ui /build/src/meal_prep/server/static/ ./src/meal_prep/server/static/
+RUN pip install --no-cache-dir -e . "fastapi>=0.115" "uvicorn>=0.30"
 EXPOSE 8000
 ENTRYPOINT ["python", "scripts/serve_diary.py"]
 CMD ["--data-dir", "/app/data", "--recipes-dir", "/app/recipes", \
