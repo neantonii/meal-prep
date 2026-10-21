@@ -72,17 +72,20 @@ def _totals(week: str, dto: LogWeekDTO, state: _State) -> dict[str, float]:
 
 
 def _dto_to_response(week: str, dto: LogWeekDTO, *, exists: bool) -> DiaryWeek:
-    days = [
-        DiaryDay(
-            date=str(d.date),
-            meals=[
-                DiaryMeal(mealtime=mt.value, recipes=list(getattr(d, mt.value) or []))
+    by_date = {str(d.date): d for d in dto.days}
+    days = []
+    for day in week_dates(week):
+        logged = by_date.get(day.isoformat())
+        meals = (
+            [
+                DiaryMeal(mealtime=mt.value, recipes=list(getattr(logged, mt.value)))
                 for mt in Mealtime
-                if getattr(d, mt.value) is not None
-            ],
+                if getattr(logged, mt.value) is not None
+            ]
+            if logged is not None
+            else []
         )
-        for d in dto.days
-    ]
+        days.append(DiaryDay(date=day.isoformat(), meals=meals))
     return DiaryWeek(week=week, exists=exists, days=days, totals={})
 
 

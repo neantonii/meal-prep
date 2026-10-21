@@ -60,6 +60,21 @@ def test_save_round_trip(client: TestClient, tmp_path: Path):
     ]
 
 
+def test_save_returns_full_week(client: TestClient):
+    payload = {
+        "week": "2026-W43",
+        "days": [{"date": "2026-10-19", "dinner": ["boiled-roasted-buckwheat"]}],
+    }
+    saved = client.post("/api/diary/2026-W43", json=payload)
+    assert saved.status_code == 200, saved.text
+    days = saved.json()["days"]
+    assert [d["date"] for d in days] == [f"2026-10-{day:02d}" for day in range(19, 26)]
+    assert days[0]["meals"] == [
+        {"mealtime": "dinner", "recipes": ["boiled-roasted-buckwheat"]}
+    ]
+    assert all(d["meals"] == [] for d in days[1:])
+
+
 def test_save_unknown_recipe_rejected(client: TestClient, tmp_path: Path):
     payload = {
         "week": "2026-W43",
