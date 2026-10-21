@@ -36,7 +36,9 @@ export default function Palette({ groups }: Props) {
                 >
                   {r.title}
                 </a>{" "}
-                <span className="kcal">{Math.round(r.kcal)} kcal</span>
+                <span className="kcal">
+                  {Math.round(r.kcal)} kcal · {Math.round(r.protein_g)}P
+                </span>
               </div>
             ))}
         </details>

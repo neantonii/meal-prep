@@ -18,11 +18,25 @@ interface Props {
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-function dayKcal(day: DiaryDay, byId: Map<string, CatalogEntry>): number {
-  let kcal = 0;
+interface DayMacros {
+  kcal: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+}
+
+function dayMacros(day: DiaryDay, byId: Map<string, CatalogEntry>): DayMacros {
+  const total: DayMacros = { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 };
   for (const m of day.meals)
-    for (const id of m.recipes) kcal += byId.get(id)?.kcal ?? 0;
-  return kcal;
+    for (const id of m.recipes) {
+      const e = byId.get(id);
+      if (!e) continue;
+      total.kcal += e.kcal;
+      total.protein_g += e.protein_g;
+      total.carbs_g += e.carbs_g;
+      total.fat_g += e.fat_g;
+    }
+  return total;
 }
 
 export default function WeekGrid({ days, byId, onAdd, onRemove, onMove }: Props) {
@@ -52,12 +66,17 @@ export default function WeekGrid({ days, byId, onAdd, onRemove, onMove }: Props)
         </tr>
       </thead>
       <tbody>
-        {days.map((day, di) => (
+        {days.map((day, di) => {
+          const t = dayMacros(day, byId);
+          return (
           <tr key={day.date}>
             <td className="day-cell">
               {DAY_NAMES[di] ?? ""}
               <span className="date">{day.date}</span>
-              <span className="day-total">{Math.round(dayKcal(day, byId))} kcal</span>
+              <span className="day-total">
+                {Math.round(t.kcal)} kcal · {Math.round(t.protein_g)}P ·{" "}
+                {Math.round(t.carbs_g)}C · {Math.round(t.fat_g)}F
+              </span>
             </td>
             {MEALTIMES.map((mt) => {
               const key = `${di}:${mt}`;
@@ -116,7 +135,8 @@ export default function WeekGrid({ days, byId, onAdd, onRemove, onMove }: Props)
               );
             })}
           </tr>
-        ))}
+          );
+        })}
       </tbody>
     </table>
   );

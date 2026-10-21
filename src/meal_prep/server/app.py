@@ -38,6 +38,8 @@ class CatalogEntry(BaseModel):
     category: str
     kcal: float
     protein_g: float
+    carbs_g: float
+    fat_g: float
     cost: float
 
 
@@ -188,6 +190,8 @@ def create_app(data_dir: Path, recipes_dir: Path, diary_dir: Path) -> FastAPI:
                     category=recipe.category.value,
                     kcal=macros.calories_kcal,
                     protein_g=macros.protein_g,
+                    carbs_g=macros.carbs_g,
+                    fat_g=macros.fat_g,
                     cost=recipe.cost_per_portion,
                 )
             )

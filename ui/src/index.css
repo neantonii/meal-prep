@@ -40,8 +40,13 @@ table.grid thead th { background: var(--surface-card); color: var(--primary);
 .slot.dragover { outline: 2px dashed var(--primary); outline-offset: -2px; }
 .entry { display: flex; justify-content: space-between; align-items: center; gap: 6px;
   background: var(--surface-card); border-radius: 6px; padding: 4px 8px; margin-bottom: 4px; }
-.entry a { color: #fff; text-decoration: underline;
+.entry a { color: var(--text); text-decoration: underline;
   text-decoration-color: var(--primary); text-underline-offset: 3px; }
+.entry a:visited { color: var(--text); }
+.chip a { color: var(--text); text-decoration: none; }
+.chip a:hover { text-decoration: underline;
+  text-decoration-color: var(--primary); text-underline-offset: 3px; }
+.chip a:visited { color: var(--text); }
 .entry .kcal { color: var(--text-muted); font-size: 0.75rem; white-space: nowrap; }
 .entry .x { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.9rem; }
 .entry .x:hover { color: var(--danger); }

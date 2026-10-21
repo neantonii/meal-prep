@@ -29,7 +29,16 @@ def test_catalog_grouped(client: TestClient):
     total = sum(len(g["recipes"]) for g in body["groups"])
     assert total > 0
     entry = body["groups"][0]["recipes"][0]
-    assert {"id", "title", "category", "kcal", "protein_g", "cost"} <= set(entry)
+    assert {
+        "id",
+        "title",
+        "category",
+        "kcal",
+        "protein_g",
+        "carbs_g",
+        "fat_g",
+        "cost",
+    } <= set(entry)
 
 
 def test_missing_week_returns_scaffold(client: TestClient):
