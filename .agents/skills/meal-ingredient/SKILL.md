@@ -117,8 +117,9 @@ never a decomposed triple, which is not panel text. When the panel prints a
 fraction ("1/3 cup", "2/3 cup"), author it as a fraction (`amount: 1/3`) —
 never a truncated decimal (`0.333` renders as `39.96 g` residue). Fractions
 and mixed numbers (`1 1/2`) are accepted everywhere quantities are authored
-(macros basis, conversion factors, recipe quantities, timer durations) and
-expand to full float precision at load.
+and expand to full float precision at load — use one whenever it shows a
+definitional relationship (`1/3 cup` basis, `1/2` package split), never for
+a weighed outcome (`0.5 g` on the scale stays decimal).
 
 ### 2. Stage the draft and show the card
 
