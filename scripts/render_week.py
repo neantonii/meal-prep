@@ -16,6 +16,7 @@ from pathlib import Path
 
 from meal_prep import renderer
 from meal_prep.adapters.logs import load_log_file
+from meal_prep.ingredient_cards import render_all_ingredient_cards
 from meal_prep.library import MealPrepLibrary
 from meal_prep.logbook import render_log_week_page
 from meal_prep.services.logs import prepare_log_week
@@ -28,6 +29,9 @@ def main() -> None:
     parser.add_argument("--data-dir", type=Path, default=Path("data"))
     parser.add_argument("--recipes-dir", type=Path, default=Path("recipes"))
     parser.add_argument("--cards-dir", type=Path, default=Path("recipe_cards"))
+    parser.add_argument(
+        "--ingredient-cards-dir", type=Path, default=Path("ingredient_cards")
+    )
     parser.add_argument(
         "-o",
         "--output",
@@ -42,7 +46,10 @@ def main() -> None:
         rid: prepare_recipe(r, lib.catalog, lib.equipment)
         for rid, r in lib.recipes.items()
     }
-    renderer.render_all_recipe_cards(lib, args.cards_dir)
+    render_all_ingredient_cards(lib, args.ingredient_cards_dir)
+    renderer.render_all_recipe_cards(
+        lib, args.cards_dir, ingredient_cards_dir=args.ingredient_cards_dir
+    )
 
     week = prepare_log_week(load_log_file(args.week_yaml), prepared)
     stem = args.week_yaml.stem

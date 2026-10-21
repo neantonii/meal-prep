@@ -54,11 +54,17 @@ Thumbs.db
 
 # Rendered Recipe Cards
 recipe_cards/
+ingredient_cards/
 recipes/**/*.html
 recipes/*.html
 
 # Generated Week-Plan Reports
 weekly_plan/
+
+# Built UI bundle (vite build output, served by the diary server) + deps
+src/meal_prep/server/static/
+ui/node_modules/
+ui/dist/
 
 # Personal week plans + eating diary (gitignored data, validated by DTO pipeline).
 plans/

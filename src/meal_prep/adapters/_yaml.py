@@ -25,3 +25,15 @@ def require_root_key(data: Any, key: str, path: Path | str) -> Any:
     if not isinstance(data, dict) or key not in data:
         raise ValueError(f"Invalid YAML structure in {path}: expected '{key}' root key")
     return data[key]
+
+
+def write_yaml(path: Path | str, data: Any) -> Path:
+    """Write ``data`` as YAML to ``path`` (overwriting), returning the path.
+
+    The parent directory must already exist; creating directories is the
+    caller's job.
+    """
+    file_path = Path(path)
+    with file_path.open("w", encoding="utf-8") as f:
+        yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True)
+    return file_path
