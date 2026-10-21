@@ -49,7 +49,7 @@ JSON-LD (`<script type="application/ld+json">`) for technique, ratios,
 and times — do not burn actions retrying the search box. Agree the shape
 with the user before touching
 files: title, category (`modular_protein`, `modular_carb`,
-`modular_cooked_veg`, `fresh_salad_veg`, `breakfast`), servings, and the
+`modular_cooked_veg`, `fresh_salad_veg`, `breakfast`, `snacks`), servings, and the
 ingredient list with quantities in concrete units. Paste the agreed list
 as an FYI — no formal sign-off needed — with 2–3 similar recipes cited
 (URL + what was borrowed: technique, ratios, times/temps). No citations,

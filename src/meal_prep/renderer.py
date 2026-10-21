@@ -58,6 +58,8 @@ def category_display_name(category: RecipeCategory) -> str:
             return "Fresh Vegetables & Salads"
         case RecipeCategory.BREAKFAST:
             return "Breakfast"
+        case RecipeCategory.SNACKS:
+            return "Snacks"
         case _ as unreachable:
             assert_never(unreachable)
 
@@ -75,6 +77,8 @@ def category_description(category: RecipeCategory) -> str:
             return "Raw crunchy salads and fresh veg (vitaminka, cucumber-tomato)"
         case RecipeCategory.BREAKFAST:
             return "Quick-cook morning meals (oatmeal, eggs & toast)"
+        case RecipeCategory.SNACKS:
+            return "Quick no-cook bites (cottage cheese, yogurt cups)"
         case _ as unreachable:
             assert_never(unreachable)
 

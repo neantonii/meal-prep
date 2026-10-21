@@ -58,6 +58,7 @@ def test_recipe_category_vocabulary_is_pinned():
         RecipeCategory.MODULAR_COOKED_VEG,
         RecipeCategory.FRESH_SALAD_VEG,
         RecipeCategory.BREAKFAST,
+        RecipeCategory.SNACKS,
     }, (
         "RecipeCategory vocabulary changed. Adding a category is a product "
         "decision, not an authoring side effect: confirm it with the user "
