@@ -73,7 +73,9 @@ Reason about each missing unit edge before authoring it: if the unit is a
 sane kitchen measure the entry should support, add the edge to the
 ingredient (measured with proper equipment — scale, cups, spoons — never
 eyeballed or estimated; anything can be weighed, but volume is usually
-more convenient at cook time, so use discretion per ingredient). If it is
+more convenient at cook time, so use discretion per ingredient — rice and
+oats scoop cleanly into a cup, long pasta and rice noodles do not fit one
+and stay in grams). If it is
 exotic or
 one-off — a countable nobody cooks with — rewrite the
 recipe quantity in a common unit the entry already supports instead. The
