@@ -32,6 +32,7 @@ class RecipeCategory(StrEnum):
     MODULAR_COOKED_VEG = "modular_cooked_veg"
     FRESH_SALAD_VEG = "fresh_salad_veg"
     BREAKFAST = "breakfast"
+    SNACKS = "snacks"
 
 
 class Aisle(StrEnum):

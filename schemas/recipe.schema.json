@@ -6,7 +6,8 @@
         "modular_carb",
         "modular_cooked_veg",
         "fresh_salad_veg",
-        "breakfast"
+        "breakfast",
+        "snacks"
       ],
       "title": "RecipeCategory",
       "type": "string"
