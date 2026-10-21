@@ -193,7 +193,7 @@ Chips "per 26 chips (50 g)" stay `per 50 g` — no one counts chips, so a
 `chip` unit would be dead weight. Oatmeal "per 1 packet (28 g)" becomes
 `per 1 packet` with a `packet -> g` edge — packets are how the food is
 portioned and cooked. Green onions sold as "2 Bunch" become `bunch`, not
-`stalk`: nobody counts stalks, and `0.5 bunch` is portionable while the
+`stalk`: nobody counts stalks, and `1/2 bunch` is portionable while the
 stalk chain was two guesses. When panel and recipe disagree on piece
 weight, the panel's weighed number wins and the recipe quantity gets
 re-expressed — note the conflict on the read-back.
