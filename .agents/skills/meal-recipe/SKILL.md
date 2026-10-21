@@ -77,8 +77,10 @@ more convenient at cook time, so use discretion per ingredient). If it is
 exotic or
 one-off — a countable nobody cooks with — rewrite the
 recipe quantity in a common unit the entry already supports instead. The
-test is whether recipes would ever name the unit again; a unit that only
-exists in this recipe is not a unit.
+test is whether anyone would measure with the unit again; a unit that only
+exists in this recipe is not a unit. When the recipe names a countable
+("3 stalks", "1/2 bunch"), reason about the cook measuring — not the panel
+wording — before asking for a new edge (see meal-ingredient §2).
 
 Whole-package quantities never need a new unit or a gram expansion: when
 the recipe consumes a whole package or half of one, write
