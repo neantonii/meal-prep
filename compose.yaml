@@ -1,0 +1,17 @@
+# Meal-prep diary server.
+# Usage:  docker compose up --build
+# Then open http://localhost:8000/?week=<YYYY-Www>
+# Logs:   docker compose logs -f  (also ./logs/diary-server.log)
+
+services:
+  diary:
+    build: .
+    image: meal-prep:latest
+    ports:
+      - "${PORT:-8000}:8000"
+    volumes:
+      - ./data:/app/data:ro
+      - ./recipes:/app/recipes:ro
+      - ./diary:/app/diary
+      - ./logs:/app/logs
+    restart: unless-stopped
