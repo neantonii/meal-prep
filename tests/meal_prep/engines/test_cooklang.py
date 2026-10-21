@@ -175,6 +175,16 @@ def test_ingredient_negative_quantity_is_rejected():
         parse_cooklang("@salt{-1%tsp}")
 
 
+def test_ingredient_fraction_quantity():
+    doc = parse_cooklang("@syrup{1/2%tbsp}")
+    assert doc.ingredients[0].quantity == 0.5
+
+
+def test_ingredient_mixed_number_quantity():
+    doc = parse_cooklang("@flour{1 1/2%cup}")
+    assert doc.ingredients[0].quantity == 1.5
+
+
 # ---------------------------------------------------------------------------
 # errors — timers
 # ---------------------------------------------------------------------------
@@ -193,6 +203,10 @@ def test_timer_zero_duration_is_rejected():
 def test_timer_negative_duration_is_rejected():
     with pytest.raises(ValueError, match=re.escape("must be positive, got -5.0")):
         parse_cooklang("~rest{-5%min}")
+
+
+def test_timer_fraction_duration():
+    parse_cooklang("Rest ~dough{1/2%hour} before baking")
 
 
 def test_timer_unknown_time_unit_is_rejected():

@@ -80,6 +80,21 @@ def test_macros_unit_whitespace_only_is_rejected():
         MacrosInfoDTO.model_validate(_macros(unit="   "))
 
 
+def test_macros_fraction_amount_is_exact():
+    m = MacrosInfoDTO.model_validate(_macros(unit="cup", amount="2/3"))
+    assert m.amount * 120 == 80.0
+
+
+def test_macros_mixed_number_amount():
+    m = MacrosInfoDTO.model_validate(_macros(unit="cup", amount="1 1/2"))
+    assert m.amount == 1.5
+
+
+def test_macros_garbage_amount_is_rejected():
+    with pytest.raises(ValidationError, match="Invalid quantity"):
+        MacrosInfoDTO.model_validate(_macros(amount="abc"))
+
+
 # ---------------------------------------------------------------------------
 # UnitConversion — clean_units + validate_different_units
 # ---------------------------------------------------------------------------
@@ -108,6 +123,13 @@ def test_unit_conversion_whitespace_only_unit_is_rejected():
 def test_unit_conversion_same_unit_is_rejected():
     with pytest.raises(ValidationError, match="to itself is redundant"):
         UnitConversion.model_validate({"from": "g", "to": "g", "factor": 1.0})
+
+
+def test_unit_conversion_fraction_factor():
+    uc = UnitConversion.model_validate(
+        {"from": "package", "to": "bunch", "factor": "2"}
+    )
+    assert uc.factor == 2.0
 
 
 def test_unit_conversion_same_unit_different_case_is_rejected():

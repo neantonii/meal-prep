@@ -113,7 +113,12 @@ omits, take it from the record and stage `usda`; `staged` is only for
 nutrients when neither source has it — rare, and say so on the read-back.
 Map `serving_text` to the DTO's `unit` + `amount`
 yourself. If the line is ambiguous, quote the verbatim line at the user —
-never a decomposed triple, which is not panel text.
+never a decomposed triple, which is not panel text. When the panel prints a
+fraction ("1/3 cup", "2/3 cup"), author it as a fraction (`amount: 1/3`) —
+never a truncated decimal (`0.333` renders as `39.96 g` residue). Fractions
+and mixed numbers (`1 1/2`) are accepted everywhere quantities are authored
+(macros basis, conversion factors, recipe quantities, timer durations) and
+expand to full float precision at load.
 
 ### 2. Stage the draft and show the card
 

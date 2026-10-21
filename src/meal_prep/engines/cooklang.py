@@ -18,6 +18,8 @@ instructions back to HTML).
 import re
 from dataclasses import dataclass
 
+from meal_prep.engines.quantities import parse_quantity
+
 # Cooklang element patterns. Kept at module scope so the renderer can reuse the
 # exact same compiled objects rather than re-declaring them.
 INGREDIENT_PATTERN = re.compile(
@@ -127,7 +129,7 @@ def parse_cooklang(text: str) -> CooklangDocument:
             )
 
         try:
-            qty = float(qty_raw)
+            qty = parse_quantity(qty_raw)
         except ValueError:
             raise ValueError(
                 f"Invalid quantity '{qty_raw}' for ingredient '@{name}'. Must be a numeric value."
@@ -166,7 +168,7 @@ def _validate_timers(text: str) -> None:
         unit_raw = match.group(3).strip().lower()
 
         try:
-            duration = float(duration_raw)
+            duration = parse_quantity(duration_raw)
         except ValueError:
             raise ValueError(
                 f"Invalid timer duration '{duration_raw}' for timer '{name}'. Must be a numeric value."
