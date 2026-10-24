@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.git/
+.agent_tmp/
+.venv/
+node_modules/
+ui/node_modules/
+ui/dist/
+src/meal_prep/server/static/
+plans/
+diary/
+weekly_plan/
+recipe_cards/
+.pytest_cache/
