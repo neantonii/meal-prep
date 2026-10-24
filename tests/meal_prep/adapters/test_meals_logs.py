@@ -6,8 +6,15 @@ from pathlib import Path
 
 import pytest
 
-from meal_prep.adapters.logs import load_all_logs, load_log_file
+from meal_prep.adapters.logs import (
+    delete_log_week,
+    load_all_logs,
+    load_log_file,
+    load_log_week,
+    save_log_week,
+)
 from meal_prep.adapters.meals import load_all_meals, load_meal_file
+from meal_prep.dtos.log import LogWeekDTO
 
 
 def _write(path: Path, content: str) -> Path:
@@ -89,11 +96,44 @@ def test_load_all_logs_missing_dir(tmp_path: Path):
         load_all_logs(tmp_path / "nope")
 
 
-def test_load_all_logs_defaults_to_plans_dir(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
-    plans = tmp_path / "plans"
-    plans.mkdir()
-    _write(plans / "2026-W42.yaml", _LOG)
-    monkeypatch.chdir(tmp_path)
-    assert list(load_all_logs()) == ["2026-W42"]
+def test_load_log_week_round_trip(tmp_path: Path):
+    log = LogWeekDTO.model_validate(
+        {
+            "week": "2026-W42",
+            "days": [{"date": "2026-10-13", "dinner": ["oatmeal", "oatmeal"]}],
+        }
+    )
+    target = save_log_week(tmp_path / "diary", log)
+    assert target == tmp_path / "diary" / "2026-W42.yaml"
+    assert log.source_path == target
+    loaded = load_log_week(tmp_path / "diary", "2026-W42")
+    assert loaded.week == "2026-W42"
+    assert loaded.days[0].dinner == ["oatmeal", "oatmeal"]
+
+
+def test_load_log_week_rejects_stem_mismatch(tmp_path: Path):
+    _write(tmp_path / "2026-W42.yaml", _LOG.replace("2026-W42", "2026-W43"))
+    with pytest.raises(ValueError, match="does not match filename stem"):
+        load_log_week(tmp_path, "2026-W42")
+
+
+def test_load_log_week_missing_file(tmp_path: Path):
+    with pytest.raises(FileNotFoundError, match="Log week file not found"):
+        load_log_week(tmp_path, "2026-W42")
+
+
+def test_save_log_week_creates_dir(tmp_path: Path):
+    log = LogWeekDTO.model_validate(
+        {"week": "2026-W42", "days": [{"date": "2026-10-13", "dinner": ["oatmeal"]}]}
+    )
+    target = save_log_week(tmp_path / "new" / "diary", log)
+    assert target.exists()
+
+
+def test_delete_log_week(tmp_path: Path):
+    log = LogWeekDTO.model_validate(
+        {"week": "2026-W42", "days": [{"date": "2026-10-13", "dinner": ["oatmeal"]}]}
+    )
+    save_log_week(tmp_path, log)
+    assert delete_log_week(tmp_path, "2026-W42") is True
+    assert delete_log_week(tmp_path, "2026-W42") is False

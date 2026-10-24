@@ -7,7 +7,13 @@ always built by an adapter here. Adapters import DTOs, never the reverse.
 
 from meal_prep.adapters.equipment import load_equipment
 from meal_prep.adapters.ingredients import load_all_ingredients, load_ingredients_file
-from meal_prep.adapters.logs import load_all_logs, load_log_file
+from meal_prep.adapters.logs import (
+    delete_log_week,
+    load_all_logs,
+    load_log_file,
+    load_log_week,
+    save_log_week,
+)
 from meal_prep.adapters.meals import load_all_meals, load_meal_file
 from meal_prep.adapters.recipes import (
     load_all_recipes,
@@ -18,6 +24,7 @@ from meal_prep.adapters.recipes import (
 from meal_prep.adapters.units import load_units
 
 __all__ = [
+    "delete_log_week",
     "load_all_ingredients",
     "load_all_logs",
     "load_all_meals",
@@ -25,9 +32,11 @@ __all__ = [
     "load_equipment",
     "load_ingredients_file",
     "load_log_file",
+    "load_log_week",
     "load_meal_file",
     "load_recipe_file",
     "load_units",
     "parse_cooklang_body",
+    "save_log_week",
     "split_recipe_file",
 ]
