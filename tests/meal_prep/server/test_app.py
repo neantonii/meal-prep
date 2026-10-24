@@ -103,6 +103,17 @@ def test_save_unknown_recipe_rejected(client: TestClient, tmp_path: Path):
     assert not (tmp_path / "diary" / "2026-W43.yaml").exists()
 
 
+def test_save_rejects_week_mismatch_and_out_of_week_dates(client: TestClient):
+    day = {"date": "2026-10-19", "dinner": ["boiled-roasted-buckwheat"]}
+    r = client.post("/api/diary/2026-W43", json={"week": "2026-W44", "days": [day]})
+    assert r.status_code == 422
+    out_of_week = {"date": "2026-10-26", "dinner": day["dinner"]}
+    r = client.post(
+        "/api/diary/2026-W43", json={"week": "2026-W43", "days": [out_of_week]}
+    )
+    assert r.status_code == 422
+
+
 def test_delete_week(client: TestClient, tmp_path: Path):
     payload = {
         "week": "2026-W43",

@@ -138,11 +138,7 @@ def create_app(data_dir: Path, recipes_dir: Path, diary_dir: Path) -> FastAPI:
     @app.middleware("http")
     async def access_log(request: Request, call_next: Any) -> Response:
         started = time.perf_counter()
-        try:
-            response = cast("Response", await call_next(request))
-        except Exception:
-            logger.exception("%s %s -> 500", request.method, request.url.path)
-            raise
+        response = cast("Response", await call_next(request))
         elapsed_ms = (time.perf_counter() - started) * 1000
         if response.status_code >= 500:
             logger.error(
@@ -241,7 +237,7 @@ def create_app(data_dir: Path, recipes_dir: Path, diary_dir: Path) -> FastAPI:
             )
         try:
             dto = LogWeekDTO.model_validate(payload)
-        except Exception as e:
+        except (ValidationError, ValueError) as e:
             raise HTTPException(status_code=422, detail=str(e)) from e
         if dto.week != week:
             raise HTTPException(
