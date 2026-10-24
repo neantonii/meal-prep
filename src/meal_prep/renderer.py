@@ -14,7 +14,9 @@ A ``Recipe`` is fully self-contained (it carries ``cookware_by_token``), so
 
 from __future__ import annotations
 
+import contextlib
 import html
+import os
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, assert_never
@@ -536,12 +538,20 @@ def _macro_items(macros: MacrosInfo) -> str:
     return "\n".join(items)
 
 
-def _ingredient_row(item: RecipeIngredient) -> str:
+def _ingredient_row(item: RecipeIngredient, *, cards_root: Path | None = None) -> str:
     """One checklist line, with storage/shelf-life detail on hover."""
     title = (
         f'title="{html.escape(storage_display_name(item.storage))} · '
         f'keeps {item.shelf_life_days} days"'
     )
+    if cards_root is None:
+        name_html = f'<span class="ing-name">{html.escape(item.name)}</span>'
+    else:
+        href = (cards_root / item.aisle.value / f"{item.id}.html").as_posix()
+        name_html = (
+            f'<a class="ing-name" href="{html.escape(href)}">'
+            f"{html.escape(item.name)}</a>"
+        )
     return (
         f'<li class="ingredient-item" {title}>\n'
         f'            <label class="ingredient-checkbox-label">\n'
@@ -549,7 +559,7 @@ def _ingredient_row(item: RecipeIngredient) -> str:
         f'                <span class="checkmark"></span>\n'
         f'                <span class="ingredient-text">\n'
         f'                    <span class="ing-qty">{_format_display_amount(item.quantity, item.unit)}</span>\n'
-        f'                    <span class="ing-name">{html.escape(item.name)}</span>\n'
+        f"                    {name_html}\n"
         f"                </span>\n"
         f"            </label>\n"
         f'            <span class="ing-meta">{item.grams:.1f}g · ${item.cost:.2f} · {item.macros.calories_kcal:.0f} kcal</span>\n'
@@ -557,8 +567,17 @@ def _ingredient_row(item: RecipeIngredient) -> str:
     )
 
 
-def render_recipe_card(recipe: Recipe) -> str:
-    """Render one enriched recipe into a standalone HTML card."""
+def render_recipe_card(
+    recipe: Recipe, ingredient_cards_dir: str | Path | None = None
+) -> str:
+    """Render one enriched recipe into a standalone HTML card.
+
+    Ingredient names link to their ingredient cards only when
+    ``ingredient_cards_dir`` is given; otherwise they render as plain text.
+    """
+    cards_root = (
+        Path(ingredient_cards_dir) if ingredient_cards_dir is not None else None
+    )
     cat_label = category_display_name(recipe.category)
     portion_g = recipe.portion_cooked_g
     serving_macros = recipe.per_serving_macros
@@ -580,7 +599,7 @@ def render_recipe_card(recipe: Recipe) -> str:
     for aisle, items in sorted(
         by_aisle.items(), key=lambda kv: walking_order.index(kv[0])
     ):
-        rows = "\n".join(_ingredient_row(item) for item in items)
+        rows = "\n".join(_ingredient_row(item, cards_root=cards_root) for item in items)
         aisle_blocks.append(
             f'<div class="aisle-group">\n'
             f'    <h3 class="aisle-title">{html.escape(aisle.value.capitalize())}</h3>\n'
@@ -702,7 +721,9 @@ def render_recipe_card(recipe: Recipe) -> str:
 
 
 def render_all_recipe_cards(
-    library: MealPrepLibrary, output_dir: Path | str
+    library: MealPrepLibrary,
+    output_dir: Path | str,
+    ingredient_cards_dir: str | Path | None = None,
 ) -> list[Path]:
     """Render every recipe in ``library`` into ``output_dir/<category>/<slug>.html``.
 
@@ -714,6 +735,9 @@ def render_all_recipe_cards(
     ``FileNotFoundError`` rather than silently "succeeding" with zero cards
     (``Path.rglob`` on a missing directory yields nothing). Category
     subdirectories are still created as needed.
+
+    When ``ingredient_cards_dir`` is given, ingredient names link to their
+    cards (relativized against each card file, like the logbook report does).
     """
     from meal_prep.services.recipes import prepare_recipe
 
@@ -727,7 +751,15 @@ def render_all_recipe_cards(
     for dto in library.recipes.values():
         prepared = prepare_recipe(dto, library.catalog, library.equipment)
         target = target_root / prepared.category.value / f"{prepared.id}.html"
-        rendered.append((target, render_recipe_card(prepared)))
+        cards_rel: Path | None = None
+        if ingredient_cards_dir is not None:
+            with contextlib.suppress(ValueError):
+                cards_rel = Path(
+                    os.path.relpath(
+                        Path(ingredient_cards_dir), start=target.parent.resolve()
+                    )
+                )
+        rendered.append((target, render_recipe_card(prepared, cards_rel)))
 
     # Force cleanup: drop every stale card only after all renders succeeded.
     for stale in target_root.rglob("*.html"):
