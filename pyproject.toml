@@ -13,6 +13,9 @@ dependencies = [
     "ortools>=9.15",
     "fastapi>=0.115",
     "uvicorn>=0.30",
+    # TEMPORARY (see #83): test-only, needed by starlette TestClient.
+    # Move to a [test] extra once CI can install it.
+    "httpx>=0.28",
 ]
 
 [tool.setuptools.packages.find]
