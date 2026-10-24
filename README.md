@@ -42,3 +42,34 @@ succinct template (target < 25 lines):
 
 Read each `README.md` for the layer's implicit conventions before editing code
 there.
+
+## Diary server (deploy)
+
+The FastAPI server (`src/meal_prep/server/`) plus the React week editor
+(`ui/`) ship as one container. Reference data (`data/`, `recipes/`) and
+the UI bundle are baked into the image; only writable state lives on the
+host.
+
+Host setup (all state in one dir, e.g. `/srv/meal-prep`):
+
+```sh
+mkdir -p /srv/meal-prep/diary /srv/meal-prep/logs
+cd /srv/meal-prep
+# copy compose.example.yml to compose.yml, adjusting the volume paths
+docker compose up -d --build
+```
+
+The server boots fine with an empty/missing diary dir and creates week
+files on first save. The UI is at `http://<host>:8080`; the API under
+`/api/`.
+
+Backup/restore: the diary is plain YAML, one file per week
+(`diary/2026-W43.yaml`). Back up with `rsync`:
+
+```sh
+rsync -a /srv/meal-prep/diary/ /backup/meal-prep/diary/
+```
+
+Restore by rsyncing back (server picks up files without restart).
+Upgrade: rebuild/pull the image and recreate the container — host dirs
+are untouched.
