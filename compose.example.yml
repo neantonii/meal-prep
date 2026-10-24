@@ -1,0 +1,17 @@
+name: meal-prep
+
+# Copy to compose.yml, create ./diary and ./logs next to it, then:
+#   docker compose up -d --build
+# Diary weeks persist in ./diary (host dir); server logs in ./logs.
+# Reference data (data/, recipes/) and the UI bundle are baked into
+# the image — pull the image (or rebuild) to update them.
+
+services:
+  diary:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8000"
+    volumes:
+      - ./diary:/app/diary
+      - ./logs:/app/logs
