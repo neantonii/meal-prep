@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools==84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,14 +8,19 @@ version = "0.1.0"
 description = "Home-use meal-prep system"
 requires-python = ">=3.12"
 dependencies = [
-    "pydantic>=2",
-    "pyyaml>=6",
-    "ortools>=9.15",
-    "fastapi>=0.115",
-    "uvicorn>=0.30",
-    # TEMPORARY (see #83): test-only, needed by starlette TestClient.
-    # Move to a [test] extra once CI can install it.
-    "httpx>=0.28",
+    "pydantic==2.13.5",
+    "pyyaml==6.0.3",
+    "ortools==9.15.6755",
+    "fastapi==0.141.1",
+    "uvicorn==0.53.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx==0.28.1", # starlette TestClient
+    "mypy==2.3.1",
+    "pytest==9.1.1",
+    "ruff==0.16.9",
 ]
 
 [tool.setuptools.packages.find]
