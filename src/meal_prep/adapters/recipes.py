@@ -130,7 +130,7 @@ def load_recipe_file(path: Path | str) -> RecipeDTO:
     )
 
 
-def load_all_recipes(recipes_dir: Path | str = Path("recipes")) -> dict[str, RecipeDTO]:
+def load_all_recipes(recipes_dir: Path | str) -> dict[str, RecipeDTO]:
     """Load and validate all .cook recipe files across all category directories."""
     directory = Path(recipes_dir)
     if not directory.exists() or not directory.is_dir():

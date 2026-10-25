@@ -30,7 +30,7 @@ def load_meal_file(path: Path | str) -> MealDTO:
     return meal
 
 
-def load_all_meals(meals_dir: Path | str = Path("meals")) -> dict[str, MealDTO]:
+def load_all_meals(meals_dir: Path | str) -> dict[str, MealDTO]:
     """Load and validate all authored meal files and ensure ID uniqueness."""
     directory = Path(meals_dir)
     if not directory.exists() or not directory.is_dir():
