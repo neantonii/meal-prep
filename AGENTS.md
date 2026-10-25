@@ -86,25 +86,53 @@ Then `uv run ruff check .`, `uv run ruff format . --check`, and
 
 ## Dependencies
 
-- Exact pins only: `==` for every requirement in `pyproject.toml` (build
-  backend and dev group included), exact versions in `ui/package.json`.
-  Transitive versions live in `uv.lock` / `ui/package-lock.json`; commit lock
-  changes together with the manifest change. (Convention; checked in review.)
-- Packages come from PyPI / the npm registry only (no git or URL sources).
-- Every package version a PR adds to a lock file must be at least 30 days old
-  and have no known vulnerability. Never pick "latest"; when adding or
-  bumping, choose the newest version that is at least 30 days old
-  (`uv lock --exclude-newer <date 30 days ago>` helps).
-- Security fixes come through Dependabot, whose PRs skip these checks. Do not
-  bump a package to a fresher release by hand to fix an advisory.
-- Dependabot opens version updates after a cooldown (30 days patch/minor,
-  90 days major); security updates arrive immediately. Packages that become
-  vulnerable later surface as Dependabot alerts.
+Every PR not opened by Dependabot fails CI (`dependency-policy`, a required
+check) if it adds a package version that is **younger than 30 days** or has a
+**known vulnerability**. Only the PR's own lock-file additions are checked.
+Get it right up front instead of iterating against CI:
 
-Enforced on every non-Dependabot PR by `.github/workflows/dependency-policy.yml`
-(runs `master`'s copy): `actions/dependency-review-action` for vulnerabilities
-and `.github/scripts/release_age.py` for release age, both on the
-dependency-graph diff between the PR's base and head.
+**Choosing**
+- Prefer the standard library or a package already in use. Ask the user
+  before adding a new dependency; when one is needed, pick a mature, widely
+  used, maintained package.
+- Exact pins in `pyproject.toml` (`==`) and `ui/package.json`; PyPI / npm
+  registry only (no git or URL sources). Commit manifest and lock together.
+
+**Adding or bumping** (the cutoff also applies to transitive packages)
+```sh
+# Python: resolve with a cutoff, then re-lock without it (versions stay; the
+# second run only removes the cutoff that the first one records in uv.lock)
+uv add "<pkg>==<version>" --exclude-newer "$(date -u -d '30 days ago' +%F)"
+uv lock
+# UI (Node/npm version from ui/.nvmrc)
+cd ui && npm install <pkg>@<version> --min-release-age=30
+```
+Pick the newest version that is at least 30 days old, never "latest".
+
+**Self-check before opening the PR** (after `git push`; same data CI uses)
+```sh
+export GITHUB_REPOSITORY=neantonii/meal-prep \
+  BASE_SHA=$(git merge-base HEAD origin/master) HEAD_SHA=$(git rev-parse HEAD)
+python .github/scripts/release_age.py   # the exact release-age check CI runs
+curl -s "https://api.github.com/repos/$GITHUB_REPOSITORY/dependency-graph/compare/$BASE_SHA...$HEAD_SHA" \
+  | python -c "import json,sys; [print(c['name'], c['version'], [v['advisory_ghsa_id'] for v in c['vulnerabilities']]) for c in json.load(sys.stdin) if c['vulnerabilities']]"
+```
+The second command prints nothing when no added version is vulnerable.
+
+**When a check fails, do not fight it**
+- Too fresh: pick an older version. Vulnerable: pick a version without the
+  advisory that is still 30+ days old.
+- If no version is both old enough and clean (typically: the only fix is
+  newer than 30 days), stop and tell the user. Security fixes come through
+  Dependabot, whose PRs skip these checks; never hand-bump to a fresh fix.
+- Never edit the check, its workflow, or Dependabot config to get green
+  (see the `.github/` rule above).
+
+Background: Dependabot proposes version updates after a cooldown (30 days
+patch/minor, 90 days major) and opens security updates immediately; packages
+that become vulnerable later surface as Dependabot alerts. CI runs
+`actions/dependency-review-action` and `.github/scripts/release_age.py` from
+`master` on the dependency-graph diff between the PR's base and head.
 
 ## Ruff config policy
 
