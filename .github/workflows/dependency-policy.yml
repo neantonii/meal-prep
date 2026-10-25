@@ -1,0 +1,63 @@
+name: dependency-policy
+
+# pull_request_target runs this file and the release-age script from the BASE
+# branch, so a PR cannot weaken the check it is judged by. Nothing from the PR
+# is checked out or executed: both checks read GitHub's dependency-graph diff
+# between the PR's base and head commits.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches: [master]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # Checks only what the PR adds. Dependabot PRs are skipped (a skipped job
+  # counts as passing): version updates already wait out the Dependabot
+  # cooldown, and security updates must land fast. Packages that become
+  # vulnerable later are Dependabot alerts' job.
+  dependency-policy:
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: No known vulnerabilities in added versions
+        uses: actions/dependency-review-action@v5.0.0
+        with:
+          fail-on-severity: low
+          fail-on-scopes: runtime, development, unknown
+      - name: Checkout base (trusted release-age script)
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Added versions are at least 30 days old
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MIN_AGE_DAYS: "30"
+        run: python .github/scripts/release_age.py
+
+  # Not meant to be a required check: it goes red on purpose so that any PR
+  # touching .github/ (workflows, the release-age script, Dependabot config)
+  # stands out in review. Agents must not change these unless explicitly asked
+  # (AGENTS.md).
+  github-dir-change-alert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Flag changes under .github/
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          files=$(gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files" --jq '.[].filename' | grep '^\.github/' || true)
+          if [ -n "$files" ]; then
+            while IFS= read -r f; do echo "::error file=$f::This PR changes $f. Review it with care."; done <<< "$files"
+            exit 1
+          fi
+          echo "No changes under .github/"
