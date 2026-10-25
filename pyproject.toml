@@ -18,6 +18,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "httpx==0.28.1", # starlette TestClient
+    "markupsafe==3.0.4",
     "mypy==2.3.1",
     "pytest==9.1.1",
     "ruff==0.16.9",
