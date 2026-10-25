@@ -4,7 +4,8 @@
 
 - **Setup (fresh container)**: `uv sync --locked` (installs the project
   editable plus the `dev` group into `.venv` exactly as `uv.lock` pins it).
-  Install uv with `pip install uv` if missing. UI: `cd ui && npm ci`.
+  Install uv with `pip install uv` if missing. UI: `cd ui && npm ci` on the
+  Node major in `ui/.nvmrc` (CI reads the same file).
 - **Python**: 3.13, `src`-layout. Run tools through `uv run` (or activate
   `.venv`); commands below use `uv run`.
 - **Lint/format**: [ruff](https://docs.astral.sh/ruff/), config in
