@@ -1,78 +1,65 @@
-"""Meal Prep Library Loader & Gateway.
+"""Library assembly — load and enrich all authored data in one call.
 
-Loads and validates all domain standards, ingredient catalogs, and recipes in a
-single call. Ingredients are enriched (resolved into frozen values) via the
-ingredient service; recipes remain authored documents until a later service
-prepares them. The aisle taxonomy is a closed enum (``meal_prep.enums.Aisle``),
-not a data file — there is nothing to load.
+``load_library`` is the composition root between the loading machinery
+(adapters → DTOs → services) and everything that consumes the domain. It reads
+the authored files, enriches ingredients, recipes and meals, and returns one
+frozen ``Library`` of models. Consumers never see DTOs or call services.
+
+All locations are explicit: nothing is resolved against the working directory.
 """
 
-from dataclasses import dataclass
+from __future__ import annotations
+
 from pathlib import Path
+from types import MappingProxyType
 
 from meal_prep.adapters.equipment import load_equipment
 from meal_prep.adapters.ingredients import load_all_ingredients
 from meal_prep.adapters.meals import load_all_meals
 from meal_prep.adapters.recipes import load_all_recipes
 from meal_prep.adapters.units import load_units
-from meal_prep.dtos.equipment import EquipmentItem
-from meal_prep.dtos.meal import MealDTO
-from meal_prep.dtos.recipe import RecipeDTO
-from meal_prep.dtos.units import UnitsFileSchema
-from meal_prep.models.ingredient import Ingredient
+from meal_prep.models.library import Library
+from meal_prep.models.meal import Meal
 from meal_prep.services.ingredients import prepare_catalog
+from meal_prep.services.meals import prepare_meal
+from meal_prep.services.recipes import prepare_recipe
 
 
-@dataclass
-class MealPrepLibrary:
-    """Unified repository container with validated domain standards, ingredients, and recipes."""
+def load_library(
+    data_dir: Path | str,
+    recipes_dir: Path | str,
+    meals_dir: Path | str | None = None,
+) -> Library:
+    """Load, validate and enrich the whole workspace into a frozen ``Library``.
 
-    units: UnitsFileSchema
-    equipment: list[EquipmentItem]
-    catalog: dict[str, Ingredient]
-    recipes: dict[str, RecipeDTO]
-    meals: dict[str, MealDTO]
+    Args:
+        data_dir: Holds ``units.yaml``, ``equipment.yaml`` and ``ingredients/``.
+        recipes_dir: Holds ``<category>/<slug>.cook`` recipe files.
+        meals_dir: Holds authored meal YAML files; ``None`` means no meals.
 
-    @classmethod
-    def load(
-        cls,
-        data_dir: Path | str = Path("data"),
-        recipes_dir: Path | str = Path("recipes"),
-        meals_dir: Path | str = Path("meals"),
-    ) -> "MealPrepLibrary":
-        """Load and validate the entire meal prep workspace in a single line.
+    Raises on the first invalid file or failed cross-reference.
+    """
+    data_path = Path(data_dir)
+    units = load_units(data_path / "units.yaml")
+    equipment = load_equipment(data_path / "equipment.yaml")
+    ingredients = prepare_catalog(
+        load_all_ingredients(data_path / "ingredients"), units
+    )
 
-        Args:
-            data_dir: Directory containing taxonomy YAMLs (units.yaml, equipment.yaml, ingredients/).
-            recipes_dir: Directory containing .cook recipe files.
-            meals_dir: Directory containing authored meal YAML files.
+    recipes = {
+        recipe_id: prepare_recipe(dto, ingredients, equipment)
+        for recipe_id, dto in load_all_recipes(Path(recipes_dir)).items()
+    }
 
-        Returns:
-            Fully initialized, cross-validated MealPrepLibrary instance.
-        """
-        data_path = Path(data_dir)
-        recipes_path = Path(recipes_dir)
-        meals_path = Path(meals_dir)
+    meals: dict[str, Meal] = {}
+    if meals_dir is not None:
+        meals = {
+            meal_id: prepare_meal(dto, recipes)
+            for meal_id, dto in load_all_meals(Path(meals_dir)).items()
+        }
 
-        units = load_units(data_path / "units.yaml")
-        equipment = load_equipment(data_path / "equipment.yaml")
-        catalog = prepare_catalog(
-            load_all_ingredients(data_path / "ingredients"),
-            units,
-        )
-
-        recipes: dict[str, RecipeDTO] = {}
-        if recipes_path.exists():
-            recipes = load_all_recipes(recipes_dir=recipes_path)
-
-        meals: dict[str, MealDTO] = {}
-        if meals_path.exists():
-            meals = load_all_meals(meals_dir=meals_path)
-
-        return cls(
-            units=units,
-            equipment=equipment,
-            catalog=catalog,
-            recipes=recipes,
-            meals=meals,
-        )
+    return Library(
+        ingredients=MappingProxyType(ingredients),
+        recipes=MappingProxyType(recipes),
+        meals=MappingProxyType(meals),
+    )

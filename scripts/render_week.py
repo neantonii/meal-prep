@@ -17,10 +17,9 @@ from pathlib import Path
 from meal_prep import renderer
 from meal_prep.adapters.logs import load_log_file
 from meal_prep.ingredient_cards import render_all_ingredient_cards
-from meal_prep.library import MealPrepLibrary
+from meal_prep.library import load_library
 from meal_prep.logbook import render_log_week_page
 from meal_prep.services.logs import prepare_log_week
-from meal_prep.services.recipes import prepare_recipe
 
 
 def main() -> None:
@@ -41,21 +40,21 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    lib = MealPrepLibrary.load(args.data_dir, args.recipes_dir)
-    prepared = {
-        rid: prepare_recipe(r, lib.catalog, lib.equipment)
-        for rid, r in lib.recipes.items()
-    }
-    render_all_ingredient_cards(lib, args.ingredient_cards_dir)
+    library = load_library(args.data_dir, args.recipes_dir)
+    render_all_ingredient_cards(library.ingredients.values(), args.ingredient_cards_dir)
     renderer.render_all_recipe_cards(
-        lib, args.cards_dir, ingredient_cards_dir=args.ingredient_cards_dir
+        library.recipes.values(),
+        args.cards_dir,
+        ingredient_cards_dir=args.ingredient_cards_dir,
     )
 
-    week = prepare_log_week(load_log_file(args.week_yaml), prepared)
+    week = prepare_log_week(load_log_file(args.week_yaml), library.recipes)
     stem = args.week_yaml.stem
     default_name = stem if stem.startswith(("log-", "diary-")) else f"log-{stem}"
     target = args.output or (Path("weekly_plan") / f"{default_name}.html")
-    render_log_week_page(week, target, recipes=prepared, cards_dir=args.cards_dir)
+    render_log_week_page(
+        week, target, recipes=library.recipes, cards_dir=args.cards_dir
+    )
     print(f"wrote {target} ({len(week.days)} days)")
 
 

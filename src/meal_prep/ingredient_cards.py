@@ -9,16 +9,12 @@ photo. This is the presentation layer; it owns formatting and rounding.
 from __future__ import annotations
 
 import html
+from collections.abc import Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from meal_prep.enums import Aisle
-from meal_prep.models.ingredient import MacrosInfo
+from meal_prep.models.ingredient import Ingredient, MacrosInfo
 from meal_prep.renderer import _CSS, _macro_items, storage_display_name
-
-if TYPE_CHECKING:
-    from meal_prep.library import MealPrepLibrary
-    from meal_prep.models.ingredient import Ingredient
 
 
 def aisle_display_name(aisle: Aisle) -> str:
@@ -115,9 +111,9 @@ def render_ingredient_card(ingredient: Ingredient) -> str:
 
 
 def render_all_ingredient_cards(
-    library: MealPrepLibrary, output_dir: Path | str
+    ingredients: Iterable[Ingredient], output_dir: Path | str
 ) -> list[Path]:
-    """Render every catalog ingredient into ``output_dir/<aisle>/<slug>.html``.
+    """Render every ingredient into ``output_dir/<aisle>/<slug>.html``.
 
     All cards are rendered to memory first; only then are stale ``*.html``
     files removed and fresh cards written.
@@ -127,7 +123,7 @@ def render_all_ingredient_cards(
         raise FileNotFoundError(f"output directory does not exist: {target_root}")
 
     rendered: list[tuple[Path, str]] = []
-    for ingredient in library.catalog.values():
+    for ingredient in ingredients:
         target = target_root / ingredient.aisle.value / f"{ingredient.id}.html"
         rendered.append((target, render_ingredient_card(ingredient)))
 

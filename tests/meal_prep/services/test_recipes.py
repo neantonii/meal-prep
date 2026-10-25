@@ -8,28 +8,48 @@ re-tested here.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 
+from meal_prep.adapters.equipment import load_equipment
+from meal_prep.adapters.ingredients import load_all_ingredients
+from meal_prep.adapters.recipes import load_all_recipes
+from meal_prep.adapters.units import load_units
+from meal_prep.dtos.equipment import EquipmentItem
 from meal_prep.dtos.recipe import RecipeDTO, RecipeIngredientRef
-from meal_prep.library import MealPrepLibrary
+from meal_prep.models.ingredient import Ingredient
 from meal_prep.models.recipe import Recipe
+from meal_prep.services.ingredients import prepare_catalog
 from meal_prep.services.recipes import prepare_recipe
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
+@dataclass(frozen=True)
+class _Inputs:
+    """The real enrichment inputs: enriched catalog + raw equipment and recipes."""
+
+    catalog: dict[str, Ingredient]
+    equipment: list[EquipmentItem]
+    recipes: dict[str, RecipeDTO]
+
+
 @pytest.fixture(scope="module")
-def library() -> MealPrepLibrary:
-    return MealPrepLibrary.load(
-        data_dir=_REPO_ROOT / "data",
-        recipes_dir=_REPO_ROOT / "recipes",
+def library() -> _Inputs:
+    data = _REPO_ROOT / "data"
+    return _Inputs(
+        catalog=prepare_catalog(
+            load_all_ingredients(data / "ingredients"), load_units(data / "units.yaml")
+        ),
+        equipment=load_equipment(data / "equipment.yaml"),
+        recipes=load_all_recipes(_REPO_ROOT / "recipes"),
     )
 
 
 @pytest.fixture(scope="module")
-def chicken_recipe(library: MealPrepLibrary) -> RecipeDTO:
+def chicken_recipe(library: _Inputs) -> RecipeDTO:
     return library.recipes["air-fried-chicken-breast"]
 
 
