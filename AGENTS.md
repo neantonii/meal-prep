@@ -47,6 +47,9 @@
 - Agents never merge: no `gh pr merge`, no merging `master` into a branch
   (rebase only if asked), no pushing to `master`. Merging is the user's
   decision after their own review.
+- Agents never modify `.github/workflows/` unless the user explicitly asks
+  for that change. GitHub does not enforce this: agents act as the user
+  (see #88).
 - Post-merge cleanup: after the user confirms a PR is merged, run
   `git prune-stale` (fetches with prune, deletes local branches whose
   upstream is `[gone]`; `master`/`main` exempt, `git branch -d` refuses
