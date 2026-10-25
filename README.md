@@ -16,7 +16,8 @@ enriched frozen models → rendered HTML cards.
   - `models/` — frozen, enriched value objects
   - `services/` — business logic; resolves DTOs → models
   - `enums.py` — shared enum types
-  - `library.py` — top-level loader gateway
+  - `library.py` — `load_library()`: loads and enriches everything into one
+    frozen `Library` (ingredients, recipes, meals); consumers start here
 - `planner/` (under `src/meal_prep/`) — weekly meal planner (7 days × 3 meals, CP-SAT):
   - `solver.py` — owns the OR-Tools import; cheapest one-recipe-per-meal plan
   - `plan.py` — frozen `WeekPlan` value with day/week aggregates

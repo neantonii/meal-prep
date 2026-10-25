@@ -12,6 +12,8 @@ Value objects constructed by `services`, never from files. Forbidden imports:
 - Immutable and self-sufficient: a model carries everything it needs
   (conversion graph, synonyms, macros); consumers never resolve collaborators.
 - All amounts are raw floats, unrounded — rounding is the renderer's job.
+- `Library` (built only by `meal_prep.library.load_library`) is the one
+  value consumers start from: enriched ingredients, recipes and meals.
 
 ## Chesterton's Fences
 

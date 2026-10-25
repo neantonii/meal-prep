@@ -33,6 +33,12 @@
   `models` (frozen enriched dataclasses, clean public names) → `renderer`.
   DTO and model of the same concept are *different forms*; see
   `src/meal_prep/dtos/README.md`.
+- Two tiers: the loading machinery (`adapters`, `dtos`, `services`) feeds
+  `load_library()`, which returns a frozen `Library` of enriched models.
+  Consumers (`renderer`, `ingredient_cards`, `logbook`, `planner`) take
+  models or the `Library` only and never import the machinery
+  (`tests/test_consumer_imports.py`). Entry points on an I/O boundary
+  (`server`, `scripts/`) may use both.
 
 ## Version control
 
