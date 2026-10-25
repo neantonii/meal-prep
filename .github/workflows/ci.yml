@@ -1,4 +1,5 @@
 name: ci
+# branch-protection probe (temporary, safe to revert)
 
 on:
   push:
