@@ -41,3 +41,5 @@ succinct template (target < 25 lines):
 
 Read each `README.md` for the layer's implicit conventions before editing code
 there.
+
+<!-- Push permission test from a Claude Code session; safe to remove. -->
