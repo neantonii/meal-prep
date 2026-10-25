@@ -1,7 +1,9 @@
 """Meal Prep System package."""
 
-from meal_prep.library import MealPrepLibrary
+from meal_prep.library import load_library
+from meal_prep.models.library import Library
 
 __all__ = [
-    "MealPrepLibrary",
+    "Library",
+    "load_library",
 ]

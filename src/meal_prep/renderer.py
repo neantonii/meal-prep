@@ -7,9 +7,8 @@ text to turn ``@ingredient`` / ``#cookware`` / ``~timer`` tokens into styled
 badges — reusing the exact compiled patterns from ``meal_prep.engines.cooklang``.
 
 A ``Recipe`` is fully self-contained (it carries ``cookware_by_token``), so
-``render_recipe_card`` takes only the recipe. ``render_all_recipe_cards`` loads a
-``MealPrepLibrary``, prepares every recipe, and writes one card per recipe into
-``<output_dir>/<category>/<slug>.html``.
+``render_recipe_card`` takes only the recipe. ``render_all_recipe_cards`` writes
+one card per given recipe into ``<output_dir>/<category>/<slug>.html``.
 """
 
 from __future__ import annotations
@@ -18,8 +17,9 @@ import contextlib
 import html
 import os
 import re
+from collections.abc import Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, assert_never
+from typing import assert_never
 
 from meal_prep.engines.cooklang import (
     COOKWARE_PATTERN,
@@ -29,9 +29,6 @@ from meal_prep.engines.cooklang import (
 from meal_prep.enums import Aisle, RecipeCategory, StorageType
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.recipe import Recipe, RecipeIngredient
-
-if TYPE_CHECKING:
-    from meal_prep.library import MealPrepLibrary
 
 
 def storage_display_name(storage: StorageType) -> str:
@@ -721,15 +718,15 @@ def render_recipe_card(
 
 
 def render_all_recipe_cards(
-    library: MealPrepLibrary,
+    recipes: Iterable[Recipe],
     output_dir: Path | str,
     ingredient_cards_dir: str | Path | None = None,
 ) -> list[Path]:
-    """Render every recipe in ``library`` into ``output_dir/<category>/<slug>.html``.
+    """Render every recipe into ``output_dir/<category>/<slug>.html``.
 
-    All recipes are prepared and rendered to memory first; only then are stale
-    ``*.html`` files removed and fresh cards written. A mid-run ``prepare_recipe``
-    failure therefore leaves the existing output untouched instead of half-deleted.
+    All recipes are rendered to memory first; only then are stale ``*.html``
+    files removed and fresh cards written. A mid-run failure therefore leaves
+    the existing output untouched instead of half-deleted.
 
     The output directory must already exist — a typo'd path raises
     ``FileNotFoundError`` rather than silently "succeeding" with zero cards
@@ -739,18 +736,15 @@ def render_all_recipe_cards(
     When ``ingredient_cards_dir`` is given, ingredient names link to their
     cards (relativized against each card file, like the logbook report does).
     """
-    from meal_prep.services.recipes import prepare_recipe
-
     target_root = Path(output_dir)
     if not target_root.is_dir():
         raise FileNotFoundError(f"output directory does not exist: {target_root}")
 
-    # Prepare + render everything before touching the filesystem, so a failure
-    # partway through cannot destroy previously good output.
+    # Render everything before touching the filesystem, so a failure partway
+    # through cannot destroy previously good output.
     rendered: list[tuple[Path, str]] = []
-    for dto in library.recipes.values():
-        prepared = prepare_recipe(dto, library.catalog, library.equipment)
-        target = target_root / prepared.category.value / f"{prepared.id}.html"
+    for recipe in recipes:
+        target = target_root / recipe.category.value / f"{recipe.id}.html"
         cards_rel: Path | None = None
         if ingredient_cards_dir is not None:
             with contextlib.suppress(ValueError):
@@ -759,7 +753,7 @@ def render_all_recipe_cards(
                         Path(ingredient_cards_dir), start=target.parent.resolve()
                     )
                 )
-        rendered.append((target, render_recipe_card(prepared, cards_rel)))
+        rendered.append((target, render_recipe_card(recipe, cards_rel)))
 
     # Force cleanup: drop every stale card only after all renders succeeded.
     for stale in target_root.rglob("*.html"):

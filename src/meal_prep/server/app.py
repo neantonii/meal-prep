@@ -17,18 +17,16 @@ from meal_prep.adapters.logs import delete_log_week, load_log_week, save_log_wee
 from meal_prep.dtos.log import LogWeekDTO
 from meal_prep.enums import Mealtime, RecipeCategory
 from meal_prep.ingredient_cards import render_ingredient_card
-from meal_prep.library import MealPrepLibrary
-from meal_prep.models.recipe import Recipe
+from meal_prep.library import load_library
+from meal_prep.models.library import Library
 from meal_prep.server.weeks import current_week, week_dates
 from meal_prep.services.logs import prepare_log_week
-from meal_prep.services.recipes import prepare_recipe
 
 logger = logging.getLogger("meal_prep.server")
 
 
 class _State:
-    library: MealPrepLibrary
-    prepared: dict[str, Recipe]
+    library: Library
     diary_dir: Path
 
 
@@ -61,7 +59,7 @@ class DiaryWeek(BaseModel):
 
 
 def _totals(week: str, dto: LogWeekDTO, state: _State) -> dict[str, float]:
-    enriched = prepare_log_week(dto, state.prepared)
+    enriched = prepare_log_week(dto, state.library.recipes)
     m = enriched.total_macros
     return {
         "kcal": m.calories_kcal,
@@ -114,23 +112,18 @@ def create_app(data_dir: Path, recipes_dir: Path, diary_dir: Path) -> FastAPI:
         if not path.is_dir():
             raise FileNotFoundError(f"{label} does not exist: {path}")
 
-    library = MealPrepLibrary.load(data_dir, recipes_dir)
-    prepared = {
-        rid: prepare_recipe(dto, library.catalog, library.equipment)
-        for rid, dto in library.recipes.items()
-    }
+    library = load_library(data_dir, recipes_dir)
     state = _State()
     state.library = library
-    state.prepared = prepared
     state.diary_dir = diary_dir
 
     recipe_cards = {
         (r.category.value, r.id): renderer.render_recipe_card(r)
-        for r in prepared.values()
+        for r in library.recipes.values()
     }
     ingredient_cards = {
         (i.aisle.value, i.id): render_ingredient_card(i)
-        for i in library.catalog.values()
+        for i in library.ingredients.values()
     }
 
     app = FastAPI(title="Meal Prep Diary")
@@ -177,7 +170,7 @@ def create_app(data_dir: Path, recipes_dir: Path, diary_dir: Path) -> FastAPI:
     @app.get("/api/catalog")
     def catalog() -> dict[str, Any]:
         groups: dict[str, list[CatalogEntry]] = {c.value: [] for c in RecipeCategory}
-        for recipe in prepared.values():
+        for recipe in library.recipes.values():
             macros = recipe.per_serving_macros
             groups[recipe.category.value].append(
                 CatalogEntry(
