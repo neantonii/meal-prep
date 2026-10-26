@@ -35,3 +35,16 @@ def test_dockerfile_python_matches_ci():
     assert image.group(1) == workflow.group(1), (
         f"Dockerfile runs Python {image.group(1)}, CI tests on {workflow.group(1)}"
     )
+
+
+def test_dockerfile_uv_matches_ci():
+    dockerfile = (_ROOT / "Dockerfile").read_text(encoding="utf-8")
+    ci = (_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    image = re.search(
+        r"^FROM ghcr\.io/astral-sh/uv:([\d.]+)@", dockerfile, re.MULTILINE
+    )
+    workflow = re.search(r"setup-uv@\S+\s+with:\s+version: \"([\d.]+)\"", ci)
+    assert image is not None and workflow is not None
+    assert image.group(1) == workflow.group(1), (
+        f"Dockerfile uses uv {image.group(1)}, CI uses {workflow.group(1)}"
+    )
