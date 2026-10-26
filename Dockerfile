@@ -83,7 +83,6 @@ COPY src/ ./src/
 COPY --from=ui /build/src/meal_prep/server/static/ ./src/meal_prep/server/static/
 COPY scripts/ ./scripts/
 COPY data/ ./data/
-COPY recipes/ ./recipes/
 # Host dirs mounted on /app/diary and /app/logs must be writable by uid 1000
 # (see compose.example.yml).
 RUN mkdir -p diary logs && chown app:app diary logs
