@@ -4,15 +4,18 @@
 # master (.github/workflows/image.yml) as ghcr.io/neantonii/meal-prep:latest
 # and :sha-<commit>. Local build: docker build -t meal-prep .
 #
-# Three stages; only the last one ships. Build tools (node, npm, uv) and their
+# Four stages; only the last one ships. Build tools (node, npm, uv) and their
 # caches stay in the build stages. The runtime stage gets the finished virtual
 # env, the code, the reference data and the UI bundle.
 #
-# Pinning: base images by digest, Python packages from uv.lock (server deps
-# only: no dev or planner groups), npm packages from ui/package-lock.json.
-# Dependabot (docker ecosystem) proposes base image updates after the cooldown
-# in .github/dependabot.yml. Node major == ui/.nvmrc and Python == CI
-# (tests/test_deploy.py).
+# Pinning: every image (bases and the uv tool image) by digest, Python
+# packages from uv.lock (server deps only: no dev or planner groups), npm
+# packages from ui/package-lock.json. Dependabot (docker ecosystem) proposes
+# updates to every FROM line after the cooldown in .github/dependabot.yml.
+# tests/test_deploy.py keeps Node == ui/.nvmrc, and Python and uv == CI.
+
+# ---- uv (tool image; only its binary is copied into the deps stage) ----
+FROM ghcr.io/astral-sh/uv:0.12.18@sha256:3adc3706091ce7c2fe595e669628caedd6d951551b92b258b7e7dbe06d9440bc AS uv
 
 # ---- UI bundle ----
 FROM node:26-slim@sha256:36793bcbb160a6a16cede1e62b93f84e26b78a972a8a4c0b879c1c12f22761ec AS ui
@@ -30,7 +33,7 @@ ENV UV_COMPILE_BYTECODE=1 \
     UV_PYTHON_DOWNLOADS=never \
     UV_PROJECT_ENVIRONMENT=/app/.venv
 WORKDIR /app
-RUN pip install --no-cache-dir uv==0.12.18
+COPY --from=uv /uv /usr/local/bin/uv
 # Third-party packages first (layer cached until uv.lock changes), then the
 # project itself as an editable install: the server serves the UI bundle from
 # src/meal_prep/server/static/, which is not packaged, so the runtime stage
