@@ -21,7 +21,7 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator  # noqa: E402
 
-from meal_prep.dtos._normalize import clean_token, normalize_slug  # noqa: E402
+from meal_prep.dtos import clean_token, normalize_slug  # noqa: E402
 from meal_prep.dtos.ingredient import IngredientDTO  # noqa: E402
 
 

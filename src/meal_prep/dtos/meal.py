@@ -8,8 +8,6 @@ servings. Parsing of ``meals/*.yaml`` files lives in
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from meal_prep.dtos._normalize import normalize_slug
@@ -25,7 +23,6 @@ class MealDTO(BaseModel):
         min_length=1,
         description="Ordered recipe ids, one serving each; duplicates allowed",
     )
-    source_path: Path | None = None
 
     @field_validator("id")
     @classmethod

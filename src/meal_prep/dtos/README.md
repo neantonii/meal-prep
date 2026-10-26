@@ -9,8 +9,11 @@ reading them. (Aisles are a closed enum in `meal_prep.enums`, not a data file.)
 ## Role & Imports
 
 Declare schemas; validate shape only (no file I/O — adapters read files, then
-hand dicts here). Allowed imports: `pydantic`, stdlib, and `meal_prep.enums`
-(plus dtos-internal). Nothing else.
+hand dicts here). Allowed imports: `pydantic`, stdlib, `meal_prep.enums`, and
+`meal_prep.engines.quantities` (fraction parsing for authored amounts), plus
+dtos-internal. Nothing else. The slug/token helpers (`normalize_slug`,
+`clean_token`) are public via `meal_prep.dtos` for tooling that validates
+authored tokens.
 
 DTO classes carry a `DTO` suffix (`IngredientDTO`, `RecipeDTO`, `MacrosInfoDTO`)
 to distinguish them from the enriched frozen models of the same concept in

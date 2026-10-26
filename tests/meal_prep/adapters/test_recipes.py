@@ -106,7 +106,6 @@ def test_load_recipe_file_valid(tmp_path):
     assert isinstance(recipe, RecipeDTO)
     assert recipe.id == "pan-fried-ground-turkey"
     assert recipe.ingredients[0].id == "turkey"
-    assert recipe.source_path == path
 
 
 def test_load_recipe_file_captures_mentions_and_counts(tmp_path):

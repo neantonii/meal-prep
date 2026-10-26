@@ -4,8 +4,6 @@ Holds the schema for a parsed recipe: the YAML frontmatter and the Cooklang
 body references. Parsing of .cook files lives in ``meal_prep.adapters.recipes``.
 """
 
-from pathlib import Path
-
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from meal_prep.dtos._normalize import normalize_slug
@@ -115,4 +113,3 @@ class RecipeDTO(BaseModel):
     )
     cookware: list[RecipeCookwareRef]
     instructions: str
-    source_path: Path | None = None

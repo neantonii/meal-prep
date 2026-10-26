@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import datetime
 import itertools
-from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -65,7 +64,6 @@ class LogWeekDTO(BaseModel):
     days: list[LogDayDTO] = Field(
         ..., min_length=1, description="Logged days in date order"
     )
-    source_path: Path | None = None
 
     @field_validator("days")
     @classmethod

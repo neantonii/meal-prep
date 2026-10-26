@@ -46,7 +46,7 @@ def save_log_week(logs_dir: Path | str, log: LogWeekDTO) -> Path:
     directory = Path(logs_dir)
     directory.mkdir(parents=True, exist_ok=True)
     target = _week_path(directory, log.week)
-    payload = log.model_dump(mode="json", exclude={"source_path"}, exclude_none=True)
+    payload = log.model_dump(mode="json", exclude_none=True)
     tmp = target.with_name(f".{target.name}.tmp")
     try:
         write_yaml(tmp, payload)
@@ -55,7 +55,6 @@ def save_log_week(logs_dir: Path | str, log: LogWeekDTO) -> Path:
         with contextlib.suppress(OSError):
             tmp.unlink()
         raise
-    log.source_path = target
     return target
 
 
@@ -78,7 +77,6 @@ def load_log_file(path: Path | str) -> LogWeekDTO:
         raise ValueError(f"Invalid YAML structure in {file_path}: expected a mapping")
 
     log = LogWeekDTO.model_validate(data)
-    log.source_path = file_path
     return log
 
 

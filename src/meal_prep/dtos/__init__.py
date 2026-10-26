@@ -6,6 +6,7 @@ cross-validation logic lives here. The conversion graph lives in
 ``meal_prep.engines``; enriched values and registries are built by services.
 """
 
+from meal_prep.dtos._normalize import clean_token, normalize_slug
 from meal_prep.dtos.equipment import EquipmentItem
 from meal_prep.dtos.ingredient import (
     IngredientDTO,
@@ -48,4 +49,6 @@ __all__ = [
     "StorageType",
     "UnitConversion",
     "UnitsFileSchema",
+    "clean_token",
+    "normalize_slug",
 ]

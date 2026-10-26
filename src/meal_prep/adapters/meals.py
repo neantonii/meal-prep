@@ -26,7 +26,6 @@ def load_meal_file(path: Path | str) -> MealDTO:
             f"Meal ID '{meal.id}' does not match filename stem "
             f"'{file_path.stem}' in {file_path}"
         )
-    meal.source_path = file_path
     return meal
 
 
