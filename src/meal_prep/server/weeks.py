@@ -26,3 +26,7 @@ def current_week(today: datetime.date | None = None) -> str:
     day = today or datetime.date.today()
     year, num, _ = day.isocalendar()
     return f"{year}-W{num:02d}"
+
+
+def _temp_type_error() -> int:
+    return "not an int"
