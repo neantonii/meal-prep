@@ -7,6 +7,7 @@ Our custom validation in this module:
 - ``LogDayDTO.validate_recipe_ids`` -> normalizes slugs per mealtime
 - ``LogDayDTO.validate_at_least_one_meal`` -> rejects empty days
 - ``LogWeekDTO.validate_day_order`` -> strictly increasing dates
+- ``LogWeekDTO.validate_days_in_week`` -> real ISO week, days inside it
 """
 
 from __future__ import annotations
@@ -74,3 +75,22 @@ def test_log_week_rejects_unordered_days():
 def test_log_week_rejects_duplicate_dates():
     with pytest.raises(ValidationError, match="increasing date order"):
         LogWeekDTO.model_validate(_week(days=[_day("2026-10-13"), _day("2026-10-13")]))
+
+
+def test_log_week_rejects_nonexistent_week_number():
+    with pytest.raises(ValidationError, match="not a real ISO week"):
+        LogWeekDTO.model_validate(_week(week="2026-W99"))
+
+
+def test_log_week_rejects_week_53_in_a_52_week_year():
+    # 2026 has 53 ISO weeks, 2025 only 52.
+    LogWeekDTO.model_validate(_week(week="2026-W53", days=[_day("2026-12-31")]))
+    with pytest.raises(ValidationError, match="not a real ISO week"):
+        LogWeekDTO.model_validate(_week(week="2025-W53", days=[_day("2025-12-31")]))
+
+
+def test_log_week_rejects_day_outside_its_week():
+    # 2026-W42 is Mon 2026-10-12 .. Sun 2026-10-18.
+    LogWeekDTO.model_validate(_week(days=[_day("2026-10-12"), _day("2026-10-18")]))
+    with pytest.raises(ValidationError, match="outside ISO week 2026-W42"):
+        LogWeekDTO.model_validate(_week(days=[_day("2026-10-19")]))
