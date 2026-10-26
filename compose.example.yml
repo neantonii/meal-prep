@@ -1,15 +1,19 @@
 name: meal-prep
 
-# Copy to compose.yml, create ./diary and ./logs next to it, then:
-#   docker compose up -d --build
-# Diary weeks persist in ./diary (host dir); server logs in ./logs.
-# Reference data (data/, recipes/) and the UI bundle are baked into
-# the image — pull the image (or rebuild) to update them.
+# Copy to compose.yml on the host, create ./diary and ./logs next to it, owned
+# by uid 1000 (the container's user), then:
+#   docker compose pull && docker compose up -d
+# Updating = the same two commands: CI publishes a new image on every push to
+# master. Diary weeks persist in ./diary, server logs in ./logs.
 
 services:
   diary:
-    build: .
+    image: ghcr.io/neantonii/meal-prep:latest
+    # To build from a local checkout instead of pulling: replace `image:` with
+    #   build: .
     restart: unless-stopped
+    # Loopback only: no auth in v1, so don't expose it beyond the host
+    # without a reverse proxy in front.
     ports:
       - "127.0.0.1:8080:8000"
     volumes:
