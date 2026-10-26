@@ -33,3 +33,15 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 90
+
+  # Base images in the Dockerfile are pinned by digest; Dependabot proposes
+  # new digests (and tags) after the same cooldown.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 30
+      semver-major-days: 90
+      semver-minor-days: 30
+      semver-patch-days: 30

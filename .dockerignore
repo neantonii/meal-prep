@@ -12,3 +12,11 @@ diary/
 weekly_plan/
 recipe_cards/
 .pytest_cache/
+.github/
+.agents/
+tests/
+schemas/
+logs/
+ingredient_cards/
+.mypy_cache/
+.ruff_cache/
