@@ -33,7 +33,7 @@ RUN npm run lint && npm run build
 # ---- Python base (shared by the build stages and the runtime) ----
 # The only place the Python image is named, so tests and server always run on
 # the same interpreter.
-FROM python:3.13-slim@sha256:d98cc29d3266e535dd9da1099688d9cb3ca4753813571e071763d17725460962 AS python-base
+FROM python:3.13-slim AS python-base
 
 # ---- Python + uv (shared by deps and test) ----
 FROM python-base AS python-uv
