@@ -35,7 +35,6 @@ def test_load_meal_file_valid(tmp_path: Path):
     meal = load_meal_file(path)
     assert meal.id == "hearty"
     assert meal.recipes == ["oatmeal", "coffee"]
-    assert meal.source_path == path
 
 
 def test_load_meal_file_rejects_id_mismatch(tmp_path: Path):
@@ -81,7 +80,6 @@ def test_load_log_file_valid(tmp_path: Path):
     assert log.days[0].breakfast == ["oatmeal", "coffee"]
     assert log.days[0].dinner == ["oatmeal"]
     assert log.days[0].lunch is None
-    assert log.source_path == path
 
 
 def test_load_all_logs_rejects_duplicate_weeks(tmp_path: Path):
@@ -105,7 +103,6 @@ def test_load_log_week_round_trip(tmp_path: Path):
     )
     target = save_log_week(tmp_path / "diary", log)
     assert target == tmp_path / "diary" / "2026-W42.yaml"
-    assert log.source_path == target
     loaded = load_log_week(tmp_path / "diary", "2026-W42")
     assert loaded.week == "2026-W42"
     assert loaded.days[0].dinner == ["oatmeal", "oatmeal"]

@@ -15,19 +15,6 @@
       "title": "Recipes",
       "type": "array"
     },
-    "source_path": {
-      "anyOf": [
-        {
-          "format": "path",
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Source Path"
-    },
     "title": {
       "description": "Human-readable meal title",
       "minLength": 1,

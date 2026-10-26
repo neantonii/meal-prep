@@ -132,7 +132,6 @@ def test_recipe_valid():
     assert len(recipe.ingredients) == 1
     assert len(recipe.cookware) == 1
     assert recipe.instructions == "Season and cook."
-    assert recipe.source_path is None
 
 
 # ---------------------------------------------------------------------------

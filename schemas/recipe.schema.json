@@ -152,19 +152,6 @@
       "title": "Mentions",
       "type": "array"
     },
-    "source_path": {
-      "anyOf": [
-        {
-          "format": "path",
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Source Path"
-    },
     "storage": {
       "$ref": "#/$defs/RecipeStorage"
     },

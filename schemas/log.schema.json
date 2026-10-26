@@ -96,19 +96,6 @@
       "title": "Days",
       "type": "array"
     },
-    "source_path": {
-      "anyOf": [
-        {
-          "format": "path",
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Source Path"
-    },
     "week": {
       "description": "ISO week label, e.g. 2026-W42",
       "pattern": "^\\d{4}-W\\d{2}$",

@@ -59,7 +59,6 @@ def test_log_week_valid():
     week = LogWeekDTO.model_validate(_week())
     assert week.week == "2026-W42"
     assert len(week.days) == 1
-    assert week.source_path is None
 
 
 def test_log_week_rejects_bad_week_label():

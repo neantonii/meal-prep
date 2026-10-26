@@ -126,7 +126,6 @@ def load_recipe_file(path: Path | str) -> RecipeDTO:
         mentions=mentions,
         cookware=cookware,
         instructions=instructions,
-        source_path=file_path,
     )
 
 

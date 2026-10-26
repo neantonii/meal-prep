@@ -30,7 +30,6 @@ def test_meal_valid():
     meal = MealDTO.model_validate(_meal())
     assert meal.id == "hearty-eggs-toast-coffee"
     assert meal.recipes == ["scrambled-eggs", "buttered-toast", "coffee-with-milk"]
-    assert meal.source_path is None
 
 
 def test_meal_ids_are_normalized():
