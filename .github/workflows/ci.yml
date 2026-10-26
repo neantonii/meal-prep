@@ -1,5 +1,9 @@
 name: ci
 
+# Every check runs through the Dockerfile, which is the single source of the
+# Python, Node and uv versions (no setup-* actions here: a second copy of a
+# version is one Dependabot can't keep in step). Reproduce locally with the
+# same commands.
 on:
   push:
     branches: [master]
@@ -13,36 +17,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
-      - uses: astral-sh/setup-uv@v7
-        with:
-          version: "0.12.18"
-      - name: Install (fails if uv.lock is out of sync with pyproject.toml)
-        run: uv sync --locked
-      - name: Ruff check
-        run: uv run --locked ruff check .
-      - name: Ruff format
-        run: uv run --locked ruff format . --check
-      - name: Mypy
-        run: uv run --locked mypy
-      - name: Pytest
-        run: uv run --locked pytest -q
+          persist-credentials: false
+      - name: Lint, types, tests (Dockerfile `test` stage)
+        run: docker build --target test --progress=plain .
 
   ui:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ui
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
         with:
-          node-version-file: ui/.nvmrc
-      - name: Install (fails if package-lock.json is out of sync)
-        run: npm ci
-      - name: Lint
-        run: npm run lint
-      - name: Build
-        run: npm run build
+          persist-credentials: false
+      - name: UI lint, typecheck, build (Dockerfile `ui` stage)
+        run: docker build --target ui --progress=plain .

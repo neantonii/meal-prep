@@ -31,16 +31,14 @@ jobs:
         uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.13"
       - name: Added versions are at least 30 days old
         env:
           GH_TOKEN: ${{ github.token }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           MIN_AGE_DAYS: "30"
-        run: python .github/scripts/release_age.py
+        # Stdlib-only script; the runner's preinstalled python3 is enough.
+        run: python3 .github/scripts/release_age.py
 
   # Not meant to be a required check: it goes red on purpose so that any PR
   # touching .github/ (workflows, the release-age script, Dependabot config)
