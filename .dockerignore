@@ -1,22 +1,23 @@
+# Build context for every Dockerfile target. The runtime stage copies only
+# src/, scripts/, data/ and recipes/ explicitly; the test stage copies the
+# whole context (tests, schemas, linted scripts), so keep it free of local
+# state, personal data and build output.
+.git/
+.venv/
 __pycache__/
 *.py[cod]
-.git/
-.agent_tmp/
-.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 node_modules/
 ui/node_modules/
 ui/dist/
 src/meal_prep/server/static/
+# personal data and local output
 plans/
 diary/
+logs/
 weekly_plan/
 recipe_cards/
-.pytest_cache/
-.github/
-.agents/
-tests/
-schemas/
-logs/
 ingredient_cards/
-.mypy_cache/
-.ruff_cache/
+.agent_tmp/

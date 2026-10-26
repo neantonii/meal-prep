@@ -8,7 +8,13 @@
   `[project]` so the server image doesn't ship it; add planner-only
   dependencies with `uv add --group planner`.
   Install uv with `pip install uv` if missing. UI: `cd ui && npm ci` on the
-  Node major in `ui/.nvmrc` (CI reads the same file).
+  Node major in the Dockerfile's `ui` stage.
+- **CI = the Dockerfile.** Python, Node and uv versions live only in the
+  `Dockerfile` (digest-pinned `FROM` lines, updated by Dependabot); workflows
+  install no toolchains (`tests/test_deploy.py`). CI's checks are
+  `docker build --target test .` (ruff, mypy, pytest) and
+  `docker build --target ui .` (UI lint, typecheck, build); run them locally
+  to reproduce CI exactly. Local `uv run ...` is for fast iteration.
 - **Python**: 3.13, `src`-layout. Run tools through `uv run` (or activate
   `.venv`); commands below use `uv run`.
 - **Lint/format**: [ruff](https://docs.astral.sh/ruff/), config in
@@ -91,7 +97,8 @@ uv run pytest -q
 ```
 
 Then `uv run ruff check .`, `uv run ruff format . --check`, and
-`uv run mypy` must all report clean. Commit only when green.
+`uv run mypy` must all report clean. Before pushing, `docker build --target
+test .` is the exact CI check. Commit only when green.
 
 ## Dependencies
 
@@ -113,7 +120,7 @@ Get it right up front instead of iterating against CI:
 # second run only removes the cutoff that the first one records in uv.lock)
 uv add "<pkg>==<version>" --exclude-newer "$(date -u -d '30 days ago' +%F)"
 uv lock
-# UI (Node/npm version from ui/.nvmrc)
+# UI (Node/npm version from the Dockerfile `ui` stage)
 cd ui && npm install <pkg>@<version> --min-release-age=30
 ```
 Pick the newest version that is at least 30 days old, never "latest".
