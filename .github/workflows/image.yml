@@ -2,7 +2,8 @@ name: image
 
 # Builds the container image and smoke-tests it on every PR; on pushes to
 # master it also publishes ghcr.io/<owner>/meal-prep as :latest and
-# :sha-<commit> (for rollback). Plain docker CLI, no third-party actions.
+# :sha-<commit> (for rollback), then deletes all but the newest 100 versions.
+# Plain docker and gh CLI, no third-party actions.
 on:
   push:
     branches: [master]
@@ -24,7 +25,11 @@ jobs:
         with:
           persist-credentials: false
       - name: Build
-        run: docker build --tag meal-prep:ci .
+        # --provenance=false: push one plain image manifest per build. With the
+        # default provenance attestation, each push is an index plus two
+        # untagged child manifests, i.e. three GHCR versions per image, which
+        # the keep-newest-100 cleanup below could split.
+        run: docker build --provenance=false --tag meal-prep:ci .
       - name: Smoke test (health, UI, API, diary save)
         run: |
           mkdir -p diary logs && sudo chown 1000:1000 diary logs
@@ -54,3 +59,18 @@ jobs:
           docker tag meal-prep:ci "$IMAGE:sha-${GITHUB_SHA::12}"
           docker push "$IMAGE:sha-${GITHUB_SHA::12}"
           docker push "$IMAGE:latest"
+      - name: Keep the newest 100 image versions
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        # Cleanup must never block a publish; a failure shows as a warning.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          versions="users/$OWNER/packages/container/meal-prep/versions"
+          gh api --paginate "$versions?per_page=100" --jq '.[] | [.created_at, .id] | @tsv' \
+            | sort -r | tail -n +101 | cut -f2 \
+            | while read -r id; do
+                gh api --method DELETE "$versions/$id"
+                echo "deleted version $id"
+              done
