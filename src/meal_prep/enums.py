@@ -10,6 +10,7 @@ strings, ``meal_prep.logbook.report`` for mealtime headers), where exhaustive
 ``match`` statements keep them in sync with the members.
 """
 
+import os
 from enum import StrEnum
 
 
