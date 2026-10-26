@@ -3,7 +3,10 @@
 ## Tooling
 
 - **Setup (fresh container)**: `uv sync --locked` (installs the project
-  editable plus the `dev` group into `.venv` exactly as `uv.lock` pins it).
+  editable plus the `dev` and `planner` groups into `.venv` exactly as
+  `uv.lock` pins it). The `planner` group (OR-Tools) is kept out of
+  `[project]` so the server image doesn't ship it; add planner-only
+  dependencies with `uv add --group planner`.
   Install uv with `pip install uv` if missing. UI: `cd ui && npm ci` on the
   Node major in `ui/.nvmrc` (CI reads the same file).
 - **Python**: 3.13, `src`-layout. Run tools through `uv run` (or activate
