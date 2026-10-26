@@ -109,7 +109,9 @@ def test_load_log_week_round_trip(tmp_path: Path):
 
 
 def test_load_log_week_rejects_stem_mismatch(tmp_path: Path):
-    _write(tmp_path / "2026-W42.yaml", _LOG.replace("2026-W42", "2026-W43"))
+    # A valid W43 week (its day is in W43) stored under a W42 file name.
+    w43 = _LOG.replace("2026-W42", "2026-W43").replace("2026-10-13", "2026-10-20")
+    _write(tmp_path / "2026-W42.yaml", w43)
     with pytest.raises(ValueError, match="does not match filename stem"):
         load_log_week(tmp_path, "2026-W42")
 

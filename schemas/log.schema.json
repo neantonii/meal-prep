@@ -97,7 +97,7 @@
       "type": "array"
     },
     "week": {
-      "description": "ISO week label, e.g. 2026-W42",
+      "description": "ISO week label, e.g. 2026-W42; must be a real ISO week and every day must fall inside it",
       "pattern": "^\\d{4}-W\\d{2}$",
       "title": "Week",
       "type": "string"

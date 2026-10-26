@@ -59,7 +59,8 @@ class LogWeekDTO(BaseModel):
     week: str = Field(
         ...,
         pattern=r"^\d{4}-W\d{2}$",
-        description="ISO week label, e.g. 2026-W42",
+        description="ISO week label, e.g. 2026-W42; must be a real ISO week and "
+        "every day must fall inside it",
     )
     days: list[LogDayDTO] = Field(
         ..., min_length=1, description="Logged days in date order"
@@ -72,3 +73,16 @@ class LogWeekDTO(BaseModel):
             if curr.date <= prev.date:
                 raise ValueError("Log days must be in strictly increasing date order")
         return v
+
+    @model_validator(mode="after")
+    def validate_days_in_week(self) -> LogWeekDTO:
+        """A week file holds only days of its own ISO week (stdlib calendar math)."""
+        year, number = (int(part) for part in self.week.split("-W"))
+        try:
+            datetime.date.fromisocalendar(year, number, 1)
+        except ValueError:
+            raise ValueError(f"'{self.week}' is not a real ISO week") from None
+        for day in self.days:
+            if day.date.isocalendar()[:2] != (year, number):
+                raise ValueError(f"Day {day.date} is outside ISO week {self.week}")
+        return self

@@ -221,7 +221,7 @@ def create_app(data_dir: Path, recipes_dir: Path, diary_dir: Path) -> FastAPI:
     @app.post("/api/diary/{week}")
     def diary_save(week: str, payload: dict[str, Any]) -> JSONResponse:
         try:
-            dates = week_dates(week)
+            week_dates(week)
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e)) from e
         if payload.get("week", week) != week:
@@ -235,13 +235,6 @@ def create_app(data_dir: Path, recipes_dir: Path, diary_dir: Path) -> FastAPI:
         if dto.week != week:
             raise HTTPException(
                 status_code=422, detail=f"payload week does not match URL week '{week}'"
-            )
-        allowed = {d.isoformat() for d in dates}
-        actual = [str(d.date) for d in dto.days]
-        if any(day not in allowed for day in actual):
-            raise HTTPException(
-                status_code=422,
-                detail=f"day dates {actual} fall outside week {week}",
             )
         try:
             totals = _totals(week, dto, state)
