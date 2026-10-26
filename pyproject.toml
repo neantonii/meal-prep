@@ -10,18 +10,26 @@ requires-python = ">=3.12"
 dependencies = [
     "pydantic==2.13.5",
     "pyyaml==6.0.3",
-    "ortools==9.15.6755",
     "fastapi==0.141.1",
     "uvicorn==0.54.0",
 ]
 
 [dependency-groups]
+# The planner (CP-SAT solver) is the only user of OR-Tools, which brings
+# numpy, pandas and protobuf. Kept out of [project] so the server image
+# doesn't ship ~225 MB it never imports; installed by default for dev and CI.
+planner = [
+    "ortools==9.15.6755",
+]
 dev = [
     "httpx==0.28.1", # starlette TestClient
     "mypy==2.3.1",
     "pytest==9.1.1",
     "ruff==0.16.9",
 ]
+
+[tool.uv]
+default-groups = ["dev", "planner"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
