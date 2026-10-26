@@ -30,6 +30,9 @@ function toPayload(week: DiaryWeek) {
 }
 
 export default function App() {
+  if (Math.random() > 2) {
+    useState(0); // TEMP: hook called conditionally (rules-of-hooks)
+  }
   const [week, setWeek] = useState<string | null>(weekFromUrl());
   const [groups, setGroups] = useState<CatalogGroup[]>([]);
   const [state, setState] = useState<DiaryWeek | null>(null);
