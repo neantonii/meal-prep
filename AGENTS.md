@@ -29,7 +29,8 @@
   is the entry point.
 - **GitHub CLI**: `gh` is available but needs auth — export `GH_TOKEN="$GITHUB_TOKEN"`
   first (e.g. `export GH_TOKEN="$GITHUB_TOKEN" && gh issue list`). The `GITHUB_TOKEN`
-  env var alone is not picked up by `gh`.
+  env var alone is not picked up by `gh`. Agents act on GitHub as
+  `neantonii-bot` (a write collaborator), not as the owner.
 
 ## Code style
 
@@ -61,22 +62,29 @@
 - Before raising a PR, squash local iterations into meaningful chunks —
   one commit per logical change. Only keep genuinely separate commits;
   never one commit per edit.
-- Agents never merge: no `gh pr merge`, no merging `master` into a branch
-  (rebase only if asked), no pushing to `master`. Merging is the user's
-  decision after their own review.
+- Merging: the owner's approval is the gate; after it, the agent may merge
+  its own PR when it judges the time right (e.g. hold it until a PR it
+  depends on lands).
+  - Only a PR the agent opened, only once the owner has approved its
+    current head, with CI green and no open review threads. Any push after
+    the approval (fix, rebase) needs a fresh approval before merging.
+  - Rebase merge (squash is refused on `master`), pinned to the approved
+    head: `gh pr merge <n> --rebase --match-head-commit <sha>`.
+  - Order: when approved PRs depend on each other or touch the same files
+    (two `VERSION` bumps included), merge one at a time in dependency
+    order. After each merge, check that the next PR is still mergeable and
+    green on the new `master`; if it needs a rebase, rebase, push and wait
+    for re-approval.
+  - A merge deploys within the hour (README, "Every merge to `master`
+    reaches the host"). A PR that needs a manual step on the host (e.g. a
+    data migration) is merged only when the owner says so.
+  - Never push to `master`; never merge `master` into a branch (rebase
+    instead); never merge PRs the agent didn't open (Dependabot's, the
+    owner's) unless asked.
 - Agents never modify anything under `.github/` (workflows, the dependency
   policy script, Dependabot config) unless the user explicitly asks for that
-  change. GitHub does not enforce this: agents act as the user (see #88).
-- Post-merge cleanup: after the user confirms a PR is merged, run
-  `git prune-stale` (fetches with prune, deletes local branches whose
-  upstream is `[gone]`; `master`/`main` exempt, `git branch -d` refuses
-  unmerged work). Then `git checkout master && git pull`.
-- `git prune-stale` is a repo-local alias (lives in `.git/config`, not
-  cloned). Reinstall on a fresh checkout with:
-  `git config alias.prune-stale '!git fetch --prune && git for-each-ref
-  --format="%(refname:short) %(upstream:track)" refs/heads | while read -r
-  name track; do case "$name" in master|main) continue;; esac; if
-  [ "$track" = "[gone]" ]; then git branch -d "$name"; fi; done'`
+  change. GitHub does not enforce this: the agent account (`neantonii-bot`)
+  can push workflow changes to any branch (see #138).
 
 ## Product version
 
