@@ -33,3 +33,4 @@ jobs:
           persist-credentials: false
       - name: UI lint, typecheck, build (Dockerfile `ui` stage)
         run: docker build --target ui --progress=plain --output type=cacheonly .
+# workflow-access test (throwaway branch, delete me)
