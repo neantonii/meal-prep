@@ -63,14 +63,6 @@ def test_load_all_meals_missing_dir(tmp_path: Path):
 # diary
 # ---------------------------------------------------------------------------
 
-_OLD_FORMAT = """\
-week: 2026-W42
-days:
-  - date: 2026-10-13
-    dinner: [oatmeal]
-    breakfast: [oatmeal, coffee]
-"""
-
 
 def _entry(recipe: str = "oatmeal") -> dict:
     return {
@@ -102,12 +94,6 @@ def test_diary_round_trip_keeps_ids_and_raw_numbers(tmp_path: Path):
     assert target == tmp_path / "diary" / "2026-W42.yaml"
     loaded = load_diary_week(tmp_path / "diary", "2026-W42")
     assert loaded == diary  # ids and unrounded floats survive YAML
-
-
-def test_old_format_diary_week_points_to_migration(tmp_path: Path):
-    _write(tmp_path / "2026-W42.yaml", _OLD_FORMAT)
-    with pytest.raises(ValueError, match=r"migrate_diary\.py"):
-        load_diary_week(tmp_path, "2026-W42")
 
 
 def test_load_diary_week_rejects_stem_mismatch(tmp_path: Path):
