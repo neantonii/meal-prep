@@ -25,7 +25,14 @@ jobs:
         with:
           persist-credentials: false
       - name: Build
-        run: docker build --tag meal-prep:ci .
+        # Version = MAJOR.MINOR from VERSION + this workflow's run number,
+        # which GitHub never reuses (see "Product version" in AGENTS.md).
+        run: |
+          version="$(tr -d '[:space:]' < VERSION).${GITHUB_RUN_NUMBER}"
+          echo "building version $version"
+          docker build --tag meal-prep:ci \
+            --build-arg APP_VERSION="$version" \
+            --build-arg APP_COMMIT="$GITHUB_SHA" .
       # What the smoke test checks lives in the script (normal code review);
       # it prints the container's logs and cleans up on exit.
       - name: Smoke test
