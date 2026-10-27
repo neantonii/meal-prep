@@ -1,8 +1,9 @@
 name: image
 
-# Builds the container image and smoke-tests it on every PR; on pushes to
-# master it also publishes ghcr.io/<owner>/meal-prep as :latest and
-# :sha-<commit> (for rollback). Plain docker CLI, no third-party actions.
+# Builds the container image and smoke-tests it (scripts/smoke_image.sh) on
+# every PR; on pushes to master it also publishes ghcr.io/<owner>/meal-prep as
+# :latest and :sha-<commit> (for rollback). Plain docker CLI, no third-party
+# actions.
 on:
   push:
     branches: [master]
@@ -25,24 +26,10 @@ jobs:
           persist-credentials: false
       - name: Build
         run: docker build --tag meal-prep:ci .
-      - name: Smoke test (health, UI, API, diary save)
-        run: |
-          mkdir -p diary logs && sudo chown 1000:1000 diary logs
-          docker run -d --name smoke -p 127.0.0.1:8000:8000 \
-            -v "$PWD/diary:/app/diary" -v "$PWD/logs:/app/logs" meal-prep:ci
-          for _ in $(seq 1 30); do
-            curl -fs http://127.0.0.1:8000/api/health && break
-            sleep 1
-          done
-          curl -fs http://127.0.0.1:8000/ | grep -q '<div id="root">'
-          curl -fs http://127.0.0.1:8000/api/catalog > /dev/null
-          curl -fs -X POST -H 'Content-Type: application/json' \
-            -d '{"week":"2026-W44","days":[{"date":"2026-10-26","breakfast":["flat-white"]}]}' \
-            http://127.0.0.1:8000/api/diary/2026-W44 > /dev/null
-          test -f diary/2026-W44.yaml
-      - name: Container logs
-        if: always()
-        run: docker logs smoke || true
+      # What the smoke test checks lives in the script (normal code review);
+      # it prints the container's logs and cleans up on exit.
+      - name: Smoke test
+        run: scripts/smoke_image.sh meal-prep:ci
       - name: Publish
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         env:
