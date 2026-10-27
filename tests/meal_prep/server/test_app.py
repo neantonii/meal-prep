@@ -23,6 +23,23 @@ def test_health(client: TestClient):
     assert client.get("/api/health").json() == {"status": "ok"}
 
 
+def test_version_defaults_to_dev(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv("MEAL_PREP_VERSION", raising=False)
+    monkeypatch.delenv("MEAL_PREP_COMMIT", raising=False)
+    assert client.get("/api/version").json() == {"version": "dev", "commit": "unknown"}
+
+
+def test_version_comes_from_the_image(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv("MEAL_PREP_VERSION", "0.0.3")
+    monkeypatch.setenv("MEAL_PREP_COMMIT", "efc0cfe73f72")
+    assert client.get("/api/version").json() == {
+        "version": "0.0.3",
+        "commit": "efc0cfe73f72",
+    }
+
+
 def test_catalog_grouped(client: TestClient):
     body = client.get("/api/catalog").json()
     assert len(body["groups"]) == 6

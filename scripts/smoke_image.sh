@@ -41,6 +41,7 @@ for _ in $(seq 1 30); do
 done
 
 echo "health";  curl -fs "$base/api/health" >/dev/null
+echo "version: $(curl -fs "$base/api/version")"
 echo "ui";      curl -fs "$base/" | grep -q '<div id="root">'
 echo "catalog"; curl -fs "$base/api/catalog" >/dev/null
 echo "diary";   curl -fs -X POST -H 'Content-Type: application/json' \

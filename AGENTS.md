@@ -78,6 +78,21 @@
   name track; do case "$name" in master|main) continue;; esac; if
   [ "$track" = "[gone]" ]; then git branch -d "$name"; fi; done'`
 
+## Product version
+
+`MAJOR.MINOR.PATCH`, shown in the UI header and served at `/api/version`.
+`VERSION` holds `MAJOR.MINOR`; PATCH is the image workflow's run number
+(`github.run_number`), added by CI. GitHub never reuses a run number, so
+versions never repeat, whatever anyone forgets; PR runs use numbers too, so
+published versions have gaps.
+
+- MAJOR: the owner only. Agents never change it.
+- MINOR: agents may bump it in a PR that adds a user-visible feature; say so
+  in the PR description. PATCH does not reset.
+- PATCH: never written anywhere.
+- Renaming or recreating `.github/workflows/image.yml` restarts the run
+  number at 1: bump MINOR in the same change so versions stay unique.
+
 ## Committed schemas
 
 `schemas/*.schema.json` are generated from the DTOs, not authored. After any

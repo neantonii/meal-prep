@@ -14,6 +14,7 @@ export default function App() {
   const [state, setState] = useState<DiaryWeek | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [version, setVersion] = useState<string>("");
   // Entry changes run one at a time, in the order they were made.
   const queue = useRef<Promise<void>>(Promise.resolve());
 
@@ -28,6 +29,20 @@ export default function App() {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
+  }, []);
+
+  // Product version for the header, e.g. "v0.0.3 · efc0cfe" (just "dev" locally).
+  useEffect(() => {
+    api
+      .version()
+      .then((v) =>
+        setVersion(
+          v.version === "dev"
+            ? "dev"
+            : `v${v.version} · ${v.commit.slice(0, 7)}`,
+        ),
+      )
+      .catch(() => setVersion(""));
   }, []);
 
   useEffect(() => {
@@ -102,6 +117,7 @@ export default function App() {
         </div>
         <h1>Diary</h1>
         <div className="actions" style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+          {version && <span className="version">{version}</span>}
           {saving ? (
             <span className="dirty">saving…</span>
           ) : (

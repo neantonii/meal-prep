@@ -89,6 +89,16 @@ COPY recipes/ ./recipes/
 RUN mkdir -p diary logs && chown app:app diary logs
 USER app
 
+# Product version (VERSION file + CI run number) and commit, passed in by CI.
+# Local builds show "dev". Declared last so a new version doesn't invalidate the
+# cached layers above.
+ARG APP_VERSION=dev
+ARG APP_COMMIT=unknown
+LABEL org.opencontainers.image.version="${APP_VERSION}" \
+      org.opencontainers.image.revision="${APP_COMMIT}"
+ENV MEAL_PREP_VERSION="${APP_VERSION}" \
+    MEAL_PREP_COMMIT="${APP_COMMIT}"
+
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4)"]
