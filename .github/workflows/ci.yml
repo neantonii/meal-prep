@@ -1,10 +1,16 @@
 name: ci
 
 # Every check runs through the Dockerfile, which is the single source of the
-# Python, Node and uv versions (no setup-* actions here: a second copy of a
-# version is one Dependabot can't keep in step). Reproduce locally with the
-# same commands. `--output type=cacheonly`: a check only needs to know the
-# stage built; exporting the unused image would add ~10 s per job.
+# Python, Node and uv versions (no setup-python/node/uv here: a second copy of
+# a version is one Dependabot can't keep in step). Locally: `docker build
+# --target test .` and `docker build --target ui .`.
+#
+# Build cache: Docker layers are cached in the GitHub Actions cache (one scope
+# per target). Packages still come only from uv.lock / package-lock.json; the
+# cache stores the result of installing them, and any change to those files or
+# the Dockerfile invalidates the affected layers. Only pushes to master write
+# the cache; PRs only read it, so a PR can never plant layers that a master
+# build reuses. `outputs: type=cacheonly` skips exporting the unused image.
 on:
   push:
     branches: [master]
@@ -20,8 +26,15 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      - uses: docker/setup-buildx-action@v4.2.0
       - name: Lint, types, tests (Dockerfile `test` stage)
-        run: docker build --target test --progress=plain --output type=cacheonly .
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          target: test
+          outputs: type=cacheonly
+          cache-from: type=gha,scope=test
+          cache-to: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'type=gha,mode=max,scope=test' || '' }}
 
   ui:
     runs-on: ubuntu-latest
@@ -29,5 +42,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      - uses: docker/setup-buildx-action@v4.2.0
       - name: UI lint, typecheck, build (Dockerfile `ui` stage)
-        run: docker build --target ui --progress=plain --output type=cacheonly .
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          target: ui
+          outputs: type=cacheonly
+          cache-from: type=gha,scope=ui
+          cache-to: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'type=gha,mode=max,scope=ui' || '' }}

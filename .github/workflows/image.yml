@@ -2,8 +2,9 @@ name: image
 
 # Builds the container image and smoke-tests it (scripts/smoke_image.sh) on
 # every PR; on pushes to master it also publishes ghcr.io/<owner>/meal-prep as
-# :latest and :sha-<commit> (for rollback). Plain docker CLI, no third-party
-# actions.
+# :latest and :sha-<commit> (for rollback). The build uses the GitHub Actions
+# layer cache (scope "image"); like ci.yml, only pushes to master write it and
+# PRs only read it.
 on:
   push:
     branches: [master]
@@ -24,15 +25,26 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - name: Build
-        # Version = MAJOR.MINOR from VERSION + this workflow's run number,
-        # which GitHub never reuses (see "Product version" in AGENTS.md).
+      - uses: docker/setup-buildx-action@v4.2.0
+      - name: Version
+        id: version
+        # MAJOR.MINOR from VERSION + this workflow's run number, which GitHub
+        # never reuses (see "Product version" in AGENTS.md).
         run: |
           version="$(tr -d '[:space:]' < VERSION).${GITHUB_RUN_NUMBER}"
           echo "building version $version"
-          docker build --tag meal-prep:ci \
-            --build-arg APP_VERSION="$version" \
-            --build-arg APP_COMMIT="$GITHUB_SHA" .
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Build
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          load: true  # into the local Docker, for the smoke test and publish
+          tags: meal-prep:ci
+          build-args: |
+            APP_VERSION=${{ steps.version.outputs.version }}
+            APP_COMMIT=${{ github.sha }}
+          cache-from: type=gha,scope=image
+          cache-to: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'type=gha,mode=max,scope=image' || '' }}
       # What the smoke test checks lives in the script (normal code review);
       # it prints the container's logs and cleans up on exit.
       - name: Smoke test
