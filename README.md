@@ -134,3 +134,5 @@ rsync -a /srv/meal-prep/diary/ /backup/meal-prep/diary/
 
 Restore by rsyncing back. The server reads week files on each request, so no
 restart is needed.
+
+<!-- TEMP: CI cache measurement, do not merge -->
