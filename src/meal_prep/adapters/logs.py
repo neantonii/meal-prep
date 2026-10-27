@@ -17,7 +17,6 @@ from typing import Any
 
 from meal_prep.adapters._yaml import read_yaml, write_yaml
 from meal_prep.dtos.log import WEEK_ID, DiaryWeekDTO
-from meal_prep.enums import Mealtime
 
 
 def _week_path(diary_dir: Path | str, week: str) -> Path:
@@ -45,32 +44,10 @@ def _read_week(file_path: Path) -> dict[str, Any]:
     return data
 
 
-def _has_bare_recipe_ids(data: dict[str, Any]) -> bool:
-    """True when any mealtime lists plain recipe ids (the pre-#107 format)."""
-    days = data.get("days")
-    if not isinstance(days, list):
-        return False
-    return any(
-        isinstance(item, str)
-        for day in days
-        if isinstance(day, dict)
-        for mealtime in Mealtime
-        if isinstance(day.get(mealtime.value), list)
-        for item in day[mealtime.value]
-    )
-
-
 def load_diary_file(path: Path | str) -> DiaryWeekDTO:
     """Load and validate one diary week file into its DTO."""
     file_path = Path(path)
-    data = _read_week(file_path)
-    if _has_bare_recipe_ids(data):
-        raise ValueError(
-            f"{file_path} lists bare recipe ids: it is a diary week from before "
-            "entries carried frozen numbers. Convert old weeks once with "
-            "scripts/migrate_diary.py."
-        )
-    return DiaryWeekDTO.model_validate(data)
+    return DiaryWeekDTO.model_validate(_read_week(file_path))
 
 
 def load_diary_week(diary_dir: Path | str, week: str) -> DiaryWeekDTO:

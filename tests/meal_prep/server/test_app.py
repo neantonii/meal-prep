@@ -195,17 +195,6 @@ def test_corrupt_week_file_returns_422(client: TestClient, tmp_path: Path):
     assert "invalid diary file" in r.json()["detail"]
 
 
-def test_old_format_week_asks_for_migration(client: TestClient, tmp_path: Path):
-    diary = tmp_path / "diary"
-    diary.mkdir(parents=True, exist_ok=True)
-    (diary / f"{WEEK}.yaml").write_text(
-        f"week: {WEEK}\ndays:\n  - date: 2026-10-19\n    dinner: [{BUCKWHEAT}]\n"
-    )
-    r = client.get(f"/api/diary/{WEEK}")
-    assert r.status_code == 422
-    assert "migrate_diary.py" in r.json()["detail"]
-
-
 def test_recipe_and_ingredient_cards_served(client: TestClient):
     body = client.get("/api/catalog").json()
     rid = body["groups"][0]["recipes"][0]["id"]
