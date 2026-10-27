@@ -42,7 +42,7 @@ Week-agnostic. Drafted together, section by section.
 
 ## Rendering
 
-- `python scripts/render_week.py plans/2026-W43.yaml` renders the plan to
-  `weekly_plan/log-2026-W43.html` (regenerates recipe cards first, links
-  relativized automatically). Diary: `python scripts/render_week.py
-  diary/2026-W43.yaml -o weekly_plan/diary-2026-W43.html`.
+- The planner renders its own report (`planner/report.py`). Diary weeks:
+  `python scripts/render_week.py diary/2026-W43.yaml` writes
+  `weekly_plan/diary-2026-W43.html` (regenerates recipe cards first, links
+  relativized automatically).

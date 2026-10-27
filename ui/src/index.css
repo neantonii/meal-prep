@@ -50,6 +50,7 @@ table.grid thead th { background: var(--surface-card); color: var(--primary);
 .entry .kcal { color: var(--text-muted); font-size: 0.75rem; white-space: nowrap; }
 .entry .x { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.9rem; }
 .entry .x:hover { color: var(--danger); }
+.entry.insert-before { box-shadow: inset 0 2px 0 var(--primary); }
 .empty-slot { color: var(--text-muted); font-size: 0.8rem; }
 .palette { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
   padding: 14px; align-self: start; position: sticky; top: 70px;

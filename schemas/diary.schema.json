@@ -1,0 +1,212 @@
+{
+  "$defs": {
+    "DiaryDayDTO": {
+      "additionalProperties": false,
+      "properties": {
+        "breakfast": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/DiaryEntryDTO"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Breakfast entries in eaten order",
+          "title": "Breakfast"
+        },
+        "date": {
+          "description": "Calendar day this entry records",
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "dinner": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/DiaryEntryDTO"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Dinner entries in eaten order",
+          "title": "Dinner"
+        },
+        "lunch": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/DiaryEntryDTO"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Lunch entries in eaten order",
+          "title": "Lunch"
+        },
+        "snacks": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/DiaryEntryDTO"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Snacks entries in eaten order",
+          "title": "Snacks"
+        }
+      },
+      "required": [
+        "date"
+      ],
+      "title": "DiaryDayDTO",
+      "type": "object"
+    },
+    "DiaryEntryDTO": {
+      "additionalProperties": false,
+      "description": "One eaten serving, with the numbers as they were when it was logged.",
+      "properties": {
+        "calories_kcal": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Calories Kcal",
+          "type": "number"
+        },
+        "carbs_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Carbs G",
+          "type": "number"
+        },
+        "cost": {
+          "description": "Cost of one serving when logged, in CAD",
+          "minimum": 0,
+          "title": "Cost",
+          "type": "number"
+        },
+        "fat_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Fat G",
+          "type": "number"
+        },
+        "fiber_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Fiber G",
+          "type": "number"
+        },
+        "id": {
+          "description": "Entry id (UUID); never changes",
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "potassium_mg": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Potassium Mg",
+          "type": "number"
+        },
+        "protein_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Protein G",
+          "type": "number"
+        },
+        "recipe": {
+          "description": "Id of the recipe that was eaten",
+          "title": "Recipe",
+          "type": "string"
+        },
+        "saturated_fat_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Saturated Fat G",
+          "type": "number"
+        },
+        "sodium_mg": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Sodium Mg",
+          "type": "number"
+        },
+        "sugars_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Sugars G",
+          "type": "number"
+        },
+        "title": {
+          "description": "Recipe title when the entry was logged",
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "recipe",
+        "title",
+        "cost",
+        "calories_kcal",
+        "protein_g",
+        "fat_g",
+        "carbs_g",
+        "fiber_g",
+        "saturated_fat_g",
+        "sugars_g",
+        "sodium_mg",
+        "potassium_mg"
+      ],
+      "title": "DiaryEntryDTO",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "days": {
+      "description": "Logged days in date order",
+      "items": {
+        "$ref": "#/$defs/DiaryDayDTO"
+      },
+      "minItems": 1,
+      "title": "Days",
+      "type": "array"
+    },
+    "week": {
+      "description": "ISO week label, e.g. 2026-W42; must be a real ISO week and every day must fall inside it",
+      "pattern": "^(\\d{4})-W(\\d{2})$",
+      "title": "Week",
+      "type": "string"
+    }
+  },
+  "required": [
+    "week",
+    "days"
+  ],
+  "title": "DiaryWeekDTO",
+  "type": "object"
+}

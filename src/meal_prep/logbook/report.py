@@ -4,9 +4,11 @@ Weekly-menu table layout: one row per day, one column per mealtime, with
 day totals and a week-totals footer. Same dark theme as the recipe cards
 and the week-plan report.
 
-Recipe titles link to their recipe cards
+Titles, cost and macros come from the week's entries: the numbers frozen when
+each was logged. A title links to its recipe card
 (``<cards_dir>/<category>/<slug>.html``) only when a recipe lookup *and* a
-cards dir are provided; otherwise they render as plain text.
+cards dir are provided and the recipe still exists; otherwise it renders as
+plain text.
 """
 
 from __future__ import annotations
@@ -19,7 +21,7 @@ from pathlib import Path
 from typing import assert_never
 
 from meal_prep.enums import Mealtime
-from meal_prep.models.log import LoggedMeal, LogWeek
+from meal_prep.models.log import LogEntry, LoggedMeal, LogWeek
 from meal_prep.models.recipe import Recipe
 
 
@@ -230,25 +232,34 @@ def _kcal(value: float) -> str:
     return f"{value:,.0f} kcal"
 
 
-def _recipe_cell(recipe: Recipe, cards_root: Path | None) -> str:
-    """One recipe title plus its per-serving calories line."""
-    if cards_root is None:
-        title = html.escape(recipe.title)
+def _entry_cell(
+    entry: LogEntry,
+    recipes: Mapping[str, Recipe] | None,
+    cards_root: Path | None,
+) -> str:
+    """One entry title plus its per-serving calories line."""
+    recipe = recipes.get(entry.recipe_id) if recipes is not None else None
+    if cards_root is None or recipe is None:
+        title = html.escape(entry.title)
     else:
         href = (cards_root / recipe.category.value / f"{recipe.id}.html").as_posix()
-        title = f'<a href="{html.escape(href)}">{html.escape(recipe.title)}</a>'
-    meta = _kcal(recipe.per_serving_macros.calories_kcal)
+        title = f'<a href="{html.escape(href)}">{html.escape(entry.title)}</a>'
+    meta = _kcal(entry.macros.calories_kcal)
     return (
         f'<div class="meal-recipe">{title}</div>\n'
         f'<div class="meal-meta">{html.escape(meta)}</div>'
     )
 
 
-def _meal_cell(meal: LoggedMeal | None, cards_root: Path | None) -> str:
-    """One table cell: the mealtime's recipes in logged order, or a dash."""
+def _meal_cell(
+    meal: LoggedMeal | None,
+    recipes: Mapping[str, Recipe] | None,
+    cards_root: Path | None,
+) -> str:
+    """One table cell: the mealtime's entries in logged order, or a dash."""
     if meal is None:
         return '<td><span class="empty">—</span></td>'
-    body = "\n".join(_recipe_cell(recipe, cards_root) for recipe in meal.recipes)
+    body = "\n".join(_entry_cell(entry, recipes, cards_root) for entry in meal.entries)
     return f"<td>{body}</td>"
 
 
@@ -260,14 +271,16 @@ def render_log_week(
     """Render ``week`` into a standalone HTML page.
 
     Titles link to their recipe cards only when both ``recipes`` and
-    ``cards_dir`` are given; the report itself assumes nothing about where
-    cards live.
+    ``cards_dir`` are given and the recipe still exists; the report itself
+    assumes nothing about where cards live.
     """
     cards_root = Path(cards_dir) if cards_dir is not None else None
 
     rows = []
     for day in week.days:
-        cells = [_meal_cell(day.meal(mealtime), cards_root) for mealtime in Mealtime]
+        cells = [
+            _meal_cell(day.meal(mealtime), recipes, cards_root) for mealtime in Mealtime
+        ]
         macros = day.macros
         rows.append(
             f"<tr>\n"

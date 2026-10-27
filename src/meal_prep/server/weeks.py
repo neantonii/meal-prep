@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import datetime
-import re
 
-_WEEK_RE = re.compile(r"^(\d{4})-W(\d{2})$")
+from meal_prep.dtos.log import WEEK_ID
 
 
 def week_dates(week: str) -> tuple[datetime.date, ...]:
     """Return the 7 dates (Mon..Sun) for an ISO week id like ``2026-W43``."""
-    match = _WEEK_RE.match(week)
+    match = WEEK_ID.fullmatch(week)
     if match is None:
         raise ValueError(f"Invalid week id '{week}': expected YYYY-Www")
     year, num = int(match.group(1)), int(match.group(2))

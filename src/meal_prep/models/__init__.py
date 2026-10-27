@@ -9,7 +9,7 @@ them.
 
 from meal_prep.models.ingredient import Ingredient, MacrosInfo
 from meal_prep.models.library import Library
-from meal_prep.models.log import LogDay, LoggedMeal, LogWeek
+from meal_prep.models.log import LogDay, LogEntry, LoggedMeal, LogWeek
 from meal_prep.models.meal import Meal
 from meal_prep.models.recipe import Recipe, RecipeIngredient
 
@@ -17,6 +17,7 @@ __all__ = [
     "Ingredient",
     "Library",
     "LogDay",
+    "LogEntry",
     "LogWeek",
     "LoggedMeal",
     "MacrosInfo",

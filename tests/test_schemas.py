@@ -13,22 +13,22 @@ import json
 from pathlib import Path
 
 from meal_prep.dtos.ingredient import IngredientDTO
-from meal_prep.dtos.log import LogWeekDTO
+from meal_prep.dtos.log import DiaryWeekDTO
 from meal_prep.dtos.meal import MealDTO
 from meal_prep.dtos.recipe import RecipeDTO
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
 _DTOS = {
+    "diary": DiaryWeekDTO,
     "ingredient": IngredientDTO,
-    "log": LogWeekDTO,
     "meal": MealDTO,
     "recipe": RecipeDTO,
 }
 
 
 def _render(
-    dto: type[IngredientDTO] | type[LogWeekDTO] | type[MealDTO] | type[RecipeDTO],
+    dto: type[DiaryWeekDTO] | type[IngredientDTO] | type[MealDTO] | type[RecipeDTO],
 ) -> str:
     return json.dumps(dto.model_json_schema(), indent=2, sort_keys=True) + "\n"
 

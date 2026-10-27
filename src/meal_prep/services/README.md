@@ -13,7 +13,10 @@ Enrich DTOs into frozen models. Allowed imports: `dtos`, `models`, `engines`,
 
 - `ingredients.py` — catalog enrichment (synonyms, graph, macros).
 - `recipes.py` — recipe enrichment (gram merge, cookware, aggregates).
-- `meals.py` / `logs.py` — recipe-id resolution into frozen values.
+- `meals.py` — recipe-id resolution into frozen values.
+- `logs.py` — diary weeks into `LogWeek`, from their frozen entries only.
+- `diary.py` — single-entry diary editing: an entry's numbers are frozen once,
+  when it is added; remove, move and reorder never recompute them.
 - `heuristics.py` — warn-only opinions, never gating.
 
 ## Chesterton's Fences

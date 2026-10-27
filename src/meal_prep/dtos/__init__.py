@@ -14,7 +14,11 @@ from meal_prep.dtos.ingredient import (
     ReferenceInfo,
     UnitConversion,
 )
-from meal_prep.dtos.log import LogDayDTO, LogWeekDTO
+from meal_prep.dtos.log import (
+    DiaryDayDTO,
+    DiaryEntryDTO,
+    DiaryWeekDTO,
+)
 from meal_prep.dtos.meal import MealDTO
 from meal_prep.dtos.recipe import (
     RecipeCookwareRef,
@@ -30,11 +34,12 @@ from meal_prep.enums import RecipeCategory, StorageType
 
 __all__ = [
     "ConversionStep",
+    "DiaryDayDTO",
+    "DiaryEntryDTO",
+    "DiaryWeekDTO",
     "DimensionGroup",
     "EquipmentItem",
     "IngredientDTO",
-    "LogDayDTO",
-    "LogWeekDTO",
     "MacrosInfoDTO",
     "MealDTO",
     "RecipeCategory",

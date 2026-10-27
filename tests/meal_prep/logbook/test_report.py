@@ -7,7 +7,7 @@ from datetime import date
 from meal_prep.enums import RecipeCategory
 from meal_prep.logbook import render_log_week, render_log_week_page
 from meal_prep.models.ingredient import MacrosInfo
-from meal_prep.models.log import LogDay, LogWeek
+from meal_prep.models.log import LogDay, LogEntry, LogWeek
 from meal_prep.models.recipe import Recipe
 
 
@@ -41,9 +41,15 @@ def _recipe(recipe_id: str = "oatmeal") -> Recipe:
     )
 
 
-def _week() -> LogWeek:
-    recipe = _recipe()
-    day = LogDay(date=date(2026, 10, 13), breakfast=(recipe, recipe))
+def _entry(recipe_id: str = "oatmeal", title: str = "Oatmeal") -> LogEntry:
+    return LogEntry(
+        entry_id="e1", recipe_id=recipe_id, title=title, cost=1.5, macros=_macros()
+    )
+
+
+def _week(entry: LogEntry | None = None) -> LogWeek:
+    entry = entry or _entry()
+    day = LogDay(date=date(2026, 10, 13), breakfast=(entry, entry))
     return LogWeek(week="2026-W42", days=(day, day))
 
 
@@ -71,9 +77,25 @@ def test_report_renders_plain_titles_without_cards_dir():
 
 
 def test_report_renders_plain_titles_without_lookup():
-    page = render_log_week(_week())
+    page = render_log_week(_week(), cards_dir="recipe_cards")
     assert "Oatmeal" in page
     assert "recipe_cards" not in page
+
+
+def test_report_shows_frozen_title_for_deleted_recipe():
+    page = render_log_week(
+        _week(_entry("gone", "Old Stew")),
+        recipes={"oatmeal": _recipe()},
+        cards_dir="recipe_cards",
+    )
+    assert "Old Stew" in page
+    assert "recipe_cards" not in page
+
+
+def test_report_totals_come_from_entries():
+    page = render_log_week(_week())
+    assert "$6.00" in page  # 4 entries x $1.50
+    assert "400 kcal" in page
 
 
 def test_page_relativizes_card_links_to_output_dir(tmp_path):

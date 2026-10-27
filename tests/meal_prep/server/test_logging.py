@@ -41,15 +41,24 @@ def test_requests_are_logged(tmp_path: Path, caplog: pytest.LogCaptureFixture) -
     assert "GET /api/diary/nope -> 422" in caplog.text
 
 
-def test_save_is_logged(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+def test_entry_changes_are_logged(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
     app = create_app(REPO / "data", REPO / "recipes", tmp_path / "diary")
     client = TestClient(app)
-    payload = {
-        "week": "2026-W43",
-        "days": [{"date": "2026-10-19", "dinner": ["boiled-roasted-buckwheat"]}],
+    body = {
+        "date": "2026-10-19",
+        "mealtime": "dinner",
+        "recipe": "boiled-roasted-buckwheat",
     }
     with caplog.at_level(logging.INFO, logger=LOGGER_NAME):
-        client.post("/api/diary/2026-W43", json=payload)
-        client.delete("/api/diary/2026-W43")
-    assert "saved week 2026-W43 (1 recipes)" in caplog.text
-    assert "deleted week 2026-W43 (existed=True)" in caplog.text
+        week = client.post("/api/diary/2026-W43/entries", json=body).json()
+        entry_id = week["days"][0]["meals"][0]["entries"][0]["id"]
+        client.patch(
+            f"/api/diary/2026-W43/entries/{entry_id}",
+            json={"date": "2026-10-20", "mealtime": "lunch"},
+        )
+        client.delete(f"/api/diary/2026-W43/entries/{entry_id}")
+    assert "added boiled-roasted-buckwheat to 2026-10-19 dinner" in caplog.text
+    assert f"moved entry {entry_id} to 2026-10-20 lunch" in caplog.text
+    assert f"removed entry {entry_id} from 2026-W43" in caplog.text

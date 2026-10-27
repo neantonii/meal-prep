@@ -3,9 +3,12 @@
 A ``LogWeek`` here is *not* the authored document (that is the ``LogWeekDTO``
 in ``meal_prep.dtos.log``); it is computed once by
 ``meal_prep.services.logs.prepare_log_week`` and never constructed from a file
-directly. Each mealtime resolves to recipes in authored order (duplicates
+directly. Each mealtime resolves to entries in authored order (duplicates
 preserved — each entry is one serving) with summed cost/macros aggregates,
 with no hidden state.
+
+A ``LogEntry`` carries its own title, cost and macros: the numbers frozen when
+the entry was logged (#107), never looked up in current recipes.
 
 Frozen dataclass value objects: no collaborators, no I/O, no mutation.
 Methods are pure functions of the fields alone. All amounts are raw floats
@@ -20,32 +23,43 @@ from functools import reduce
 
 from meal_prep.enums import Mealtime
 from meal_prep.models.ingredient import MacrosInfo
-from meal_prep.models.recipe import Recipe
+
+
+@dataclass(frozen=True, slots=True)
+class LogEntry:
+    """One logged serving: its id, which recipe, and its frozen per-serving
+    title, cost and macros."""
+
+    entry_id: str
+    recipe_id: str
+    title: str
+    cost: float
+    macros: MacrosInfo
 
 
 @dataclass(frozen=True, slots=True)
 class LoggedMeal:
-    """One eaten mealtime: resolved recipes plus aggregates."""
+    """One eaten mealtime: its entries plus aggregates."""
 
     mealtime: Mealtime
-    recipes: tuple[Recipe, ...]
+    entries: tuple[LogEntry, ...]
 
     @property
     def recipe_ids(self) -> tuple[str, ...]:
-        """Authored recipe ids in order (duplicates preserved)."""
-        return tuple(recipe.id for recipe in self.recipes)
+        """Recipe ids in order (duplicates preserved)."""
+        return tuple(entry.recipe_id for entry in self.entries)
 
     @property
     def cost(self) -> float:
         """Meal cost at one serving per entry (raw; renderer rounds)."""
-        return sum(recipe.cost_per_portion for recipe in self.recipes)
+        return sum(entry.cost for entry in self.entries)
 
     @property
     def macros(self) -> MacrosInfo:
         """Summed per-serving macros over all entries (raw, unrounded)."""
         return reduce(
             MacrosInfo.added,
-            (recipe.per_serving_macros for recipe in self.recipes),
+            (entry.macros for entry in self.entries),
             MacrosInfo.zero(),
         )
 
@@ -55,17 +69,17 @@ class LogDay:
     """One logged day: four fixed mealtime fields, absent when not logged."""
 
     date: datetime.date
-    breakfast: tuple[Recipe, ...] | None = None
-    lunch: tuple[Recipe, ...] | None = None
-    dinner: tuple[Recipe, ...] | None = None
-    snacks: tuple[Recipe, ...] | None = None
+    breakfast: tuple[LogEntry, ...] | None = None
+    lunch: tuple[LogEntry, ...] | None = None
+    dinner: tuple[LogEntry, ...] | None = None
+    snacks: tuple[LogEntry, ...] | None = None
 
     def meal(self, mealtime: Mealtime) -> LoggedMeal | None:
         """Return the meal for ``mealtime``, or ``None`` when not logged."""
-        recipes = getattr(self, mealtime.value)
-        if recipes is None:
+        entries = getattr(self, mealtime.value)
+        if entries is None:
             return None
-        return LoggedMeal(mealtime=mealtime, recipes=recipes)
+        return LoggedMeal(mealtime=mealtime, entries=entries)
 
     def meals(self) -> tuple[LoggedMeal, ...]:
         """Logged meals in ``Mealtime`` enum order."""

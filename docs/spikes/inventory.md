@@ -33,6 +33,17 @@ staples count as unlimited.
 - **"Pantry staple" isn't defined.** The `pantry` and `spices` aisles and the
   `ambient` storage type are candidates, but nothing says "unlimited".
 
+## Where ingredient history comes from (decided in #107)
+
+Not from the diary. Batch cooking separates using ingredients (when a batch
+is cooked) from eating (days later, possibly from the freezer), so stock
+can't be derived from diary entries. Diary entries freeze only per-serving
+numbers. Stock, if built, needs its own log of events recorded when they
+happen, each frozen at write time:
+
+- **Purchase:** ingredient, amount, price paid.
+- **Cook session:** recipe, batch size, ingredient amounts used.
+
 ## Options
 
 | | Model | For | Against |
