@@ -3,7 +3,8 @@ name: ci
 # Every check runs through the Dockerfile, which is the single source of the
 # Python, Node and uv versions (no setup-* actions here: a second copy of a
 # version is one Dependabot can't keep in step). Reproduce locally with the
-# same commands.
+# same commands. `--output type=cacheonly`: a check only needs to know the
+# stage built; exporting the unused image would add ~10 s per job.
 on:
   push:
     branches: [master]
@@ -20,7 +21,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Lint, types, tests (Dockerfile `test` stage)
-        run: docker build --target test --progress=plain .
+        run: docker build --target test --progress=plain --output type=cacheonly .
 
   ui:
     runs-on: ubuntu-latest
@@ -29,4 +30,4 @@ jobs:
         with:
           persist-credentials: false
       - name: UI lint, typecheck, build (Dockerfile `ui` stage)
-        run: docker build --target ui --progress=plain .
+        run: docker build --target ui --progress=plain --output type=cacheonly .
