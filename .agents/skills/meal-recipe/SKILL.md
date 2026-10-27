@@ -145,4 +145,5 @@ python -c "from pathlib import Path; import renderer; from meal_prep.library imp
 
 Present the card with a read-back: per-serving macros, cost, yield, and
 which cooking judgments were guesses. Iterate on feedback, or commit when
-done — never push to `master`, never merge.
+done — never push to `master`; merge only per `AGENTS.md` (after the
+owner approves the PR).
