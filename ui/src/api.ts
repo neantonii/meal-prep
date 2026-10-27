@@ -69,6 +69,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   currentWeek: () => request<{ week: string }>("/api/week/current"),
+  version: () => request<{ version: string; commit: string }>("/api/version"),
   catalog: () => request<{ groups: CatalogGroup[] }>("/api/catalog"),
   diary: (week: string) => request<DiaryWeek>(`/api/diary/${week}`),
   addEntry: (week: string, recipe: string, where: Placement) =>

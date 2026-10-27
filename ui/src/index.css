@@ -63,3 +63,4 @@ details.cat summary { cursor: pointer; font-weight: 700; font-size: 0.85rem; pad
   padding: 6px 8px; margin-bottom: 4px; cursor: grab; font-size: 0.82rem; }
 .chip:hover { border-color: var(--primary); }
 .chip .kcal { color: var(--text-muted); font-size: 0.75rem; }
+.version { color: var(--text-muted); font-size: 0.75rem; font-variant-numeric: tabular-nums; }

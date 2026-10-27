@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import datetime
 import logging
+import os
 import threading
 import time
 import uuid
@@ -244,6 +245,14 @@ def create_app(data_dir: Path, recipes_dir: Path, diary_dir: Path) -> FastAPI:
     @app.get("/api/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/api/version")
+    def version() -> dict[str, str]:
+        # Set by the image build (Dockerfile); "dev" when run from a checkout.
+        return {
+            "version": os.environ.get("MEAL_PREP_VERSION", "dev"),
+            "commit": os.environ.get("MEAL_PREP_COMMIT", "unknown"),
+        }
 
     @app.get("/api/week/current")
     def week_current() -> dict[str, str]:

@@ -72,6 +72,9 @@ default for a new package): make it public under the repo's *Packages* →
 *Package settings*, or run `docker login ghcr.io` on the host with a token
 that has `read:packages`.
 
+The running version (`MAJOR.MINOR.PATCH · commit`) shows in the UI header
+and at `/api/version`; see "Product version" in `AGENTS.md`.
+
 Upgrade: run `docker compose pull && docker compose up -d` again. Host dirs
 are untouched. To roll back, set `image:` to a `:sha-…` tag.
 
