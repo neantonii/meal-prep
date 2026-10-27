@@ -75,8 +75,20 @@ that has `read:packages`.
 Upgrade: run `docker compose pull && docker compose up -d` again. Host dirs
 are untouched. To roll back, set `image:` to a `:sha-…` tag.
 
-The server boots with an empty diary dir and creates week files on first
-save. The UI is at `http://127.0.0.1:8080` on the host; the port is bound to
+The server boots with an empty diary dir and creates a week file when the
+first entry of that week is logged.
+
+Diary entries are frozen (#107): each one stores the recipe's title, cost and
+nutrition as they were when it was logged, so past weeks never change when
+recipes, ingredients or prices do. Diary weeks written before this change list
+bare recipe ids; the server refuses them with a message until they are
+converted once (each original is kept as `<week>.yaml.bak`; re-running is
+harmless):
+
+```sh
+docker compose exec diary python scripts/migrate_diary.py \
+  --diary-dir /app/diary --data-dir /app/data --recipes-dir /app/recipes
+``` The UI is at `http://127.0.0.1:8080` on the host; the port is bound to
 loopback because the server has no auth (put a reverse proxy in front before
 exposing it). The container has a health check on `/api/health`
 (`docker ps` shows `healthy`).

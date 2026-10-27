@@ -2,19 +2,18 @@
 
 from __future__ import annotations
 
+import uuid
 from pathlib import Path
 
 import pytest
 
 from meal_prep.adapters.logs import (
-    delete_log_week,
-    load_all_logs,
-    load_log_file,
-    load_log_week,
-    save_log_week,
+    delete_diary_week,
+    load_diary_week,
+    save_diary_week,
 )
 from meal_prep.adapters.meals import load_all_meals, load_meal_file
-from meal_prep.dtos.log import LogWeekDTO
+from meal_prep.dtos.log import DiaryWeekDTO
 
 
 def _write(path: Path, content: str) -> Path:
@@ -61,10 +60,10 @@ def test_load_all_meals_missing_dir(tmp_path: Path):
 
 
 # ---------------------------------------------------------------------------
-# logs
+# diary
 # ---------------------------------------------------------------------------
 
-_LOG = """\
+_OLD_FORMAT = """\
 week: 2026-W42
 days:
   - date: 2026-10-13
@@ -73,66 +72,70 @@ days:
 """
 
 
-def test_load_log_file_valid(tmp_path: Path):
-    path = _write(tmp_path / "2026-W42.yaml", _LOG)
-    log = load_log_file(path)
-    assert log.week == "2026-W42"
-    assert log.days[0].breakfast == ["oatmeal", "coffee"]
-    assert log.days[0].dinner == ["oatmeal"]
-    assert log.days[0].lunch is None
+def _entry(recipe: str = "oatmeal") -> dict:
+    return {
+        "id": str(uuid.uuid4()),
+        "recipe": recipe,
+        "title": recipe.title(),
+        "cost": 1.0 / 3.0,  # unrounded on purpose
+        "calories_kcal": 310.123456789,
+        "protein_g": 12.0,
+        "fat_g": 8.0,
+        "carbs_g": 45.0,
+        "fiber_g": 6.0,
+        "saturated_fat_g": 1.5,
+        "sugars_g": 9.0,
+        "sodium_mg": 120.0,
+        "potassium_mg": 300.0,
+    }
 
 
-def test_load_all_logs_rejects_duplicate_weeks(tmp_path: Path):
-    _write(tmp_path / "a.yaml", _LOG)
-    _write(tmp_path / "b.yaml", _LOG)
-    with pytest.raises(ValueError, match="Duplicate log week"):
-        load_all_logs(tmp_path)
-
-
-def test_load_all_logs_missing_dir(tmp_path: Path):
-    with pytest.raises(FileNotFoundError, match="Logs directory"):
-        load_all_logs(tmp_path / "nope")
-
-
-def test_load_log_week_round_trip(tmp_path: Path):
-    log = LogWeekDTO.model_validate(
-        {
-            "week": "2026-W42",
-            "days": [{"date": "2026-10-13", "dinner": ["oatmeal", "oatmeal"]}],
-        }
+def _diary(week: str = "2026-W42", date: str = "2026-10-13") -> DiaryWeekDTO:
+    return DiaryWeekDTO.model_validate(
+        {"week": week, "days": [{"date": date, "dinner": [_entry(), _entry()]}]}
     )
-    target = save_log_week(tmp_path / "diary", log)
+
+
+def test_diary_round_trip_keeps_ids_and_raw_numbers(tmp_path: Path):
+    diary = _diary()
+    target = save_diary_week(tmp_path / "diary", diary)
     assert target == tmp_path / "diary" / "2026-W42.yaml"
-    loaded = load_log_week(tmp_path / "diary", "2026-W42")
-    assert loaded.week == "2026-W42"
-    assert loaded.days[0].dinner == ["oatmeal", "oatmeal"]
+    loaded = load_diary_week(tmp_path / "diary", "2026-W42")
+    assert loaded == diary  # ids and unrounded floats survive YAML
 
 
-def test_load_log_week_rejects_stem_mismatch(tmp_path: Path):
-    # A valid W43 week (its day is in W43) stored under a W42 file name.
-    w43 = _LOG.replace("2026-W42", "2026-W43").replace("2026-10-13", "2026-10-20")
-    _write(tmp_path / "2026-W42.yaml", w43)
+def test_old_format_diary_week_points_to_migration(tmp_path: Path):
+    _write(tmp_path / "2026-W42.yaml", _OLD_FORMAT)
+    with pytest.raises(ValueError, match=r"migrate_diary\.py"):
+        load_diary_week(tmp_path, "2026-W42")
+
+
+def test_load_diary_week_rejects_stem_mismatch(tmp_path: Path):
+    # A valid W43 week stored under a W42 file name.
+    save_diary_week(tmp_path, _diary(week="2026-W43", date="2026-10-20"))
+    (tmp_path / "2026-W43.yaml").rename(tmp_path / "2026-W42.yaml")
     with pytest.raises(ValueError, match="does not match filename stem"):
-        load_log_week(tmp_path, "2026-W42")
+        load_diary_week(tmp_path, "2026-W42")
 
 
-def test_load_log_week_missing_file(tmp_path: Path):
+def test_load_diary_week_missing_file(tmp_path: Path):
     with pytest.raises(FileNotFoundError, match="Log week file not found"):
-        load_log_week(tmp_path, "2026-W42")
+        load_diary_week(tmp_path, "2026-W42")
 
 
-def test_save_log_week_creates_dir(tmp_path: Path):
-    log = LogWeekDTO.model_validate(
-        {"week": "2026-W42", "days": [{"date": "2026-10-13", "dinner": ["oatmeal"]}]}
-    )
-    target = save_log_week(tmp_path / "new" / "diary", log)
-    assert target.exists()
+def test_delete_diary_week(tmp_path: Path):
+    save_diary_week(tmp_path, _diary())
+    assert delete_diary_week(tmp_path, "2026-W42") is True
+    assert delete_diary_week(tmp_path, "2026-W42") is False
 
 
-def test_delete_log_week(tmp_path: Path):
-    log = LogWeekDTO.model_validate(
-        {"week": "2026-W42", "days": [{"date": "2026-10-13", "dinner": ["oatmeal"]}]}
-    )
-    save_log_week(tmp_path, log)
-    assert delete_log_week(tmp_path, "2026-W42") is True
-    assert delete_log_week(tmp_path, "2026-W42") is False
+@pytest.mark.parametrize(
+    "week", ["../2026-W42", "2026-W42/../x", "/etc/passwd", "2026-W42\n", "2026-w42"]
+)
+def test_diary_week_ids_must_be_iso_week_ids(tmp_path: Path, week: str):
+    for call in (
+        lambda: load_diary_week(tmp_path, week),
+        lambda: delete_diary_week(tmp_path, week),
+    ):
+        with pytest.raises(ValueError, match="Invalid week id"):
+            call()

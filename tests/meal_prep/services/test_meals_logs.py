@@ -1,19 +1,17 @@
-"""Tests for the meal/log enrichment services and frozen models."""
+"""Tests for the meal and diary enrichment services and frozen models."""
 
 from __future__ import annotations
 
-from datetime import date
-
 import pytest
 
-from meal_prep.dtos.log import LogDayDTO, LogWeekDTO
+from meal_prep.dtos.log import DiaryWeekDTO
 from meal_prep.dtos.meal import MealDTO
 from meal_prep.enums import Aisle, Mealtime, RecipeCategory, StorageType
 from meal_prep.models.ingredient import MacrosInfo
-from meal_prep.models.log import LogDay, LoggedMeal, LogWeek
 from meal_prep.models.meal import Meal
 from meal_prep.models.recipe import Recipe, RecipeIngredient
-from meal_prep.services.logs import prepare_log_week
+from meal_prep.services.diary import freeze_entry
+from meal_prep.services.logs import prepare_diary_week
 from meal_prep.services.meals import prepare_meal
 
 
@@ -101,57 +99,49 @@ def test_prepare_meal_rejects_unknown_recipe(recipes: dict[str, Recipe]):
 
 
 # ---------------------------------------------------------------------------
-# prepare_log_week
+# prepare_diary_week
 # ---------------------------------------------------------------------------
 
 
-def test_prepare_log_week_aggregates(recipes: dict[str, Recipe]):
-    week = prepare_log_week(
-        LogWeekDTO.model_validate(
-            {
-                "week": "2026-W42",
-                "days": [
-                    {
-                        "date": "2026-10-13",
-                        "breakfast": ["oatmeal", "coffee"],
-                        "snacks": ["oatmeal"],
-                    },
-                    {"date": "2026-10-14", "lunch": ["coffee"]},
-                ],
-            }
-        ),
-        recipes,
+def test_prepare_diary_week_uses_frozen_numbers_not_current_recipes(
+    recipes: dict[str, Recipe],
+):
+    entry = freeze_entry(recipes["oatmeal"])
+    diary = DiaryWeekDTO.model_validate(
+        {
+            "week": "2026-W42",
+            "days": [
+                {
+                    "date": "2026-10-13",
+                    "breakfast": [
+                        entry,
+                        entry.model_copy(
+                            update={"id": freeze_entry(recipes["oatmeal"]).id}
+                        ),
+                    ],
+                }
+            ],
+        }
     )
-    assert isinstance(week, LogWeek)
-    assert week.week == "2026-W42"
-    assert len(week.days) == 2
-    assert week.total_cost == pytest.approx(1.0 + 0.5 + 1.0 + 0.5)
-    assert week.total_macros.calories_kcal == pytest.approx(100 + 10 + 100 + 10)
-
-    day = week.days[0]
-    assert isinstance(day, LogDay)
-    assert day.date == date(2026, 10, 13)
-    assert day.meal(Mealtime.BREAKFAST) is not None
-    assert day.meal(Mealtime.LUNCH) is None
-    assert day.cost == pytest.approx(2.5)
-
-    meal = day.meal(Mealtime.BREAKFAST)
-    assert isinstance(meal, LoggedMeal)
-    assert meal.recipe_ids == ("oatmeal", "coffee")
-    assert meal.macros.protein_g == pytest.approx(20.0)
+    # The recipe gets twice as expensive after logging; the diary must not notice.
+    recipes["oatmeal"] = _recipe("oatmeal", cost=2.0, cal=999.0)
+    week = prepare_diary_week(diary)
+    assert week.total_cost == pytest.approx(2.0)
+    assert week.total_macros.calories_kcal == pytest.approx(200.0)
+    logged = week.days[0].meal(Mealtime.BREAKFAST)
+    assert logged is not None
+    assert logged.recipe_ids == ("oatmeal", "oatmeal")
+    assert logged.entries[0].title == "Recipe oatmeal"
+    assert logged.entries[0].entry_id == str(entry.id)
 
 
-def test_prepare_log_week_rejects_unknown_recipe(recipes: dict[str, Recipe]):
-    with pytest.raises(ValueError, match="unknown recipe"):
-        prepare_log_week(
-            LogWeekDTO(
-                week="2026-W42",
-                days=[
-                    LogDayDTO(
-                        date=date(2026, 10, 13),
-                        breakfast=["nope"],
-                    )
-                ],
-            ),
-            recipes,
-        )
+def test_prepare_diary_week_survives_deleted_recipe():
+    gone = _recipe("gone", cost=3.0, cal=50.0)
+    diary = DiaryWeekDTO.model_validate(
+        {
+            "week": "2026-W42",
+            "days": [{"date": "2026-10-13", "dinner": [freeze_entry(gone)]}],
+        }
+    )
+    week = prepare_diary_week(diary)
+    assert week.total_cost == pytest.approx(3.0)

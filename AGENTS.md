@@ -23,10 +23,10 @@
   only (`tests/` excluded). Config in `pyproject.toml`. Run via
   `uv run mypy` (reads `files = "src"` from config, no path arg needed).
 - **Tests**: `uv run pytest -q`.
-- **Render a week**: `uv run python scripts/render_week.py plans/2026-W43.yaml`
-  (plan → `weekly_plan/log-2026-W43.html`; regenerates cards, relativizes
-  links). Diary needs `-o weekly_plan/diary-2026-W43.html`. Never hand-roll
-  the load/prepare/render chain inline — the script is the entry point.
+- **Render a diary week**: `uv run python scripts/render_week.py diary/2026-W43.yaml`
+  (→ `weekly_plan/diary-2026-W43.html`; regenerates cards, relativizes
+  links). Never hand-roll the load/prepare/render chain inline — the script
+  is the entry point.
 - **GitHub CLI**: `gh` is available but needs auth — export `GH_TOKEN="$GITHUB_TOKEN"`
   first (e.g. `export GH_TOKEN="$GITHUB_TOKEN" && gh issue list`). The `GITHUB_TOKEN`
   env var alone is not picked up by `gh`.

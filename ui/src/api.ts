@@ -16,14 +16,30 @@ export interface CatalogGroup {
   recipes: CatalogEntry[];
 }
 
+/** One logged serving, with the numbers frozen when it was logged. */
+export interface DiaryEntry {
+  id: string;
+  recipe: string;
+  title: string;
+  /** null when the recipe no longer exists */
+  card_url: string | null;
+  kcal: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  fiber_g: number;
+  cost: number;
+}
+
 export interface DiaryMeal {
   mealtime: string;
-  recipes: string[];
+  entries: DiaryEntry[];
 }
 
 export interface DiaryDay {
   date: string;
   meals: DiaryMeal[];
+  totals: Record<string, number>;
 }
 
 export interface DiaryWeek {
@@ -31,6 +47,13 @@ export interface DiaryWeek {
   exists: boolean;
   days: DiaryDay[];
   totals: Record<string, number>;
+}
+
+/** Where an entry goes: a slot and, optionally, its index in that slot. */
+export interface Placement {
+  date: string;
+  mealtime: string;
+  position?: number;
 }
 
 export const MEALTIMES = ["breakfast", "lunch", "dinner", "snacks"] as const;
@@ -48,14 +71,20 @@ export const api = {
   currentWeek: () => request<{ week: string }>("/api/week/current"),
   catalog: () => request<{ groups: CatalogGroup[] }>("/api/catalog"),
   diary: (week: string) => request<DiaryWeek>(`/api/diary/${week}`),
-  saveDiary: (week: string, payload: { week: string; days: object }) =>
-    request<DiaryWeek>(`/api/diary/${week}`, {
+  addEntry: (week: string, recipe: string, where: Placement) =>
+    request<DiaryWeek>(`/api/diary/${week}/entries`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...where, recipe }),
     }),
-  deleteDiary: (week: string) =>
-    request<null>(`/api/diary/${week}`, { method: "DELETE" }),
+  removeEntry: (week: string, id: string) =>
+    request<DiaryWeek>(`/api/diary/${week}/entries/${id}`, { method: "DELETE" }),
+  moveEntry: (week: string, id: string, where: Placement) =>
+    request<DiaryWeek>(`/api/diary/${week}/entries/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(where),
+    }),
 };
 
 /** Shift an ISO week id ("2026-W43") by `delta` weeks. */
