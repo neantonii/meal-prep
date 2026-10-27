@@ -76,7 +76,36 @@ The running version (`MAJOR.MINOR.PATCH · commit`) shows in the UI header
 and at `/api/version`; see "Product version" in `AGENTS.md`.
 
 Upgrade: run `docker compose pull && docker compose up -d` again. Host dirs
-are untouched. To roll back, set `image:` to a `:sha-…` tag.
+are untouched. To roll back, set `image:` to a `:sha-<12-char commit>` tag
+(the header shows the first 7 characters of that commit) and run
+`docker compose up -d`; switch back to `:latest` to resume updates.
+
+Automatic updates: put this `update.sh` next to `compose.yml`. When no new
+image exists it changes nothing (no restart); otherwise the app is down for a
+few seconds while the container is swapped.
+
+```sh
+#!/bin/sh
+# Pull the latest image; recreate the container only if it changed.
+set -eu
+cd "$(dirname "$0")"
+docker compose pull --quiet
+docker compose up -d
+docker image prune -f >/dev/null   # drop the old image it replaced
+```
+
+Run it hourly from cron (the user needs Docker access without `sudo`, i.e.
+membership in the `docker` group; otherwise use root's crontab). The log
+lives next to `compose.yml`, not in `logs/`, which belongs to the container's
+user (uid 1000):
+
+```sh
+chmod +x update.sh
+(crontab -l 2>/dev/null; echo "17 * * * * $PWD/update.sh >> $PWD/update.log 2>&1") | crontab -
+```
+
+Every merge to `master` reaches the host within the hour; a change that
+needs a manual step (like a data migration) says so in its PR.
 
 The server boots with an empty diary dir and creates a week file when the
 first entry of that week is logged.
