@@ -183,21 +183,26 @@ def test_auto_link_never_picks_a_same_day_session():
     assert diary.sessions[breakfast.session].date == SUN  # type: ignore[index]
 
 
-def test_only_dinner_comes_from_the_same_days_session():
+def test_auto_link_takes_the_same_days_session_only_for_dinner():
     tue = _session(TUE, (CHICKEN, 1))
     diary = _with(tue)
     diary, dinner = _add(diary, TUE, meal=Mealtime.DINNER)
     assert dinner.session == tue.id  # auto-link: same day, dinner
     diary, lunch = _add(diary, TUE)
     assert diary.sessions[lunch.session].date == SUN  # type: ignore[index]
-    with pytest.raises(RuleError, match="Only dinner"):
-        _add(diary, TUE, link=tue.id)  # explicit, Plan: refused
-    _, admin = _add(diary, TUE, link=tue.id, policy=ADMIN)
-    assert admin.session == tue.id  # Admin: any meal
-    # Moving the dinner to lunch on the same day re-links it (Plan).
+    # A manual link may use the same day for any meal (Admin or not)...
+    diary, breakfast = _add(diary, TUE, link=tue.id, meal=Mealtime.BREAKFAST)
+    assert breakfast.session == tue.id
+    # ...and a meal moved onto its session's day keeps its link.
     change = prep.move_entry(diary, PLAN, RECIPES, WEEK, dinner.id, TUE, Mealtime.LUNCH)
-    moved = _entry(_apply(diary, change), dinner.id)
-    assert moved.session != tue.id
+    assert _entry(_apply(diary, change), dinner.id).session == tue.id
+
+
+def test_auto_link_runs_on_plan_days_in_admin_too():
+    diary, entry = _add(EMPTY, MON, policy=ADMIN)
+    assert diary.sessions[entry.session].date == SUN  # type: ignore[index]
+    _, logged = _add(EMPTY, TODAY, policy=ADMIN)
+    assert logged.session is None  # Log days: unlinked, Admin or not
 
 
 def test_auto_link_prefers_a_session_with_a_free_portion():

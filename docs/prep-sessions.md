@@ -71,9 +71,8 @@ A diary entry has an optional `session` (the session id). A linked entry must
 align with its session:
 
 1. the session lists the entry's recipe;
-2. the entry's date is on or after the session's date; on the session's own
-   day only dinner may come from it (the delivery and prep happen during the
-   day), except in Admin, which may link any meal;
+2. the entry's date is on or after the session's date (a manual link may use
+   the session's own day for any meal; auto-link only for dinner, below);
 3. entries linked to an item never exceed its portions.
 
 The server enforces these on every edit. Rules span weeks, so they are
@@ -97,7 +96,7 @@ every date it touches; if any is Log, Log rules apply (Admin overrides all).
 
 | Edit | Plan | Log | Admin |
 |---|---|---|---|
-| Add from the recipe palette | auto-linked (below) | unlinked | unlinked |
+| Add from the recipe palette | auto-linked (below) | unlinked | auto-linked on Plan days, unlinked on Log days |
 | Add from a session card | linked; session grows | refused | linked; session grows |
 | Remove | ✅ (the session shrinks to fit) | ✅ (the portion stays made: spare) | ✅ |
 | Move / reorder | ✅; a broken link is re-linked (auto) | ✅ if the link still holds | ✅ if the link still holds |
@@ -108,7 +107,8 @@ its recipe adds it; batches follow the meals (see "Session item"). This
 applies to sessions still in Plan, and in Admin to any session; a Log
 session is otherwise not changed, so such a link is refused.
 
-**Auto-link** (palette drop in Plan): the entry links to the first of
+**Auto-link** (palette drop on a day after today, Admin or not): the entry
+links to the first of
 
 1. the latest session within the 7 days before the entry's day (plus that
    day itself for dinner) that lists the recipe with a free portion;
@@ -116,8 +116,9 @@ session is otherwise not changed, so such a link is refused.
    default session day (Sun, Tue, Thu), which grows to fit;
 
 and stays unlinked if neither exists. The entry's own day counts only for
-dinner (rule 2 above): breakfast, lunch and snacks come from an earlier
-session.
+dinner, since the delivery and prep happen during that day: breakfast, lunch
+and snacks come from an earlier session (a manual link may still choose the
+same day for any meal).
 
 ### Sessions
 
