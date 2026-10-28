@@ -183,3 +183,17 @@ def test_hand_edits_are_picked_up_and_bad_files_reported(
     assert _card(week, "2026-11-01")["items"][0]["title"].startswith("Old ")
     path.write_text("id: nope\n")
     assert client.get(f"/api/diary/{W45}").status_code == 422
+
+
+def test_entries_flag_links_to_an_unusual_session(client: TestClient):
+    week = _ok(_add(client, "2026-11-02"))  # auto-linked to Sun 1 Nov
+    assert _entries(week)[0]["unusual_session"] is False
+    sun = _card(week, "2026-11-01")["id"]
+    # Same day as its session: unusual.
+    last = _ok(_add(client, "2026-11-01", week=W44, session=sun))
+    [same_day] = [e for e in _entries(last) if e["session"] == sun]
+    assert same_day["unusual_session"] is True
+    # Unlinked entries are never flagged.
+    week = _ok(_add(client, "2026-11-03", session=None))
+    unlinked = [e for e in _entries(week) if e["session"] is None]
+    assert [e["unusual_session"] for e in unlinked] == [False]

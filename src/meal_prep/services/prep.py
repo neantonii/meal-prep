@@ -105,6 +105,16 @@ def default_session_dates(
     )
 
 
+def usual_session(
+    sessions: Iterable[PrepSessionDTO], date: datetime.date
+) -> uuid.UUID | None:
+    """The session a meal on ``date`` usually comes from: the latest one
+    strictly before that day. Any other link (a same-day session, an older
+    one) is unusual and worth showing."""
+    earlier = [s for s in sessions if s.date < date]
+    return max(earlier, key=lambda s: s.date).id if earlier else None
+
+
 def link_counts(weeks: Iterable[DiaryWeekDTO]) -> Counter[tuple[uuid.UUID, str]]:
     """Linked entries per (session id, recipe id), over all ``weeks``."""
     counts: Counter[tuple[uuid.UUID, str]] = Counter()

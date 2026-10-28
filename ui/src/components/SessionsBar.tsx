@@ -23,25 +23,37 @@ interface Props {
   onRemoveItem: (session: string, recipe: string) => void;
   onMove: (session: string, date: string) => void;
   onDelete: (session: string) => void;
+  /** Relink a diary entry to a session (an entry dropped on it). */
+  onLinkEntry: (entry: string, session: string) => void;
 }
 
-/** Accepts a recipe dropped from the palette; `onRecipe` adds it. */
-function useRecipeDrop(onRecipe: (recipe: string) => void) {
-  const [over, setOver] = useState(false);
+/** Drop target for a session: a palette recipe adds an item (`onRecipe`);
+ * a diary entry relinks it to this session (`onEntry`, existing sessions
+ * only). `hint` says which one is being dragged, for the label. */
+function useSessionDrop(onRecipe: (recipe: string) => void, onEntry?: (entry: string) => void) {
+  const [hint, setHint] = useState<"recipe" | "entry" | null>(null);
   return {
-    over,
+    hint,
     handlers: {
       onDragOver: (e: React.DragEvent) => {
-        if (!e.dataTransfer.types.includes("text/recipe-id")) return;
+        const types = e.dataTransfer.types;
+        const kind = types.includes("text/recipe-id")
+          ? "recipe"
+          : types.includes("text/entry") && onEntry
+            ? "entry"
+            : null;
+        if (!kind) return;
         e.preventDefault();
-        setOver(true);
+        setHint(kind);
       },
-      onDragLeave: () => setOver(false),
+      onDragLeave: () => setHint(null),
       onDrop: (e: React.DragEvent) => {
         e.preventDefault();
-        setOver(false);
+        setHint(null);
         const recipe = e.dataTransfer.getData("text/recipe-id");
+        const entry = e.dataTransfer.getData("text/entry");
         if (recipe) onRecipe(recipe);
+        else if (entry && onEntry) onEntry((JSON.parse(entry) as { id: string }).id);
       },
     },
   };
@@ -109,14 +121,18 @@ function SessionChip({
   onToggle,
   colors,
   onAddItem,
+  onLinkEntry,
 }: Props & { session: Session; open: boolean; onToggle: () => void }) {
   const { id, date, mode, items } = session;
-  const drop = useRecipeDrop((recipe) => onAddItem(date, recipe));
+  const drop = useSessionDrop(
+    (recipe) => onAddItem(date, recipe),
+    id ? (entry) => onLinkEntry(entry, id) : undefined,
+  );
   const made = items.reduce((n, it) => n + it.portions, 0);
   const eaten = items.reduce((n, it) => n + it.eaten, 0);
   return (
     <button
-      className={`session-chip ${mode}${open ? " open" : ""}${id ? "" : " placeholder"}${drop.over ? " dragover" : ""}`}
+      className={`session-chip ${mode}${open ? " open" : ""}${id ? "" : " placeholder"}${drop.hint ? " dragover" : ""}`}
       onClick={onToggle}
       title={open ? "Close" : "Open this session"}
       {...drop.handlers}
@@ -126,9 +142,13 @@ function SessionChip({
       {!session.in_window && <span className="muted">earlier</span>}
       <span className={`mode-tag ${mode}`}>{mode}</span>
       <span className="muted">
-        {items.length === 0
-          ? "empty"
-          : `${items.length} recipe${items.length === 1 ? "" : "s"} · ${eaten}/${made} eaten`}
+        {drop.hint === "entry"
+          ? "drop to link here"
+          : drop.hint === "recipe"
+            ? "drop to add"
+            : items.length === 0
+              ? "empty"
+              : `${items.length} recipe${items.length === 1 ? "" : "s"} · ${eaten}/${made} eaten`}
       </span>
     </button>
   );
@@ -144,12 +164,16 @@ function SessionPanel({
   onRemoveItem,
   onMove,
   onDelete,
+  onLinkEntry,
 }: Props & { session: Session; onClose: () => void }) {
   const [moving, setMoving] = useState(false);
   const { id, date, mode } = session;
   // What the rules allow here (the server has the final say).
   const canGrow = admin || mode === "plan";
-  const drop = useRecipeDrop((recipe) => onAddItem(date, recipe));
+  const drop = useSessionDrop(
+    (recipe) => onAddItem(date, recipe),
+    id ? (entry) => onLinkEntry(entry, id) : undefined,
+  );
 
   const item = (it: SessionItem) => (
     <div
@@ -215,13 +239,17 @@ function SessionPanel({
   );
 
   return (
-    <div className={`session-panel ${mode}${drop.over ? " dragover" : ""}`} {...drop.handlers}>
+    <div className={`session-panel ${mode}${drop.hint ? " dragover" : ""}`} {...drop.handlers}>
       <div className="session-head">
         <span className={`session-dot ${id ? (colors[id] ?? "") : ""}`} />
         <strong>{dayLabel(date)}</strong>
         <span className={`mode-tag ${mode}`}>{mode}</span>
         <span className="muted">
-          {canGrow ? "drop recipes here · drag items into slots" : "drag items into slots"}
+          {drop.hint === "entry"
+            ? "drop to link this meal here"
+            : canGrow
+              ? "drop recipes here · drag items into slots · drop a meal to link it"
+              : "drag items into slots · drop a meal to link it"}
         </span>
         <span className="session-actions">
           {id && canGrow && (
