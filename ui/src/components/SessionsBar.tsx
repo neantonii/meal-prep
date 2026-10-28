@@ -1,12 +1,8 @@
+import { useDndContext, useDraggable, useDroppable } from "@dnd-kit/core";
 import { useState } from "react";
 import type { Session, SessionItem } from "../api";
 import { dayLabel, sessionColor } from "../api";
-
-/** What a session item being dragged into a slot carries. */
-export interface ItemDrag {
-  session: string;
-  recipe: string;
-}
+import type { DragData, DropData } from "../dnd";
 
 interface Props {
   sessions: Session[];
@@ -18,44 +14,23 @@ interface Props {
   extraDates: string[];
   admin: boolean;
   onAddDate: (date: string) => void;
-  onAddItem: (date: string, recipe: string) => void;
   onUpdateItem: (session: string, recipe: string, batches: number) => void;
   onRemoveItem: (session: string, recipe: string) => void;
   onDelete: (session: string) => void;
-  /** Relink a diary entry to a session (an entry dropped on it). */
-  onLinkEntry: (entry: string, session: string) => void;
 }
 
-/** Drop target for a session: a palette recipe adds an item (`onRecipe`);
- * a diary entry relinks it to this session (`onEntry`, existing sessions
- * only). `hint` says which one is being dragged, for the label. */
-function useSessionDrop(onRecipe: (recipe: string) => void, onEntry?: (entry: string) => void) {
-  const [hint, setHint] = useState<"recipe" | "entry" | null>(null);
-  return {
-    hint,
-    handlers: {
-      onDragOver: (e: React.DragEvent) => {
-        const types = e.dataTransfer.types;
-        const kind = types.includes("text/recipe-id")
-          ? "recipe"
-          : types.includes("text/entry") && onEntry
-            ? "entry"
-            : null;
-        if (!kind) return;
-        e.preventDefault();
-        setHint(kind);
-      },
-      onDragLeave: () => setHint(null),
-      onDrop: (e: React.DragEvent) => {
-        e.preventDefault();
-        setHint(null);
-        const recipe = e.dataTransfer.getData("text/recipe-id");
-        const entry = e.dataTransfer.getData("text/entry");
-        if (recipe) onRecipe(recipe);
-        else if (entry && onEntry) onEntry((JSON.parse(entry) as { id: string }).id);
-      },
-    },
-  };
+/** A session as a drop target (its chip or open panel): a recipe adds an
+ * item, a meal relinks to it (existing sessions only). `hint` says which,
+ * while one hovers. The drop itself is handled in App's onDragEnd. */
+function useSessionDrop(where: string, date: string, session: string | null) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `${where}:${date}`,
+    data: { kind: "session", date, session } satisfies DropData,
+  });
+  const { active } = useDndContext();
+  const kind = (active?.data.current as DragData | undefined)?.kind;
+  const hint = !isOver ? null : kind === "recipe" ? "recipe" : kind === "entry" && session ? "entry" : null;
+  return { setNodeRef, hint };
 }
 
 function batchLabel(batches: number): string {
@@ -136,36 +111,31 @@ function SessionChip({
   open,
   onToggle,
   monday,
-  onAddItem,
-  onLinkEntry,
 }: Props & { session: Session; open: boolean; onToggle: () => void }) {
   const { id, date, mode, items } = session;
-  const drop = useSessionDrop(
-    (recipe) => onAddItem(date, recipe),
-    id ? (entry) => onLinkEntry(entry, id) : undefined,
-  );
+  const { setNodeRef, hint } = useSessionDrop("session-chip", date, id);
   const spare = items.reduce((n, it) => n + it.portions - it.eaten, 0);
   return (
     <button
-      className={`session-chip ${mode}${open ? " open" : ""}${id ? "" : " placeholder"}${drop.hint ? " dragover" : ""}`}
+      ref={setNodeRef}
+      className={`session-chip ${mode}${open ? " open" : ""}${id ? "" : " placeholder"}${hint ? " dragover" : ""}`}
       onClick={onToggle}
       title={open ? "Close" : "Open this session"}
-      {...drop.handlers}
     >
       <span className={`session-dot ${sessionColor(date, monday)}`} />
       <strong>{dayLabel(date)}</strong>
       {!session.in_window && <span className="muted">earlier</span>}
       <span className={`mode-tag ${mode}`}>{mode}</span>
       <span className="muted">
-        {drop.hint === "entry"
+        {hint === "entry"
           ? "drop to link here"
-          : drop.hint === "recipe"
+          : hint === "recipe"
             ? "drop to add"
             : items.length === 0
               ? "empty"
               : `${items.length} recipe${items.length === 1 ? "" : "s"}`}
       </span>
-      {!drop.hint && <Spare count={spare} />}
+      {!hint && <Spare count={spare} />}
     </button>
   );
 }
@@ -175,32 +145,88 @@ function SessionPanel({
   onClose,
   monday,
   admin,
-  onAddItem,
   onUpdateItem,
   onRemoveItem,
   onDelete,
-  onLinkEntry,
 }: Props & { session: Session; onClose: () => void }) {
   const { id, date, mode } = session;
   // What the rules allow here (the server has the final say).
   const canGrow = admin || mode === "plan";
-  const drop = useSessionDrop(
-    (recipe) => onAddItem(date, recipe),
-    id ? (entry) => onLinkEntry(entry, id) : undefined,
-  );
+  const { setNodeRef, hint } = useSessionDrop("session-panel", date, id);
 
-  const item = (it: SessionItem) => (
+  return (
+    <div ref={setNodeRef} className={`session-panel ${mode}${hint ? " dragover" : ""}`}>
+      <div className="session-head">
+        <span className={`session-dot ${sessionColor(date, monday)}`} />
+        <strong>{dayLabel(date)}</strong>
+        <span className={`mode-tag ${mode}`}>{mode}</span>
+        <span className="muted">
+          {hint === "entry"
+            ? "drop to link this meal here"
+            : canGrow
+              ? "drop recipes here · drag items into slots · drop a meal to link it"
+              : "drag items into slots · drop a meal to link it"}
+        </span>
+        <span className="session-actions">
+          {id && (
+            <button title="Delete session" onClick={() => onDelete(id)}>
+              delete
+            </button>
+          )}
+          <button className="x" title="Close" onClick={onClose}>
+            ×
+          </button>
+        </span>
+      </div>
+      {session.items.length === 0 ? (
+        <span className="empty-slot">{canGrow ? "drop recipes here" : "nothing prepped"}</span>
+      ) : (
+        <div className="session-items">
+          {session.items.map((it) => (
+            <ItemRow
+              key={it.recipe}
+              it={it}
+              session={id}
+              mode={mode}
+              admin={admin}
+              onUpdateItem={onUpdateItem}
+              onRemoveItem={onRemoveItem}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** One item of the open session: drag it into a slot for a linked meal. */
+function ItemRow({
+  it,
+  session,
+  mode,
+  admin,
+  onUpdateItem,
+  onRemoveItem,
+}: {
+  it: SessionItem;
+  session: string | null;
+  mode: Session["mode"];
+  admin: boolean;
+  onUpdateItem: Props["onUpdateItem"];
+  onRemoveItem: Props["onRemoveItem"];
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `item:${session}:${it.recipe}`,
+    disabled: session === null,
+    data: { kind: "item", session: session ?? "", recipe: it.recipe, title: it.title } satisfies DragData,
+  });
+  return (
     <div
-      className="session-item"
-      key={it.recipe}
-      draggable={id !== null}
-      onDragStart={(e) =>
-        e.dataTransfer.setData(
-          "text/session-item",
-          JSON.stringify({ session: id ?? "", recipe: it.recipe } satisfies ItemDrag),
-        )
-      }
+      ref={setNodeRef}
+      className={`session-item${isDragging ? " dragging" : ""}`}
       title="Drag into a slot to plan a serving from this session"
+      {...attributes}
+      {...listeners}
     >
       {it.card_url ? (
         <a className="item-title" href={it.card_url} target="_blank" rel="noreferrer" title={it.title}>
@@ -222,11 +248,12 @@ function SessionPanel({
           title="Batches (Admin: correct what was made)"
           onBlur={(e) => {
             const batches = Number(e.target.value);
-            if (id && Number.isInteger(batches) && batches >= 1 && batches !== it.batches)
-              onUpdateItem(id, it.recipe, batches);
+            if (session && Number.isInteger(batches) && batches >= 1 && batches !== it.batches)
+              onUpdateItem(session, it.recipe, batches);
             else e.target.value = String(it.batches);
           }}
           onKeyDown={(e) => {
+            e.stopPropagation(); // typing here must not start a keyboard drag
             if (e.key === "Enter") e.currentTarget.blur();
           }}
         />
@@ -243,41 +270,14 @@ function SessionPanel({
         </span>
       )}
       <Spare count={it.portions - it.eaten} />
-      <button className="x" title="Remove from session" onClick={() => id && onRemoveItem(id, it.recipe)}>
+      <button
+        className="x"
+        title="Remove from session"
+        onKeyDown={(e) => e.stopPropagation()}
+        onClick={() => session && onRemoveItem(session, it.recipe)}
+      >
         ×
       </button>
-    </div>
-  );
-
-  return (
-    <div className={`session-panel ${mode}${drop.hint ? " dragover" : ""}`} {...drop.handlers}>
-      <div className="session-head">
-        <span className={`session-dot ${sessionColor(date, monday)}`} />
-        <strong>{dayLabel(date)}</strong>
-        <span className={`mode-tag ${mode}`}>{mode}</span>
-        <span className="muted">
-          {drop.hint === "entry"
-            ? "drop to link this meal here"
-            : canGrow
-              ? "drop recipes here · drag items into slots · drop a meal to link it"
-              : "drag items into slots · drop a meal to link it"}
-        </span>
-        <span className="session-actions">
-          {id && (
-            <button title="Delete session" onClick={() => onDelete(id)}>
-              delete
-            </button>
-          )}
-          <button className="x" title="Close" onClick={onClose}>
-            ×
-          </button>
-        </span>
-      </div>
-      {session.items.length === 0 ? (
-        <span className="empty-slot">{canGrow ? "drop recipes here" : "nothing prepped"}</span>
-      ) : (
-        <div className="session-items">{session.items.map(item)}</div>
-      )}
     </div>
   );
 }

@@ -1,5 +1,18 @@
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, sessionColor, shiftWeek, type CatalogGroup, type DiaryWeek, type Link, type Placement } from "./api";
+import { collision, droppedBelow, type DragData, type DropData } from "./dnd";
 import Palette from "./components/Palette";
 import SessionsBar from "./components/SessionsBar";
 import WeekGrid from "./components/WeekGrid";
@@ -103,6 +116,45 @@ export default function App() {
   const handleLink = (id: string, session: string | null) =>
     change((w) => api.linkEntry(w, id, session, admin));
 
+  // Drag and drop: mouse after 5px of movement (clicks on links still work),
+  // touch after a short press (so the page still scrolls), and keyboard.
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const [dragging, setDragging] = useState<DragData | null>(null);
+
+  /** Every drop lands here: what was dragged + where it landed -> one API call. */
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    setDragging(null);
+    const from = active.data.current as DragData | undefined;
+    const to = over?.data.current as DropData | undefined;
+    if (!from || !to || !over) return;
+    if (to.kind === "session") {
+      if (from.kind === "recipe") change((w) => api.addItem(w, to.date, from.recipe, admin));
+      else if (from.kind === "entry" && to.session) handleLink(from.id, to.session);
+      return;
+    }
+    const where: Placement = { date: to.date, mealtime: to.meal };
+    const sameSlot = from.kind === "entry" && from.date === to.date && from.meal === to.meal;
+    if (to.kind === "entry") {
+      if (sameSlot) {
+        // Reorder: the sortable's convention (land at the target's index)
+        // matches the server's "index after leaving its old place".
+        if (from.index === to.index) return;
+        where.position = to.index;
+      } else {
+        where.position = to.index + (droppedBelow(active, over) ? 1 : 0);
+      }
+    } else if (sameSlot) {
+      return; // dropped back on its own slot's empty space
+    }
+    if (from.kind === "recipe") handleAdd(from.recipe, where, "auto");
+    else if (from.kind === "item") handleAdd(from.recipe, where, from.session);
+    else handleMove(from.id, where);
+  };
+
   // Session id -> color class (from its date), for chips and entry edges.
   const colors: Record<string, string> = {};
   const monday = state?.days[0]?.date ?? "";
@@ -151,6 +203,13 @@ export default function App() {
         </div>
       )}
       {error && <div className="err">{error}</div>}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={collision}
+        onDragStart={({ active }: DragStartEvent) => setDragging(active.data.current as DragData)}
+        onDragCancel={() => setDragging(null)}
+        onDragEnd={onDragEnd}
+      >
       <main className="layout">
         <section>
           <div className="week-head">
@@ -178,7 +237,6 @@ export default function App() {
                   [state.week]: [...(cur[state.week] ?? []), date],
                 }))
               }
-              onAddItem={(date, recipe) => change((w) => api.addItem(w, date, recipe, admin))}
               onUpdateItem={(session, recipe, batches) =>
                 change((w) => api.updateItem(w, session, recipe, batches, admin))
               }
@@ -186,7 +244,6 @@ export default function App() {
                 change((w) => api.removeItem(w, session, recipe, admin))
               }
               onDelete={(session) => change((w) => api.deleteSession(w, session, admin))}
-              onLinkEntry={handleLink}
             />
           )}
           {state && (
@@ -195,14 +252,16 @@ export default function App() {
               sessions={state.sessions}
               colors={colors}
               monday={state.days[0]?.date ?? ""}
-              onAdd={handleAdd}
               onRemove={handleRemove}
-              onMove={handleMove}
             />
           )}
         </section>
         <Palette groups={groups} />
       </main>
+      <DragOverlay dropAnimation={null}>
+        {dragging && <div className="drag-preview">{dragging.title}</div>}
+      </DragOverlay>
+      </DndContext>
     </>
   );
 }

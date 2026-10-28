@@ -37,7 +37,6 @@ table.grid thead th { background: var(--surface-card); color: var(--primary);
 .day-cell .day-total { display: block; font-weight: 400; font-size: 0.75rem;
   color: var(--text-muted); margin-top: 4px; }
 .slot { min-height: 44px; border-radius: 6px; }
-.slot.dragover { outline: 2px dashed var(--primary); outline-offset: -2px; }
 .entry { display: flex; justify-content: space-between; align-items: center; gap: 6px;
   background: var(--surface-card); border-radius: 6px; padding: 4px 8px; margin-bottom: 4px; }
 .entry a { color: var(--text); text-decoration: underline;
@@ -50,7 +49,6 @@ table.grid thead th { background: var(--surface-card); color: var(--primary);
 .entry .kcal { color: var(--text-muted); font-size: 0.75rem; white-space: nowrap; }
 .entry .x { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.9rem; }
 .entry .x:hover { color: var(--danger); }
-.entry.insert-before { box-shadow: inset 0 2px 0 var(--primary); }
 .empty-slot { color: var(--text-muted); font-size: 0.8rem; }
 .palette { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
   padding: 14px; align-self: start; position: sticky; top: 70px;
@@ -122,3 +120,12 @@ tr.day.log td:not(.day-cell) { background: rgba(255, 255, 255, 0.015); }
 .actions button.admin-on { background: var(--danger); color: #2b0606; border: none; font-weight: 700; }
 .admin-banner { background: rgba(248, 113, 113, 0.12); color: var(--danger);
   border-bottom: 1px solid var(--danger); padding: 6px 20px; font-size: 0.85rem; }
+/* Drag and drop (@dnd-kit) */
+.slot-cell.dragover { outline: 2px dashed var(--primary); outline-offset: -3px; }
+.entry, .chip, .session-item { touch-action: manipulation; }
+.entry.dragging, .chip.dragging, .session-item.dragging { opacity: 0.35; }
+/* Something from elsewhere is about to be inserted around this meal. */
+.entry.incoming { box-shadow: 0 0 0 2px var(--primary); }
+.drag-preview { background: var(--surface-card); border: 1px solid var(--primary); border-radius: 6px;
+  padding: 4px 10px; font-size: 0.82rem; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  cursor: grabbing; white-space: nowrap; width: max-content; }
