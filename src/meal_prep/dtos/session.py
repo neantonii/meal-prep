@@ -48,8 +48,8 @@ class SessionItemDTO(BaseModel):
     batches: int = Field(..., ge=1, description="Times the recipe is made as written")
     ad_hoc: bool = Field(
         default=False,
-        description="Cooked at mealtime, not on prep day; ingredients still "
-        "come from this session",
+        description="Deprecated and ignored; kept so existing session files "
+        "load (to be replaced by a recipe property)",
     )
     servings: int = Field(..., ge=1, description="Portions per batch, when added")
     cost: float = Field(..., ge=0, description="Cost of one serving when added, in CAD")

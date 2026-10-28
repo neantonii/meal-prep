@@ -43,7 +43,7 @@
       "properties": {
         "ad_hoc": {
           "default": false,
-          "description": "Cooked at mealtime, not on prep day; ingredients still come from this session",
+          "description": "Deprecated and ignored; kept so existing session files load (to be replaced by a recipe property)",
           "title": "Ad Hoc",
           "type": "boolean"
         },

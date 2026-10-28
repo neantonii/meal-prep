@@ -31,16 +31,13 @@ def whole_servings(recipe: Recipe) -> int:
     return int(recipe.servings)
 
 
-def freeze_item(
-    recipe: Recipe, batches: int = 1, ad_hoc: bool = False
-) -> SessionItemDTO:
+def freeze_item(recipe: Recipe, batches: int = 1) -> SessionItemDTO:
     """A new session item carrying ``recipe``'s current numbers."""
     macros = recipe.per_serving_macros
     return SessionItemDTO(
         recipe=recipe.id,
         title=recipe.title,
         batches=batches,
-        ad_hoc=ad_hoc,
         servings=whole_servings(recipe),
         cost=recipe.cost_per_portion,
         calories_kcal=macros.calories_kcal,
@@ -66,7 +63,6 @@ def _item(dto: SessionItemDTO) -> SessionItem:
         recipe_id=dto.recipe,
         title=dto.title,
         batches=dto.batches,
-        ad_hoc=dto.ad_hoc,
         servings=dto.servings,
         cost=dto.cost,
         macros=MacrosInfo(

@@ -100,9 +100,6 @@ details.cat summary { cursor: pointer; font-weight: 700; font-size: 0.85rem; pad
   border: 1px solid var(--border); border-radius: 4px; padding: 0 2px; font-size: 0.75rem; }
 .session-item .made { color: var(--text-muted); font-variant-numeric: tabular-nums; min-width: 28px; text-align: right; }
 .session-item .made.full { color: var(--primary); }
-.session-item .adhoc { background: none; border: 1px solid var(--border); border-radius: 6px;
-  color: var(--text-muted); font-size: 0.62rem; padding: 0 3px; cursor: pointer; opacity: 0.5; }
-.session-item .adhoc.on { color: var(--primary); border-color: var(--primary); opacity: 1; }
 .muted { color: var(--text-muted); font-size: 0.75rem; }
 .mode-tag { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
   border-radius: 8px; padding: 0 5px; color: var(--text-muted); border: 1px solid var(--border); }

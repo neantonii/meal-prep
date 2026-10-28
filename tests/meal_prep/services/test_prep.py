@@ -149,13 +149,8 @@ def test_portions_are_whole_batches_times_whole_servings():
 
 
 def test_items_freeze_numbers_and_one_batch_of_ingredients():
-    item = freeze_item(CHICKEN, batches=2, ad_hoc=True)
-    assert (item.title, item.servings, item.batches, item.ad_hoc) == (
-        "Chicken",
-        4,
-        2,
-        True,
-    )
+    item = freeze_item(CHICKEN, batches=2)
+    assert (item.title, item.servings, item.batches) == ("Chicken", 4, 2)
     assert item.cost == pytest.approx(3.0)
     assert item.calories_kcal == pytest.approx(100.0)
     [line] = item.ingredients
@@ -299,10 +294,10 @@ def test_relinking_plan_fills_log_refuses():
 
 
 def test_add_item_creates_the_session_and_refuses_duplicates_and_log():
-    change, sid = prep.add_item(EMPTY, PLAN, TUE, CHICKEN, batches=2, ad_hoc=True)
+    change, sid = prep.add_item(EMPTY, PLAN, TUE, CHICKEN, batches=2)
     diary = _apply(EMPTY, change)
     item = diary.sessions[sid].items[0]
-    assert (diary.sessions[sid].date, item.batches, item.ad_hoc) == (TUE, 2, True)
+    assert (diary.sessions[sid].date, item.batches) == (TUE, 2)
     with pytest.raises(RuleError, match="already has"):
         prep.add_item(diary, PLAN, TUE, CHICKEN)
     with pytest.raises(RuleError, match="already happened"):
@@ -323,8 +318,6 @@ def test_log_can_lower_batches_but_never_raise_or_go_below_links():
         prep.update_item(lowered, ADMIN, past.id, "egg", batches=1)
     with pytest.raises(ValueError):
         prep.update_item(lowered, ADMIN, past.id, "egg", batches=0)
-    flagged = prep.update_item(diary, PLAN, past.id, "egg", ad_hoc=True)
-    assert flagged.sessions[past.id].items[0].ad_hoc is True  # type: ignore[union-attr]
 
 
 def test_items_with_links_stay_and_the_last_item_deletes_the_session():
