@@ -13,7 +13,9 @@ from meal_prep.migrations.registry import MIGRATIONS, Migration
 from meal_prep.migrations.state import MigrationState
 from meal_prep.models.library import Library
 
-logger = logging.getLogger("meal_prep.migrations")
+# A child of the server's logger, so its lines reach the server log file and
+# the container's output (``meal_prep.server.logging``).
+logger = logging.getLogger("meal_prep.server.migrations")
 
 
 class Migrator:

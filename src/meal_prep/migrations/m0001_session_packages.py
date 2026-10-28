@@ -18,7 +18,7 @@ from meal_prep.adapters._yaml import read_yaml, write_yaml_atomic
 from meal_prep.adapters.sessions import session_files
 from meal_prep.models.library import Library
 
-logger = logging.getLogger("meal_prep.migrations")
+logger = logging.getLogger("meal_prep.server.migrations")
 
 
 def _fill(line: dict[str, Any], library: Library) -> bool:

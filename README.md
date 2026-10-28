@@ -116,12 +116,37 @@ checks that every file still loads. If one fails, the server does not start
 (the log names the error and the backup) and serves nothing half-migrated.
 A new, empty diary is just marked current.
 
-Rolling back past a migration (pinning an older image): stop the container,
-replace the diary's files with the backup folder's contents (keep the
-`.backups/` folder), remove `diary/.migrations.yaml` or set its `version`
-to the backup's number minus one, then start the older image. Images from
-this release on refuse to start on data migrated beyond what they know,
-rather than misreading it. Backups are never deleted automatically; prune old ones by
+Check what ran (from the host dir, e.g. `/srv/meal-prep`):
+
+```sh
+docker compose logs diary | grep -i migrat   # "backed up to …", "migration 1 …"
+cat diary/.migrations.yaml                   # version and history
+ls diary/.backups                            # one folder per upgrade that migrated
+```
+
+Rolling back past a migration (back to an image older than it): restore the
+backup taken before it, then pin the older image. Images from this release
+on refuse to start on data migrated beyond what they know, rather than
+misreading it.
+
+```sh
+cd /srv/meal-prep
+docker compose down
+OLD=rollback/diary-$(date +%Y%m%dT%H%M%S)
+mkdir -p rollback && mv diary "$OLD"                 # keep the current diary
+BACKUP=$(ls -d "$OLD"/.backups/*-before-* | tail -1) # newest; pick another if needed
+mkdir diary && cp -a "$BACKUP"/. diary/              # the files as they were
+sudo chown -R 1000:1000 diary                        # the container's user
+# set `image:` in compose.yml to ghcr.io/neantonii/meal-prep:sha-<older commit>
+docker compose up -d
+```
+
+The current diary, with all its backups, is kept under `rollback/` rather
+than deleted. A backup never contains `.migrations.yaml` (dot-files are not
+copied), so the restored diary reads as "before any migration". That is
+right while there is one migration; with more, write the backup's number
+minus one into it (`echo "version: 2" > diary/.migrations.yaml` for
+`before-0003`). Backups are never deleted automatically; prune old ones by
 hand.
 
 The server boots with an empty diary dir and creates a week file when the

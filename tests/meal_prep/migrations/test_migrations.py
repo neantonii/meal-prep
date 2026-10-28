@@ -126,3 +126,15 @@ def test_data_newer_than_the_release_refuses_to_start(tmp_path: Path, library: L
     )
     with pytest.raises(MigrationError, match="older image"):
         migrate(tmp_path, library)
+
+
+def test_migration_lines_reach_the_server_log(
+    tmp_path: Path, library: Library, caplog: pytest.LogCaptureFixture
+):
+    # The server configures handlers on "meal_prep.server" only.
+    _old_session(tmp_path, library)
+    with caplog.at_level("INFO", logger="meal_prep.server"):
+        migrate(tmp_path, library)
+    names = {record.name for record in caplog.records}
+    assert names <= {"meal_prep.server.migrations"}
+    assert any("backed up" in r.getMessage() for r in caplog.records)
