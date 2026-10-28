@@ -245,11 +245,34 @@ def test_admin_links_only_when_the_rules_hold():
 def test_removing_an_entry_frees_its_portion():
     sun = _session(SUN, (EGG, 1))
     diary, entry = _add(_with(sun), MON, EGG, link=sun.id)
-    diary = _apply(diary, prep.remove_entry(diary, WEEK, entry.id))
+    diary = _apply(diary, prep.remove_entry(diary, PLAN, WEEK, entry.id))
     assert WEEK not in diary.weeks
     _, again = _add(diary, MON, EGG, link=sun.id)
     assert diary.sessions[sun.id].items[0].batches == 1
     assert again.session == sun.id
+
+
+def test_plan_batches_follow_the_meals_both_ways():
+    sun = _session(SUN, (CHICKEN, 1))  # 4 servings a batch
+    diary = _with(sun)
+    added = []
+    for _ in range(5):
+        diary, entry = _add(diary, MON, link=sun.id)
+        added.append(entry)
+    assert diary.sessions[sun.id].items[0].batches == 2
+    diary = _apply(diary, prep.remove_entry(diary, PLAN, WEEK, added[0].id))
+    assert diary.sessions[sun.id].items[0].batches == 1
+    for entry in added[1:]:
+        diary = _apply(diary, prep.remove_entry(diary, PLAN, WEEK, entry.id))
+    # No meals left: the item stays listed, at one batch.
+    assert diary.sessions[sun.id].items[0].batches == 1
+
+
+def test_log_batches_stay_as_made_when_meals_go():
+    past = _session(TODAY, (EGG, 3))
+    diary, first = _add(_with(past), TODAY, EGG, link=past.id, policy=ADMIN)
+    diary = _apply(diary, prep.remove_entry(diary, PLAN, LAST_WEEK, first.id))
+    assert diary.sessions[past.id].items[0].batches == 3
 
 
 def test_moving_before_the_session_relinks_in_plan():
@@ -297,7 +320,8 @@ def test_add_item_creates_the_session_and_refuses_duplicates_and_log():
     change, sid = prep.add_item(EMPTY, PLAN, TUE, CHICKEN, batches=2)
     diary = _apply(EMPTY, change)
     item = diary.sessions[sid].items[0]
-    assert (diary.sessions[sid].date, item.batches) == (TUE, 2)
+    # In Plan, batches follow the meals: none yet, so one batch.
+    assert (diary.sessions[sid].date, item.batches) == (TUE, 1)
     with pytest.raises(RuleError, match="already has"):
         prep.add_item(diary, PLAN, TUE, CHICKEN)
     with pytest.raises(RuleError, match="already happened"):
@@ -306,13 +330,13 @@ def test_add_item_creates_the_session_and_refuses_duplicates_and_log():
     assert change.sessions
 
 
-def test_log_can_lower_batches_but_never_raise_or_go_below_links():
+def test_setting_batches_is_admin_only_and_never_below_links():
     past = _session(TODAY, (EGG, 3))
     diary, _ = _add(_with(past), TODAY, EGG, link=past.id, policy=ADMIN)
     diary, _ = _add(diary, TODAY, EGG, link=past.id, policy=ADMIN)
-    with pytest.raises(RuleError, match="after the fact"):
-        prep.update_item(diary, PLAN, past.id, "egg", batches=4)
-    lowered = _apply(diary, prep.update_item(diary, PLAN, past.id, "egg", 2))
+    with pytest.raises(RuleError, match="Admin only"):
+        prep.update_item(diary, PLAN, past.id, "egg", batches=2)
+    lowered = _apply(diary, prep.update_item(diary, ADMIN, past.id, "egg", 2))
     assert lowered.sessions[past.id].items[0].batches == 2
     with pytest.raises(RuleError, match="full"):
         prep.update_item(lowered, ADMIN, past.id, "egg", batches=1)

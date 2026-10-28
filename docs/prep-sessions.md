@@ -35,7 +35,13 @@ eaten stay aligned. Per-session ingredient lists build on this later.
 ## Session item
 
 - A recipe and `batches` (how many times it is made as written; a whole
-  number, default 1).
+  number).
+- **Batches are derived, not typed.** In Plan they follow the linked meals:
+  the fewest whole batches that cover them, at least one (an item can be
+  listed before its meals are planned); every edit recalculates them, up
+  or down. Once the session's day arrives they stay as they were, a record
+  of what was made. Only Admin sets them by hand (corrections; a Plan
+  session's batches follow its meals again on the next non-Admin edit).
 - Portions = batches × servings. Both are whole numbers, so portions are
   exact; a recipe with fractional servings can't be added to a session.
 - "Made fresh, not prepped ahead" (e.g. salads) will be a recipe property,
@@ -79,13 +85,14 @@ every date it touches; if any is Log, Log rules apply (Admin overrides all).
 |---|---|---|---|
 | Add from the recipe palette | auto-linked (below) | unlinked | unlinked |
 | Add from a session card | linked; auto-fill | refused | linked if the rules hold |
-| Remove | ✅ | ✅ (frees the portion) | ✅ |
+| Remove | ✅ (the session shrinks to fit) | ✅ (the portion stays made: spare) | ✅ |
 | Move / reorder | ✅; a broken link is re-linked (auto) | ✅ if the link still holds | ✅ if the link still holds |
 | Link / unlink / change session | ✅; auto-fill | refused | ✅ if the rules hold |
 
 **Auto-fill** (Plan only): linking an entry to a session that lacks its
-recipe adds the item (1 batch); linking to a full item adds one batch. Only sessions that are themselves in Plan are changed; otherwise the link
-is refused.
+recipe adds the item; its batches then follow the meals (see "Session
+item"). Only sessions that are themselves in Plan are changed; otherwise the
+link is refused.
 
 **Auto-link** (palette drop in Plan): the entry links to the first of
 
@@ -104,8 +111,8 @@ never retroactively make more.
 | Edit | Plan | Log | Admin |
 |---|---|---|---|
 | Add an item | ✅ | refused | ✅ |
-| Raise `batches` | ✅ | refused | ✅ |
-| Lower `batches` / remove an item / delete the session | ✅ | ✅ | ✅ |
+| Set `batches` | derived from meals | refused | ✅ |
+| Remove an item / delete the session | ✅ | ✅ | ✅ |
 | Move to another day | ✅ (both days in Plan) | refused | ✅ |
 
 Never allowed: lowering portions below the linked entries, removing an item
@@ -124,7 +131,9 @@ its linked entries, or onto a day that already has a session.
   "+ session" adds a placeholder on another day.
 - Older sessions linked from this week's entries (e.g. frozen portions)
   appear as extra chips at the start.
-- Each item shows "eaten/made" (linked entries in all weeks vs portions).
+- Each item shows its batches ("2 batches") and, when the batch is
+  underused, a warning ("⚠ 1 spare": portions made but not linked to a
+  meal); chips sum the spare portions of their session.
 - Drop a palette recipe on a chip or the open panel to add an item; drag an
   item from the panel into a slot for a linked entry; drop a meal on a chip
   or the panel to relink it (same rules as any link).
