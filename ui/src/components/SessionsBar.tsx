@@ -14,7 +14,6 @@ interface Props {
   extraDates: string[];
   admin: boolean;
   onAddDate: (date: string) => void;
-  onUpdateItem: (session: string, recipe: string, batches: number) => void;
   onRemoveItem: (session: string, recipe: string) => void;
   onDelete: (session: string) => void;
 }
@@ -147,7 +146,6 @@ function SessionPanel({
   onClose,
   monday,
   admin,
-  onUpdateItem,
   onRemoveItem,
   onDelete,
 }: Props & { session: Session; onClose: () => void }) {
@@ -192,8 +190,6 @@ function SessionPanel({
               it={it}
               session={id}
               mode={mode}
-              admin={admin}
-              onUpdateItem={onUpdateItem}
               onRemoveItem={onRemoveItem}
             />
           ))}
@@ -208,15 +204,11 @@ function ItemRow({
   it,
   session,
   mode,
-  admin,
-  onUpdateItem,
   onRemoveItem,
 }: {
   it: SessionItem;
   session: string | null;
   mode: Session["mode"];
-  admin: boolean;
-  onUpdateItem: Props["onUpdateItem"];
   onRemoveItem: Props["onRemoveItem"];
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -241,38 +233,16 @@ function ItemRow({
           {it.title}
         </span>
       )}
-      {admin ? (
-        <input
-          key={`${it.recipe}-${it.batches}`}
-          className="batches"
-          type="number"
-          min={1}
-          step={1}
-          defaultValue={it.batches}
-          title="Batches (Admin: correct what was made)"
-          onBlur={(e) => {
-            const batches = Number(e.target.value);
-            if (session && Number.isInteger(batches) && batches >= 1 && batches !== it.batches)
-              onUpdateItem(session, it.recipe, batches);
-            else e.target.value = String(it.batches);
-          }}
-          onKeyDown={(e) => {
-            e.stopPropagation(); // typing here must not start a keyboard drag
-            if (e.key === "Enter") e.currentTarget.blur();
-          }}
-        />
-      ) : (
-        <span
-          className="batches-text"
-          title={
-            mode === "plan"
-              ? "Times the recipe is cooked; follows the planned meals"
-              : "Times the recipe was cooked"
-          }
-        >
-          {batchLabel(it.batches)}
-        </span>
-      )}
+      <span
+        className="batches-text"
+        title={
+          mode === "plan"
+            ? "Times the recipe is cooked; follows the planned meals"
+            : "Times the recipe was cooked"
+        }
+      >
+        {batchLabel(it.batches)}
+      </span>
       <Spare count={it.portions - it.eaten} />
       <button
         className="x"

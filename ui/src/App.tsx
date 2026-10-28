@@ -26,7 +26,6 @@ export default function App() {
   const [week, setWeek] = useState<string | null>(weekFromUrl());
   const [groups, setGroups] = useState<CatalogGroup[]>([]);
   const [state, setState] = useState<DiaryWeek | null>(null);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState<string>("");
   // Admin mode amends history; deliberately not remembered across reloads.
@@ -95,15 +94,12 @@ export default function App() {
     if (!state) return;
     const week = state.week;
     queue.current = queue.current.then(async () => {
-      setSaving(true);
       setError(null);
       try {
         const next = await op(week);
         setState((cur) => (cur?.week === week ? next : cur));
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
-      } finally {
-        setSaving(false);
       }
     });
   };
@@ -188,21 +184,16 @@ export default function App() {
           {version && <span className="version">{version}</span>}
           <button
             className={admin ? "admin-on" : ""}
-            title="Admin mode: amend history (linking a meal adds its recipe to the session as needed)"
+            title="Admin mode: amend history, including sessions that already happened"
             onClick={() => setAdmin((a) => !a)}
           >
             {admin ? "Admin on" : "Admin"}
           </button>
-          {saving ? (
-            <span className="dirty">saving…</span>
-          ) : (
-            <span className="saved">✓ saved</span>
-          )}
         </div>
       </header>
       {admin && (
         <div className="admin-banner">
-          Admin mode: you are amending history. Linking a meal to any session adds its recipe there as needed; nothing else is auto-filled.
+          Admin mode: you are amending history. Meals can be linked to sessions that already happened; a session grows to fit the meals linked to it.
         </div>
       )}
       {error && <div className="err">{error}</div>}
@@ -239,9 +230,6 @@ export default function App() {
                   ...cur,
                   [state.week]: [...(cur[state.week] ?? []), date],
                 }))
-              }
-              onUpdateItem={(session, recipe, batches) =>
-                change((w) => api.updateItem(w, session, recipe, batches, admin))
               }
               onRemoveItem={(session, recipe) =>
                 change((w) => api.removeItem(w, session, recipe, admin))

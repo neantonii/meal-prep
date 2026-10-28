@@ -131,19 +131,6 @@ export const api = {
     send<DiaryWeek>("PUT", `/api/diary/${week}/entries/${id}/session`, admin, {
       session_date: date,
     }),
-  updateItem: (
-    week: string,
-    session: string,
-    recipe: string,
-    batches: number,
-    admin: boolean,
-  ) =>
-    send<DiaryWeek>(
-      "PATCH",
-      `/api/sessions/${session}/items/${recipe}?week=${week}`,
-      admin,
-      { batches },
-    ),
   removeItem: (week: string, session: string, recipe: string, admin: boolean) =>
     send<DiaryWeek>("DELETE", `/api/sessions/${session}/items/${recipe}?week=${week}`, admin),
   deleteSession: (week: string, session: string, admin: boolean) =>

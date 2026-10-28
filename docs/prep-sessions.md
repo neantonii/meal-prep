@@ -41,8 +41,8 @@ eaten stay aligned. Per-session ingredient lists build on this later.
 - **Batches are derived, not typed.** In Plan they follow the linked meals:
   the fewest whole batches that cover them; every edit recalculates them,
   up or down. Once the session's day arrives they stay as they were, a record
-  of what was made. Only Admin sets them by hand (corrections; a Plan
-  session's batches follow its meals again on the next non-Admin edit).
+  of what was made. Nobody types them, Admin included: a session grows by
+  linking meals to it.
 - Portions = batches × servings. Both are whole numbers, so portions are
   exact; a recipe with fractional servings can't be added to a session.
 - "Made fresh, not prepped ahead" (e.g. salads) will be a recipe property,
@@ -73,9 +73,9 @@ edits are allowed:
 
 | Mode | When | Behaviour |
 |---|---|---|
-| **Plan** | days and sessions *after today* | Fill ahead of time; auto-fill keeps the rules true. |
+| **Plan** | days and sessions *after today* | Fill ahead of time; sessions follow their linked meals. |
 | **Log** | *today and earlier* | Edit only where reality deviated; nothing is auto-filled. |
-| **Admin** | header switch, off on reload | Amend history; an explicit link adds the recipe or batches to any session (the link is the correction); nothing else is auto-filled. |
+| **Admin** | header switch, off on reload | Amend history: meals can also be linked to sessions that already happened, and a session grows to fit them. |
 
 "Today" is the server's local date. An edit is checked against the mode of
 every date it touches; if any is Log, Log rules apply (Admin overrides all).
@@ -85,22 +85,22 @@ every date it touches; if any is Log, Log rules apply (Admin overrides all).
 | Edit | Plan | Log | Admin |
 |---|---|---|---|
 | Add from the recipe palette | auto-linked (below) | unlinked | unlinked |
-| Add from a session card | linked; auto-fill | refused | linked; adds recipe/batches as needed |
+| Add from a session card | linked; session grows | refused | linked; session grows |
 | Remove | ✅ (the session shrinks to fit) | ✅ (the portion stays made: spare) | ✅ |
 | Move / reorder | ✅; a broken link is re-linked (auto) | ✅ if the link still holds | ✅ if the link still holds |
-| Link / unlink / change session | ✅; auto-fill | refused | ✅; adds recipe/batches as needed |
+| Link / unlink / change session | ✅; session grows | refused | ✅; session grows |
 
-**Auto-fill** (Plan only): linking an entry to a session that lacks its
-recipe adds the item; its batches then follow the meals (see "Session
-item"). Only sessions that are themselves in Plan are changed; otherwise the
-link is refused.
+**A session grows to fit its meals.** Linking a meal to a session that lacks
+its recipe adds it; batches follow the meals (see "Session item"). This
+applies to sessions still in Plan, and in Admin to any session; a Log
+session is otherwise not changed, so such a link is refused.
 
 **Auto-link** (palette drop in Plan): the entry links to the first of
 
 1. the latest session within the 7 days before the entry's day that lists
    the recipe with a free portion;
 2. the latest Plan date within those 7 days that has a session or is a
-   default session day (Sun, Tue, Thu), auto-filled;
+   default session day (Sun, Tue, Thu), which grows to fit;
 
 and stays unlinked if neither exists. The entry's own day never counts: a
 meal rarely comes from that day's own prep, so a same-day source only
@@ -114,7 +114,7 @@ never retroactively make more.
 | Edit | Plan | Log | Admin |
 |---|---|---|---|
 | Add an item (only by linking a meal) | ✅ | refused | ✅ |
-| Set `batches` | derived from meals | refused | ✅ |
+| Set `batches` by hand | never (derived from meals) | never | never |
 | Remove an item / delete the session | ✅ | ✅ | ✅ |
 | Move to another day (API only; no UI) | ✅ (both days in Plan) | refused | ✅ |
 

@@ -101,14 +101,6 @@ def test_session_items_follow_meals_and_guard_links(client: TestClient):
     for _ in range(servings):  # servings + 1 meals: two batches
         week = _ok(_add(client, "2026-11-04", RICE, session=sid))
     assert _card(week, "2026-11-03")["items"][0]["batches"] == 2
-    url = f"/api/sessions/{sid}/items/{RICE}"
-    not_admin = client.patch(url, params={"week": W45}, json={"batches": 3})
-    assert not_admin.status_code == 409
-    admin = {"week": W45, "admin": "true"}
-    assert client.patch(url, params=admin, json={"batches": 1}).status_code == 409
-    assert client.patch(url, params=admin, json={"batches": 1.5}).status_code == 422
-    week = _ok(client.patch(url, params=admin, json={"batches": 3}))
-    assert _card(week, "2026-11-03")["items"][0]["batches"] == 3
     for url in (f"/api/sessions/{sid}/items/{RICE}", f"/api/sessions/{sid}"):
         assert client.delete(url, params={"week": W45}).status_code == 409
     missing = client.delete(

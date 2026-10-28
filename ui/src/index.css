@@ -21,8 +21,6 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); line
 .pager button:hover, .actions button:hover { border-color: var(--primary); }
 .actions button.primary { background: var(--primary); color: #06202e; font-weight: 700; border: none; }
 .actions button:disabled { opacity: 0.4; cursor: default; }
-.dirty { color: var(--primary); font-size: 0.85rem; }
-.saved { color: var(--text-muted); font-size: 0.85rem; }
 .err { color: var(--danger); font-size: 0.85rem; padding: 8px 20px; }
 .layout { display: grid; grid-template-columns: 1fr 320px; gap: 16px; padding: 16px 20px; }
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }

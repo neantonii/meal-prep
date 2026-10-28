@@ -498,29 +498,6 @@ def _session_item(
     return session, item
 
 
-def update_item(
-    diary: Diary,
-    policy: Policy,
-    session_id: uuid.UUID,
-    recipe_id: str,
-    batches: int,
-) -> Change:
-    """Admin only: set an item's batches, keeping its frozen numbers. In
-    Plan batches follow the meals and in Log they record what was made, so
-    this is for corrections; portions never drop below the linked entries."""
-    if not policy.admin:
-        raise RuleError("Batches follow the planned meals; changing them is Admin only")
-    draft = _Draft(diary, policy, {})
-    session, item = _session_item(draft, session_id, recipe_id)
-    if batches == item.batches:
-        return Change()
-    changed = SessionItemDTO.model_validate({**item.model_dump(), "batches": batches})
-    items = [changed if i is item else i for i in session.items]
-    draft.put_session(session.model_copy(update={"items": items}))
-    draft.check([session_id])
-    return draft.change()
-
-
 def remove_item(
     diary: Diary, policy: Policy, session_id: uuid.UUID, recipe_id: str
 ) -> Change:
