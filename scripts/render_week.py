@@ -6,7 +6,8 @@ Usage (run from the workspace root):
 
 All locations are explicit parameters (CWD-relative by default); nothing is
 derived from the script's own path. Recipe cards are regenerated first so
-links never go stale.
+links never go stale. Entries linked to a prep session get a badge (sessions
+are read from ``<week dir>/sessions`` unless ``--sessions-dir`` says otherwise).
 """
 
 from __future__ import annotations
@@ -16,10 +17,12 @@ from pathlib import Path
 
 from meal_prep import renderer
 from meal_prep.adapters.logs import load_diary_file
+from meal_prep.adapters.sessions import load_session_file, session_files
 from meal_prep.ingredient_cards import render_all_ingredient_cards
 from meal_prep.library import load_library
 from meal_prep.logbook import render_log_week_page
 from meal_prep.services.logs import prepare_diary_week
+from meal_prep.services.sessions import prepare_session
 
 
 def main() -> None:
@@ -30,6 +33,12 @@ def main() -> None:
     parser.add_argument("--cards-dir", type=Path, default=Path("recipe_cards"))
     parser.add_argument(
         "--ingredient-cards-dir", type=Path, default=Path("ingredient_cards")
+    )
+    parser.add_argument(
+        "--sessions-dir",
+        type=Path,
+        default=None,
+        help="prep sessions for entry badges; default: <week dir>/sessions",
     )
     parser.add_argument(
         "-o",
@@ -49,11 +58,23 @@ def main() -> None:
     )
 
     week = prepare_diary_week(load_diary_file(args.week_yaml))
+    sessions_dir = args.sessions_dir or args.week_yaml.parent / "sessions"
+    sessions = {
+        session.session_id: session
+        for session in (
+            prepare_session(load_session_file(path))
+            for path in session_files(sessions_dir)
+        )
+    }
     stem = args.week_yaml.stem
     default_name = stem if stem.startswith("diary-") else f"diary-{stem}"
     target = args.output or (Path("weekly_plan") / f"{default_name}.html")
     render_log_week_page(
-        week, target, recipes=library.recipes, cards_dir=args.cards_dir
+        week,
+        target,
+        recipes=library.recipes,
+        cards_dir=args.cards_dir,
+        sessions=sessions,
     )
     print(f"wrote {target} ({len(week.days)} days)")
 

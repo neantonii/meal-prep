@@ -8,7 +8,8 @@ Titles, cost and macros come from the week's entries: the numbers frozen when
 each was logged. A title links to its recipe card
 (``<cards_dir>/<category>/<slug>.html``) only when a recipe lookup *and* a
 cards dir are provided and the recipe still exists; otherwise it renders as
-plain text.
+plain text. With a session lookup, an entry linked to a prep session shows a
+small badge with the session's day.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from typing import assert_never
 from meal_prep.enums import Mealtime
 from meal_prep.models.log import LogEntry, LoggedMeal, LogWeek
 from meal_prep.models.recipe import Recipe
+from meal_prep.models.session import PrepSession
 
 
 def mealtime_header(mealtime: Mealtime) -> str:
@@ -224,6 +226,17 @@ _CSS = """
         .meal-meta:last-child {
             margin-bottom: 0;
         }
+
+        .session-badge {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--primary);
+            background: var(--primary-bg);
+            border-radius: 10px;
+            padding: 0 6px;
+            margin-left: 4px;
+        }
 """
 
 
@@ -232,10 +245,24 @@ def _kcal(value: float) -> str:
     return f"{value:,.0f} kcal"
 
 
+def _session_badge(entry: LogEntry, sessions: Mapping[str, PrepSession] | None) -> str:
+    """``prep Sun 1 Nov`` for a linked entry when sessions are known."""
+    if sessions is None or entry.session_id is None:
+        return ""
+    session = sessions.get(entry.session_id)
+    label = (
+        f"prep {session.date:%a} {session.date.day} {session.date:%b}"
+        if session is not None
+        else "prep ?"
+    )
+    return f' <span class="session-badge">{html.escape(label)}</span>'
+
+
 def _entry_cell(
     entry: LogEntry,
     recipes: Mapping[str, Recipe] | None,
     cards_root: Path | None,
+    sessions: Mapping[str, PrepSession] | None = None,
 ) -> str:
     """One entry title plus its per-serving calories line."""
     recipe = recipes.get(entry.recipe_id) if recipes is not None else None
@@ -247,7 +274,8 @@ def _entry_cell(
     meta = _kcal(entry.macros.calories_kcal)
     return (
         f'<div class="meal-recipe">{title}</div>\n'
-        f'<div class="meal-meta">{html.escape(meta)}</div>'
+        f'<div class="meal-meta">{html.escape(meta)}'
+        f"{_session_badge(entry, sessions)}</div>"
     )
 
 
@@ -255,11 +283,14 @@ def _meal_cell(
     meal: LoggedMeal | None,
     recipes: Mapping[str, Recipe] | None,
     cards_root: Path | None,
+    sessions: Mapping[str, PrepSession] | None,
 ) -> str:
     """One table cell: the mealtime's entries in logged order, or a dash."""
     if meal is None:
         return '<td><span class="empty">—</span></td>'
-    body = "\n".join(_entry_cell(entry, recipes, cards_root) for entry in meal.entries)
+    body = "\n".join(
+        _entry_cell(entry, recipes, cards_root, sessions) for entry in meal.entries
+    )
     return f"<td>{body}</td>"
 
 
@@ -267,19 +298,22 @@ def render_log_week(
     week: LogWeek,
     recipes: Mapping[str, Recipe] | None = None,
     cards_dir: str | Path | None = None,
+    sessions: Mapping[str, PrepSession] | None = None,
 ) -> str:
     """Render ``week`` into a standalone HTML page.
 
     Titles link to their recipe cards only when both ``recipes`` and
     ``cards_dir`` are given and the recipe still exists; the report itself
-    assumes nothing about where cards live.
+    assumes nothing about where cards live. ``sessions`` (by id) adds a badge
+    to entries linked to a prep session.
     """
     cards_root = Path(cards_dir) if cards_dir is not None else None
 
     rows = []
     for day in week.days:
         cells = [
-            _meal_cell(day.meal(mealtime), recipes, cards_root) for mealtime in Mealtime
+            _meal_cell(day.meal(mealtime), recipes, cards_root, sessions)
+            for mealtime in Mealtime
         ]
         macros = day.macros
         rows.append(
@@ -365,6 +399,7 @@ def render_log_week_page(
     output_path: str | Path,
     recipes: Mapping[str, Recipe] | None = None,
     cards_dir: str | Path | None = None,
+    sessions: Mapping[str, PrepSession] | None = None,
 ) -> Path:
     """Write ``week`` to ``output_path`` as standalone HTML; return the path.
 
@@ -380,7 +415,8 @@ def render_log_week_page(
                 os.path.relpath(cards_root, start=target.parent.resolve())
             )
     target.write_text(
-        render_log_week(week, recipes=recipes, cards_dir=cards_root), encoding="utf-8"
+        render_log_week(week, recipes=recipes, cards_dir=cards_root, sessions=sessions),
+        encoding="utf-8",
     )
     return target
 

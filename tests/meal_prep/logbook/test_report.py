@@ -9,6 +9,7 @@ from meal_prep.logbook import render_log_week, render_log_week_page
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.log import LogDay, LogEntry, LogWeek
 from meal_prep.models.recipe import Recipe
+from meal_prep.models.session import PrepSession
 
 
 def _macros(*, cal: float = 100.0, protein: float = 10.0) -> MacrosInfo:
@@ -107,3 +108,19 @@ def test_page_relativizes_card_links_to_output_dir(tmp_path):
         cards_dir=tmp_path / "recipe_cards",
     )
     assert "../recipe_cards/breakfast/oatmeal.html" in out.read_text()
+
+
+def test_report_badges_entries_linked_to_a_prep_session():
+    linked = LogEntry(
+        entry_id="e2",
+        recipe_id="oatmeal",
+        title="Oatmeal",
+        cost=1.5,
+        macros=_macros(),
+        session_id="s1",
+    )
+    session = PrepSession(session_id="s1", date=date(2026, 11, 1), items=())
+    html = render_log_week(_week(linked), sessions={"s1": session})
+    assert '<span class="session-badge">prep Sun 1 Nov</span>' in html
+    assert 'session-badge">' not in render_log_week(_week(linked))
+    assert "prep ?" in render_log_week(_week(linked), sessions={})
