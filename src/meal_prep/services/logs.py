@@ -32,6 +32,7 @@ def diary_entry(entry: DiaryEntryDTO) -> LogEntry:
             potassium_mg=entry.potassium_mg,
         ),
         entry_id=str(entry.id),
+        session_id=str(entry.session) if entry.session is not None else None,
     )
 
 

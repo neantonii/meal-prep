@@ -5,17 +5,16 @@ go through the same deserialization + shape-validation pipeline as every
 other DTO. The diary is week-keyed (``load_diary_week`` / ``save_diary_week`` /
 ``delete_diary_week``): the caller passes an explicit directory and the file
 name is derived from the week id. ``load_diary_file`` loads one by path for
-the CLI.
+the CLI; ``diary_week_files`` lists every week file.
 """
 
 from __future__ import annotations
 
-import contextlib
 import os
 from pathlib import Path
 from typing import Any
 
-from meal_prep.adapters._yaml import read_yaml, write_yaml
+from meal_prep.adapters._yaml import read_yaml, write_yaml_atomic
 from meal_prep.dtos.log import WEEK_ID, DiaryWeekDTO
 
 
@@ -42,6 +41,18 @@ def _read_week(file_path: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError(f"Invalid YAML structure in {file_path}: expected a mapping")
     return data
+
+
+def diary_week_files(diary_dir: Path | str) -> list[Path]:
+    """All week files in ``diary_dir`` (``YYYY-Www.yaml``), sorted by week."""
+    directory = Path(diary_dir)
+    if not directory.is_dir():
+        return []
+    return sorted(
+        path
+        for path in directory.glob("*.yaml")
+        if WEEK_ID.fullmatch(path.stem) is not None
+    )
 
 
 def load_diary_file(path: Path | str) -> DiaryWeekDTO:
@@ -71,16 +82,7 @@ def save_diary_week(diary_dir: Path | str, diary: DiaryWeekDTO) -> Path:
     directory = Path(diary_dir)
     directory.mkdir(parents=True, exist_ok=True)
     target = _week_path(directory, diary.week)
-    payload = diary.model_dump(mode="json", exclude_none=True)
-    tmp = target.with_name(f".{target.name}.tmp")
-    try:
-        write_yaml(tmp, payload)
-        os.replace(tmp, target)
-    except BaseException:
-        with contextlib.suppress(OSError):
-            tmp.unlink()
-        raise
-    return target
+    return write_yaml_atomic(target, diary.model_dump(mode="json", exclude_none=True))
 
 
 def delete_diary_week(diary_dir: Path | str, week: str) -> bool:

@@ -147,6 +147,20 @@
           "title": "Saturated Fat G",
           "type": "number"
         },
+        "session": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Id of the prep session this serving came from; absent when not from a session",
+          "title": "Session"
+        },
         "sodium_mg": {
           "description": "Per serving, when logged",
           "minimum": 0,

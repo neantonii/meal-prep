@@ -1,0 +1,194 @@
+{
+  "$defs": {
+    "SessionIngredientDTO": {
+      "additionalProperties": false,
+      "description": "One ingredient line of one batch, as it was when the item was added.",
+      "properties": {
+        "cost": {
+          "description": "Cost of those grams, in CAD",
+          "minimum": 0,
+          "title": "Cost",
+          "type": "number"
+        },
+        "grams": {
+          "description": "Grams used by one batch",
+          "minimum": 0,
+          "title": "Grams",
+          "type": "number"
+        },
+        "ingredient": {
+          "description": "Ingredient id",
+          "title": "Ingredient",
+          "type": "string"
+        },
+        "name": {
+          "description": "Ingredient name when added",
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ingredient",
+        "name",
+        "grams",
+        "cost"
+      ],
+      "title": "SessionIngredientDTO",
+      "type": "object"
+    },
+    "SessionItemDTO": {
+      "additionalProperties": false,
+      "description": "One recipe of a session: how much is made, plus its frozen numbers.",
+      "properties": {
+        "ad_hoc": {
+          "default": false,
+          "description": "Cooked at mealtime, not on prep day; ingredients still come from this session",
+          "title": "Ad Hoc",
+          "type": "boolean"
+        },
+        "batches": {
+          "description": "Times the recipe is made as written",
+          "minimum": 1,
+          "title": "Batches",
+          "type": "integer"
+        },
+        "calories_kcal": {
+          "description": "Per serving, when added",
+          "minimum": 0,
+          "title": "Calories Kcal",
+          "type": "number"
+        },
+        "carbs_g": {
+          "description": "Per serving, when added",
+          "minimum": 0,
+          "title": "Carbs G",
+          "type": "number"
+        },
+        "cost": {
+          "description": "Cost of one serving when added, in CAD",
+          "minimum": 0,
+          "title": "Cost",
+          "type": "number"
+        },
+        "fat_g": {
+          "description": "Per serving, when added",
+          "minimum": 0,
+          "title": "Fat G",
+          "type": "number"
+        },
+        "fiber_g": {
+          "description": "Per serving, when added",
+          "minimum": 0,
+          "title": "Fiber G",
+          "type": "number"
+        },
+        "ingredients": {
+          "description": "Ingredient lines of one batch, when added",
+          "items": {
+            "$ref": "#/$defs/SessionIngredientDTO"
+          },
+          "title": "Ingredients",
+          "type": "array"
+        },
+        "potassium_mg": {
+          "description": "Per serving, when added",
+          "minimum": 0,
+          "title": "Potassium Mg",
+          "type": "number"
+        },
+        "protein_g": {
+          "description": "Per serving, when added",
+          "minimum": 0,
+          "title": "Protein G",
+          "type": "number"
+        },
+        "recipe": {
+          "description": "Recipe id",
+          "title": "Recipe",
+          "type": "string"
+        },
+        "saturated_fat_g": {
+          "description": "Per serving, when added",
+          "minimum": 0,
+          "title": "Saturated Fat G",
+          "type": "number"
+        },
+        "servings": {
+          "description": "Portions per batch, when added",
+          "minimum": 1,
+          "title": "Servings",
+          "type": "integer"
+        },
+        "sodium_mg": {
+          "description": "Per serving, when added",
+          "minimum": 0,
+          "title": "Sodium Mg",
+          "type": "number"
+        },
+        "sugars_g": {
+          "description": "Per serving, when added",
+          "minimum": 0,
+          "title": "Sugars G",
+          "type": "number"
+        },
+        "title": {
+          "description": "Recipe title when added",
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "recipe",
+        "title",
+        "batches",
+        "servings",
+        "cost",
+        "calories_kcal",
+        "protein_g",
+        "fat_g",
+        "carbs_g",
+        "fiber_g",
+        "saturated_fat_g",
+        "sugars_g",
+        "sodium_mg",
+        "potassium_mg",
+        "ingredients"
+      ],
+      "title": "SessionItemDTO",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "date": {
+      "description": "Day of the prep session",
+      "format": "date",
+      "title": "Date",
+      "type": "string"
+    },
+    "id": {
+      "description": "Session id (UUID); never changes",
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+    },
+    "items": {
+      "description": "Recipes of the session, one item each",
+      "items": {
+        "$ref": "#/$defs/SessionItemDTO"
+      },
+      "minItems": 1,
+      "title": "Items",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "date",
+    "items"
+  ],
+  "title": "PrepSessionDTO",
+  "type": "object"
+}

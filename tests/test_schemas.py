@@ -16,6 +16,7 @@ from meal_prep.dtos.ingredient import IngredientDTO
 from meal_prep.dtos.log import DiaryWeekDTO
 from meal_prep.dtos.meal import MealDTO
 from meal_prep.dtos.recipe import RecipeDTO
+from meal_prep.dtos.session import PrepSessionDTO
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -24,11 +25,16 @@ _DTOS = {
     "ingredient": IngredientDTO,
     "meal": MealDTO,
     "recipe": RecipeDTO,
+    "session": PrepSessionDTO,
 }
 
 
 def _render(
-    dto: type[DiaryWeekDTO] | type[IngredientDTO] | type[MealDTO] | type[RecipeDTO],
+    dto: type[DiaryWeekDTO]
+    | type[IngredientDTO]
+    | type[MealDTO]
+    | type[RecipeDTO]
+    | type[PrepSessionDTO],
 ) -> str:
     return json.dumps(dto.model_json_schema(), indent=2, sort_keys=True) + "\n"
 
