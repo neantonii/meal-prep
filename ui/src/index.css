@@ -65,32 +65,44 @@ details.cat summary { cursor: pointer; font-weight: 700; font-size: 0.85rem; pad
 .chip .kcal { color: var(--text-muted); font-size: 0.75rem; }
 .version { color: var(--text-muted); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
 /* Prep sessions */
-.sessions { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; }
-.session-card { flex: 0 0 250px; background: var(--surface); border: 1px solid var(--border);
-  border-radius: 10px; padding: 8px; font-size: 0.82rem; display: flex; flex-direction: column; gap: 6px; }
-.session-card.placeholder { border-style: dashed; }
-.session-card.log { opacity: 0.9; }
-.session-card.dragover { outline: 2px dashed var(--primary); outline-offset: -2px; }
-.session-card input[type="date"] { background: var(--bg); color: var(--text);
-  border: 1px solid var(--border); border-radius: 6px; padding: 2px 4px; }
-.add-session { flex-basis: 150px; justify-content: center; }
+.sessions { margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
+/* One-line chips: the strip stays one or two rows however full sessions get. */
+.session-strip { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.session-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface);
+  color: var(--text); border: 1px solid var(--border); border-radius: 16px; padding: 4px 10px;
+  font: inherit; font-size: 0.8rem; cursor: pointer; }
+.session-chip:hover { border-color: var(--primary); }
+.session-chip.open { border-color: var(--primary); background: var(--surface-card); }
+.session-chip.placeholder { border-style: dashed; }
+.session-chip.dragover, .session-panel.dragover { outline: 2px dashed var(--primary); outline-offset: 1px; }
+.add-session { display: inline-flex; gap: 4px; align-items: center; }
+.add-session input, .session-panel input[type="date"] { background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px; padding: 2px 4px; font-size: 0.75rem; }
 .add-session button, .session-actions button { background: var(--surface-card); color: var(--text);
-  border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px; cursor: pointer; }
+  border: 1px solid var(--border); border-radius: 6px; padding: 1px 8px; cursor: pointer; font-size: 0.75rem; }
+.add-session button:disabled { opacity: 0.4; cursor: default; }
+/* The open session: full width, items flow into as many columns as fit. */
+.session-panel { background: var(--surface); border: 1px solid var(--primary); border-radius: 10px;
+  padding: 8px; font-size: 0.82rem; display: flex; flex-direction: column; gap: 6px; }
 .session-head { display: flex; align-items: center; gap: 6px; }
 .session-actions { margin-left: auto; display: flex; gap: 4px; }
-.session-actions .x, .session-item .x { background: none; border: none; color: var(--text-muted); cursor: pointer; }
+.session-actions .x, .session-item .x { background: none; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 0.9rem; }
 .session-actions .x:hover, .session-item .x:hover { color: var(--danger); }
-.session-item { background: var(--surface-card); border-radius: 6px; padding: 4px 6px; cursor: grab; }
-.session-item-head { display: flex; justify-content: space-between; gap: 4px; }
-.session-item a { color: var(--text); text-decoration: underline;
-  text-decoration-color: var(--primary); text-underline-offset: 3px; }
-.session-item-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px;
-  color: var(--text-muted); font-size: 0.75rem; }
-.session-item-meta > * { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
-.session-item .batches { width: 48px; background: var(--bg); color: var(--text);
-  border: 1px solid var(--border); border-radius: 4px; padding: 0 2px; }
+.session-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 4px 8px; }
+.session-item { display: flex; align-items: center; gap: 6px; background: var(--surface-card);
+  border-radius: 6px; padding: 3px 6px; cursor: grab; font-size: 0.78rem; min-width: 0; }
+.session-item .item-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; color: var(--text); }
+.session-item a.item-title { text-decoration: underline; text-decoration-color: var(--primary);
+  text-underline-offset: 3px; }
+.session-item .batches { width: 34px; background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 4px; padding: 0 2px; font-size: 0.75rem; }
+.session-item .made { color: var(--text-muted); font-variant-numeric: tabular-nums; min-width: 28px; text-align: right; }
 .session-item .made.full { color: var(--primary); }
-.session-item .adhoc { display: flex; align-items: center; gap: 2px; }
+.session-item .adhoc { background: none; border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text-muted); font-size: 0.62rem; padding: 0 3px; cursor: pointer; opacity: 0.5; }
+.session-item .adhoc.on { color: var(--primary); border-color: var(--primary); opacity: 1; }
 .muted { color: var(--text-muted); font-size: 0.75rem; }
 .mode-tag { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
   border-radius: 8px; padding: 0 5px; color: var(--text-muted); border: 1px solid var(--border); }
