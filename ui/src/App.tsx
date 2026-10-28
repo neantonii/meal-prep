@@ -194,6 +194,7 @@ export default function App() {
               days={state.days}
               sessions={state.sessions}
               colors={colors}
+              monday={state.days[0]?.date ?? ""}
               onAdd={handleAdd}
               onRemove={handleRemove}
               onMove={handleMove}

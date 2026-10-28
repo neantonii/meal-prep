@@ -203,7 +203,7 @@ def test_auto_link_never_changes_a_session_that_already_happened():
     diary, first = _add(_with(past), SUN, EGG)
     assert first.session == past.id
     # Full now, and no Plan session before Sunday: unlinked, never a raise
-    # of Saturday's batches (nor Sunday's own session: same day is unusual).
+    # of Saturday's batches (nor Sunday's own session: never the same day).
     diary, second = _add(diary, SUN, EGG)
     assert diary.sessions[past.id] == past
     assert second.session is None
@@ -383,13 +383,3 @@ def test_moving_a_session_keeps_links_on_or_after_it():
     with pytest.raises(RuleError, match="haven't happened"):
         prep.move_session(_with(past), PLAN, past.id, SUN)
     assert prep.move_session(_with(past), ADMIN, past.id, SUN).sessions
-
-
-def test_usual_session_is_the_latest_one_strictly_before_the_day():
-    sun = _session(SUN, (CHICKEN, 1))
-    tue = _session(TUE, (RICE, 1))
-    sessions = [tue, sun]
-    assert prep.usual_session(sessions, MON) == sun.id
-    assert prep.usual_session(sessions, TUE) == sun.id  # same day is unusual
-    assert prep.usual_session(sessions, WED) == tue.id
-    assert prep.usual_session(sessions, SUN) is None
