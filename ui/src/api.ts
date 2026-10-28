@@ -158,6 +158,16 @@ export function dayLabel(date: string): string {
   return `${WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
 }
 
+/** Color class for a session on `date`, by its slot on the week page that
+ * starts on `monday`: the four standard slots always get the same colors
+ * (Sunday before c0, Tuesday c1, Thursday c2, the week's Sunday c3), any
+ * other day of the page c4, an older session c5. */
+export function sessionColor(date: string, monday: string): string {
+  const offset = Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${monday}T00:00:00Z`)) / 86400000);
+  const slots: Record<number, string> = { [-1]: "c0", 1: "c1", 3: "c2", 6: "c3" };
+  return slots[offset] ?? (offset >= -1 && offset <= 6 ? "c4" : "c5");
+}
+
 /** Shift an ISO week id ("2026-W43") by `delta` weeks. */
 export function shiftWeek(week: string, delta: number): string {
   const [y, n] = week.split("-W").map(Number);

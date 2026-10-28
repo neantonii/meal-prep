@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, shiftWeek, type CatalogGroup, type DiaryWeek, type Link, type Placement } from "./api";
+import { api, sessionColor, shiftWeek, type CatalogGroup, type DiaryWeek, type Link, type Placement } from "./api";
 import Palette from "./components/Palette";
 import SessionsBar from "./components/SessionsBar";
 import WeekGrid from "./components/WeekGrid";
-
-const SESSION_COLORS = 6;
 
 function weekFromUrl(): string | null {
   const w = new URLSearchParams(window.location.search).get("week");
@@ -105,13 +103,10 @@ export default function App() {
   const handleLink = (id: string, session: string | null) =>
     change((w) => api.linkEntry(w, id, session, admin));
 
-  // Session colors follow card order, so a session keeps its color on a page.
+  // Session id -> color class (from its date), for chips and entry edges.
   const colors: Record<string, string> = {};
-  (state?.sessions ?? [])
-    .filter((s) => s.id !== null)
-    .forEach((s, i) => {
-      colors[s.id as string] = `c${i % SESSION_COLORS}`;
-    });
+  const monday = state?.days[0]?.date ?? "";
+  for (const s of state?.sessions ?? []) if (s.id) colors[s.id] = sessionColor(s.date, monday);
 
   const switchWeek = (delta: number) => {
     if (!state) return;
@@ -174,8 +169,8 @@ export default function App() {
             <SessionsBar
               sessions={state.sessions}
               today={state.today}
+              monday={state.days[0]?.date ?? ""}
               extraDates={extraDates[state.week] ?? []}
-              colors={colors}
               admin={admin}
               onAddDate={(date) =>
                 setExtraDates((cur) => ({

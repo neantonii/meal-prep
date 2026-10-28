@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Session, SessionItem } from "../api";
-import { dayLabel } from "../api";
+import { dayLabel, sessionColor } from "../api";
 
 /** What a session item being dragged into a slot carries. */
 export interface ItemDrag {
@@ -12,10 +12,10 @@ interface Props {
   sessions: Session[];
   /** Server's today (ISO date): later days are in Plan. */
   today: string;
+  /** Monday of the page's week: colors follow the session's slot in it. */
+  monday: string;
   /** Extra placeholder days the user added ("+ session"). */
   extraDates: string[];
-  /** Badge color class per session id. */
-  colors: Record<string, string>;
   admin: boolean;
   onAddDate: (date: string) => void;
   onAddItem: (date: string, recipe: string) => void;
@@ -135,7 +135,7 @@ function SessionChip({
   session,
   open,
   onToggle,
-  colors,
+  monday,
   onAddItem,
   onLinkEntry,
 }: Props & { session: Session; open: boolean; onToggle: () => void }) {
@@ -152,7 +152,7 @@ function SessionChip({
       title={open ? "Close" : "Open this session"}
       {...drop.handlers}
     >
-      <span className={`session-dot ${id ? (colors[id] ?? "") : ""}`} />
+      <span className={`session-dot ${sessionColor(date, monday)}`} />
       <strong>{dayLabel(date)}</strong>
       {!session.in_window && <span className="muted">earlier</span>}
       <span className={`mode-tag ${mode}`}>{mode}</span>
@@ -173,7 +173,7 @@ function SessionChip({
 function SessionPanel({
   session,
   onClose,
-  colors,
+  monday,
   admin,
   onAddItem,
   onUpdateItem,
@@ -252,7 +252,7 @@ function SessionPanel({
   return (
     <div className={`session-panel ${mode}${drop.hint ? " dragover" : ""}`} {...drop.handlers}>
       <div className="session-head">
-        <span className={`session-dot ${id ? (colors[id] ?? "") : ""}`} />
+        <span className={`session-dot ${sessionColor(date, monday)}`} />
         <strong>{dayLabel(date)}</strong>
         <span className={`mode-tag ${mode}`}>{mode}</span>
         <span className="muted">
