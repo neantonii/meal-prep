@@ -188,7 +188,7 @@ export default function App() {
           {version && <span className="version">{version}</span>}
           <button
             className={admin ? "admin-on" : ""}
-            title="Admin mode: amend history (rules still apply, nothing is auto-filled)"
+            title="Admin mode: amend history (linking a meal adds its recipe to the session as needed)"
             onClick={() => setAdmin((a) => !a)}
           >
             {admin ? "Admin on" : "Admin"}
@@ -202,7 +202,7 @@ export default function App() {
       </header>
       {admin && (
         <div className="admin-banner">
-          Admin mode: you are amending history. Rules still apply; nothing is auto-filled.
+          Admin mode: you are amending history. Linking a meal to any session adds its recipe there as needed; nothing else is auto-filled.
         </div>
       )}
       {error && <div className="err">{error}</div>}

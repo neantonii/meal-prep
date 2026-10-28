@@ -238,14 +238,19 @@ def test_explicit_link_cannot_fill_a_session_that_already_happened():
         _add(_with(past), SUN, link=past.id)
 
 
-def test_admin_links_only_when_the_rules_hold():
+def test_admin_links_grow_any_session_to_fit():
     sun = _session(SUN, (EGG, 1))
     diary, entry = _add(_with(sun), MON, EGG, link=sun.id, policy=ADMIN)
     assert entry.session == sun.id
-    with pytest.raises(RuleError, match="full"):
-        _add(diary, MON, EGG, link=sun.id, policy=ADMIN)
+    diary, _ = _add(diary, MON, EGG, link=sun.id, policy=ADMIN)
+    assert diary.sessions[sun.id].items[0].batches == 2  # full: a batch added
+    # Even a session that already happened gains the missing recipe.
+    past = _session(TODAY, (RICE, 1))
+    diary, linked = _add(_with(past), TODAY, CHICKEN, link=past.id, policy=ADMIN)
+    assert linked.session == past.id
+    assert [i.recipe for i in diary.sessions[past.id].items] == ["rice", "chicken"]
     # Admin palette drops are never auto-linked.
-    _, unlinked = _add(diary, MON, policy=ADMIN)
+    _, unlinked = _add(diary, TODAY, policy=ADMIN)
     assert unlinked.session is None
 
 

@@ -75,7 +75,7 @@ edits are allowed:
 |---|---|---|
 | **Plan** | days and sessions *after today* | Fill ahead of time; auto-fill keeps the rules true. |
 | **Log** | *today and earlier* | Edit only where reality deviated; nothing is auto-filled. |
-| **Admin** | header switch, off on reload | Amend history; rules still apply, nothing is auto-fixed. |
+| **Admin** | header switch, off on reload | Amend history; an explicit link adds the recipe or batches to any session (the link is the correction); nothing else is auto-filled. |
 
 "Today" is the server's local date. An edit is checked against the mode of
 every date it touches; if any is Log, Log rules apply (Admin overrides all).
@@ -85,10 +85,10 @@ every date it touches; if any is Log, Log rules apply (Admin overrides all).
 | Edit | Plan | Log | Admin |
 |---|---|---|---|
 | Add from the recipe palette | auto-linked (below) | unlinked | unlinked |
-| Add from a session card | linked; auto-fill | refused | linked if the rules hold |
+| Add from a session card | linked; auto-fill | refused | linked; adds recipe/batches as needed |
 | Remove | ✅ (the session shrinks to fit) | ✅ (the portion stays made: spare) | ✅ |
 | Move / reorder | ✅; a broken link is re-linked (auto) | ✅ if the link still holds | ✅ if the link still holds |
-| Link / unlink / change session | ✅; auto-fill | refused | ✅ if the rules hold |
+| Link / unlink / change session | ✅; auto-fill | refused | ✅; adds recipe/batches as needed |
 
 **Auto-fill** (Plan only): linking an entry to a session that lacks its
 recipe adds the item; its batches then follow the meals (see "Session
