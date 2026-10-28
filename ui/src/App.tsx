@@ -190,7 +190,6 @@ export default function App() {
               onRemoveItem={(session, recipe) =>
                 change((w) => api.removeItem(w, session, recipe, admin))
               }
-              onMove={(session, date) => change((w) => api.moveSession(w, session, date, admin))}
               onDelete={(session) => change((w) => api.deleteSession(w, session, admin))}
               onLinkEntry={handleLink}
             />

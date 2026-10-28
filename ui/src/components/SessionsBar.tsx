@@ -21,7 +21,6 @@ interface Props {
   onAddItem: (date: string, recipe: string) => void;
   onUpdateItem: (session: string, recipe: string, batches: number) => void;
   onRemoveItem: (session: string, recipe: string) => void;
-  onMove: (session: string, date: string) => void;
   onDelete: (session: string) => void;
   /** Relink a diary entry to a session (an entry dropped on it). */
   onLinkEntry: (entry: string, session: string) => void;
@@ -179,11 +178,9 @@ function SessionPanel({
   onAddItem,
   onUpdateItem,
   onRemoveItem,
-  onMove,
   onDelete,
   onLinkEntry,
 }: Props & { session: Session; onClose: () => void }) {
-  const [moving, setMoving] = useState(false);
   const { id, date, mode } = session;
   // What the rules allow here (the server has the final say).
   const canGrow = admin || mode === "plan";
@@ -266,11 +263,6 @@ function SessionPanel({
               : "drag items into slots · drop a meal to link it"}
         </span>
         <span className="session-actions">
-          {id && canGrow && (
-            <button title="Move to another day" onClick={() => setMoving((m) => !m)}>
-              ⇄ move
-            </button>
-          )}
           {id && (
             <button title="Delete session" onClick={() => onDelete(id)}>
               delete
@@ -281,19 +273,6 @@ function SessionPanel({
           </button>
         </span>
       </div>
-      {moving && id && (
-        <input
-          type="date"
-          defaultValue={date}
-          onChange={(e) => {
-            if (e.target.value && e.target.value !== date) {
-              onMove(id, e.target.value);
-              setMoving(false);
-              onClose();
-            }
-          }}
-        />
-      )}
       {session.items.length === 0 ? (
         <span className="empty-slot">{canGrow ? "drop recipes here" : "nothing prepped"}</span>
       ) : (

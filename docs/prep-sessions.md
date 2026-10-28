@@ -113,7 +113,7 @@ never retroactively make more.
 | Add an item | ✅ | refused | ✅ |
 | Set `batches` | derived from meals | refused | ✅ |
 | Remove an item / delete the session | ✅ | ✅ | ✅ |
-| Move to another day | ✅ (both days in Plan) | refused | ✅ |
+| Move to another day (API only; no UI) | ✅ (both days in Plan) | refused | ✅ |
 
 Never allowed: lowering portions below the linked entries, removing an item
 or deleting a session that has linked entries, moving a session after any of
