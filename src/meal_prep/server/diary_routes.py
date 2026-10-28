@@ -53,9 +53,9 @@ def diary_router(editor: Editor) -> APIRouter:
         return editor.edit(week, op)
 
     @router.delete("/{week}/entries/{entry_id}")
-    def entry_remove(week: str, entry_id: uuid.UUID) -> DiaryWeek:
+    def entry_remove(week: str, entry_id: uuid.UUID, admin: bool = False) -> DiaryWeek:
         def op(diary: prep.Diary) -> prep.Change:
-            change = prep.remove_entry(diary, week, entry_id)
+            change = prep.remove_entry(diary, editor.policy(admin), week, entry_id)
             logger.info("removed entry %s from %s", entry_id, week)
             return change
 

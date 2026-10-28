@@ -178,7 +178,29 @@ class _Draft:
         self._sessions_out[session_id] = None
 
     def change(self) -> Change:
+        self.derive_batches()
         return Change(weeks=dict(self._weeks_out), sessions=dict(self._sessions_out))
+
+    def derive_batches(self) -> None:
+        """In Plan, batches follow the linked meals: the fewest whole batches
+        that cover them, at least one (an item can be listed before its meals
+        are planned). Once the session's day arrives they stay as they were:
+        a record of what was made. Admin edits are left as they are."""
+        if self.policy.admin:
+            return
+        counts = link_counts(self.weeks.values())
+        for session in list(self.sessions.values()):
+            if self.policy.mode(session.date) is not Mode.PLAN:
+                continue
+            items = [
+                item
+                if (b := _batches_for(counts[(session.id, item.recipe)], item.servings))
+                == item.batches
+                else item.model_copy(update={"batches": b})
+                for item in session.items
+            ]
+            if items != list(session.items):
+                self.put_session(session.model_copy(update={"items": items}))
 
     # -- links ----------------------------------------------------------------
 
@@ -364,10 +386,12 @@ def add_entry(
     return draft.change(), entry
 
 
-def remove_entry(diary: Diary, week: str, entry_id: uuid.UUID) -> Change:
-    """Remove one entry (any mode); a linked one frees its portion."""
-    # Removing is allowed in every mode, so the policy plays no part.
-    draft = _Draft(diary, Policy(today=datetime.date.max), {})
+def remove_entry(
+    diary: Diary, policy: Policy, week: str, entry_id: uuid.UUID
+) -> Change:
+    """Remove one entry (any mode). In Plan its session shrinks to fit the
+    remaining meals; in Log the portion stays made (spare)."""
+    draft = _Draft(diary, policy, {})
     draft.put_week(week, entries.remove_entry(_week_of(draft, week), entry_id))
     return draft.change()
 
@@ -489,17 +513,15 @@ def update_item(
     recipe_id: str,
     batches: int,
 ) -> Change:
-    """Change an item's batches, keeping its frozen numbers. Raising them is
-    refused in Log; portions never drop below the linked entries."""
+    """Admin only: set an item's batches, keeping its frozen numbers. In
+    Plan batches follow the meals and in Log they record what was made, so
+    this is for corrections; portions never drop below the linked entries."""
+    if not policy.admin:
+        raise RuleError("Batches follow the planned meals; changing them is Admin only")
     draft = _Draft(diary, policy, {})
     session, item = _session_item(draft, session_id, recipe_id)
     if batches == item.batches:
         return Change()
-    if batches > item.batches and policy.mode(session.date) is Mode.LOG:
-        raise RuleError(
-            f"The {day_label(session.date)} session already happened: "
-            "more can't be made after the fact (Admin only)"
-        )
     changed = SessionItemDTO.model_validate({**item.model_dump(), "batches": batches})
     items = [changed if i is item else i for i in session.items]
     draft.put_session(session.model_copy(update={"items": items}))

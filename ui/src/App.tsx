@@ -99,7 +99,7 @@ export default function App() {
 
   const handleAdd = (recipe: string, where: Placement, session: Link) =>
     change((w) => api.addEntry(w, recipe, where, session, admin));
-  const handleRemove = (id: string) => change((w) => api.removeEntry(w, id));
+  const handleRemove = (id: string) => change((w) => api.removeEntry(w, id, admin));
   const handleMove = (id: string, where: Placement) =>
     change((w) => api.moveEntry(w, id, where, admin));
   const handleLink = (id: string, session: string | null) =>

@@ -122,8 +122,8 @@ export const api = {
   diary: (week: string) => request<DiaryWeek>(`/api/diary/${week}`),
   addEntry: (week: string, recipe: string, where: Placement, session: Link, admin: boolean) =>
     send<DiaryWeek>("POST", `/api/diary/${week}/entries`, admin, { ...where, recipe, session }),
-  removeEntry: (week: string, id: string) =>
-    send<DiaryWeek>("DELETE", `/api/diary/${week}/entries/${id}`, false),
+  removeEntry: (week: string, id: string, admin: boolean) =>
+    send<DiaryWeek>("DELETE", `/api/diary/${week}/entries/${id}`, admin),
   moveEntry: (week: string, id: string, where: Placement, admin: boolean) =>
     send<DiaryWeek>("PATCH", `/api/diary/${week}/entries/${id}`, admin, where),
   linkEntry: (week: string, id: string, session: string | null, admin: boolean) =>

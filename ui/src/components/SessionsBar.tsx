@@ -59,6 +59,23 @@ function useSessionDrop(onRecipe: (recipe: string) => void, onEntry?: (entry: st
   };
 }
 
+function batchLabel(batches: number): string {
+  return `${batches} batch${batches === 1 ? "" : "es"}`;
+}
+
+/** Warning for an underused batch: portions made but not planned/eaten. */
+function Spare({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      className="spare"
+      title={`${count} portion${count === 1 ? "" : "s"} made but not linked to a meal`}
+    >
+      ⚠ {count} spare
+    </span>
+  );
+}
+
 /** Sessions above the week grid: a strip of one-line chips (older linked
  * sessions, then the Sunday before through this Sunday) and, below it, the
  * items of the one session that is open. */
@@ -128,8 +145,7 @@ function SessionChip({
     (recipe) => onAddItem(date, recipe),
     id ? (entry) => onLinkEntry(entry, id) : undefined,
   );
-  const made = items.reduce((n, it) => n + it.portions, 0);
-  const eaten = items.reduce((n, it) => n + it.eaten, 0);
+  const spare = items.reduce((n, it) => n + it.portions - it.eaten, 0);
   return (
     <button
       className={`session-chip ${mode}${open ? " open" : ""}${id ? "" : " placeholder"}${drop.hint ? " dragover" : ""}`}
@@ -148,8 +164,9 @@ function SessionChip({
             ? "drop to add"
             : items.length === 0
               ? "empty"
-              : `${items.length} recipe${items.length === 1 ? "" : "s"} · ${eaten}/${made} eaten`}
+              : `${items.length} recipe${items.length === 1 ? "" : "s"}`}
       </span>
+      {!drop.hint && <Spare count={spare} />}
     </button>
   );
 }
@@ -197,30 +214,38 @@ function SessionPanel({
           {it.title}
         </span>
       )}
-      <input
-        key={`${it.recipe}-${it.batches}`}
-        className="batches"
-        type="number"
-        min={1}
-        step={1}
-        defaultValue={it.batches}
-        title="Batches (times the recipe is made as written)"
-        onBlur={(e) => {
-          const batches = Number(e.target.value);
-          if (id && Number.isInteger(batches) && batches >= 1 && batches !== it.batches)
-            onUpdateItem(id, it.recipe, batches);
-          else e.target.value = String(it.batches);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur();
-        }}
-      />
-      <span
-        className={`made${it.eaten >= it.portions ? " full" : ""}`}
-        title={`${it.eaten} eaten of ${it.portions} made`}
-      >
-        {it.eaten}/{it.portions}
-      </span>
+      {admin ? (
+        <input
+          key={`${it.recipe}-${it.batches}`}
+          className="batches"
+          type="number"
+          min={1}
+          step={1}
+          defaultValue={it.batches}
+          title="Batches (Admin: correct what was made)"
+          onBlur={(e) => {
+            const batches = Number(e.target.value);
+            if (id && Number.isInteger(batches) && batches >= 1 && batches !== it.batches)
+              onUpdateItem(id, it.recipe, batches);
+            else e.target.value = String(it.batches);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
+        />
+      ) : (
+        <span
+          className="batches-text"
+          title={
+            mode === "plan"
+              ? "Times the recipe is cooked; follows the planned meals"
+              : "Times the recipe was cooked"
+          }
+        >
+          {batchLabel(it.batches)}
+        </span>
+      )}
+      <Spare count={it.portions - it.eaten} />
       <button className="x" title="Remove from session" onClick={() => id && onRemoveItem(id, it.recipe)}>
         ×
       </button>

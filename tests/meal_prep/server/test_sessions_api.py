@@ -100,31 +100,21 @@ def test_session_items_add_update_and_guard_links(client: TestClient):
     )
     tue = _card(week, "2026-11-03")
     [item] = tue["items"]
+    # In Plan, batches follow the meals: none planned yet, so one batch.
+    assert item["batches"] == 1
     servings = item["servings"]
-    assert item["portions"] == 3 * servings
     sid = tue["id"]
     for _ in range(servings + 1):  # needs two batches
-        _ok(_add(client, "2026-11-04", RICE, session=sid))
-    lowered = client.patch(
-        f"/api/sessions/{sid}/items/{RICE}",
-        params={"week": W45},
-        json={"batches": 1},
-    )
-    assert lowered.status_code == 409
-    fractional = client.patch(
-        f"/api/sessions/{sid}/items/{RICE}",
-        params={"week": W45},
-        json={"batches": 1.5},
-    )
-    assert fractional.status_code == 422
-    week = _ok(
-        client.patch(
-            f"/api/sessions/{sid}/items/{RICE}",
-            params={"week": W45},
-            json={"batches": 2},
-        )
-    )
+        week = _ok(_add(client, "2026-11-04", RICE, session=sid))
     assert _card(week, "2026-11-03")["items"][0]["batches"] == 2
+    url = f"/api/sessions/{sid}/items/{RICE}"
+    not_admin = client.patch(url, params={"week": W45}, json={"batches": 3})
+    assert not_admin.status_code == 409
+    admin = {"week": W45, "admin": "true"}
+    assert client.patch(url, params=admin, json={"batches": 1}).status_code == 409
+    assert client.patch(url, params=admin, json={"batches": 1.5}).status_code == 422
+    week = _ok(client.patch(url, params=admin, json={"batches": 3}))
+    assert _card(week, "2026-11-03")["items"][0]["batches"] == 3
     for url in (f"/api/sessions/{sid}/items/{RICE}", f"/api/sessions/{sid}"):
         assert client.delete(url, params={"week": W45}).status_code == 409
     missing = client.delete(
