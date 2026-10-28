@@ -96,12 +96,14 @@ link is refused.
 
 **Auto-link** (palette drop in Plan): the entry links to the first of
 
-1. the latest session within the 7 days up to the entry's date that lists
+1. the latest session within the 7 days before the entry's day that lists
    the recipe with a free portion;
 2. the latest Plan date within those 7 days that has a session or is a
    default session day (Sun, Tue, Thu), auto-filled;
 
-and stays unlinked if neither exists.
+and stays unlinked if neither exists. The entry's own day never counts:
+like the badge rule below, a same-day source is unusual and only happens
+when chosen on purpose (dragging that session's item).
 
 ### Sessions
 

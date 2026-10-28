@@ -32,7 +32,7 @@ from meal_prep.services.sessions import freeze_item, whole_servings
 
 # Default prep days, as ``date.weekday()``: Sunday, Tuesday, Thursday.
 DEFAULT_SESSION_WEEKDAYS = frozenset({6, 1, 3})
-# Auto-link looks this many days back, the entry's own day included.
+# Auto-link looks this many days back, not counting the entry's own day.
 AUTO_LINK_DAYS = 7
 
 type Link = uuid.UUID | Literal["auto"] | None
@@ -291,14 +291,17 @@ class _Draft:
     def auto_link(self, recipe_id: str, date: datetime.date) -> uuid.UUID | None:
         """The session a palette drop on ``date`` links to (Plan auto-link).
 
-        First the latest session in the last ``AUTO_LINK_DAYS`` that lists the
-        recipe with a free portion; else the latest Plan day in that span
-        that has a session or is a default prep day (auto-filled, creating
-        the session when needed); else ``None``.
+        Only the ``AUTO_LINK_DAYS`` before ``date`` count, never the day
+        itself: like ``usual_session``, a same-day source is unusual and only
+        happens when chosen on purpose. First the latest of those sessions
+        that lists the recipe with a free portion; else the latest Plan day
+        among them that has a session or is a default prep day (auto-filled,
+        creating the session when needed); else ``None``.
         """
-        start = date - datetime.timedelta(days=AUTO_LINK_DAYS - 1)
+        start = date - datetime.timedelta(days=AUTO_LINK_DAYS)
+        end = date - datetime.timedelta(days=1)
         recent = sorted(
-            (s for s in self.sessions.values() if start <= s.date <= date),
+            (s for s in self.sessions.values() if start <= s.date <= end),
             key=lambda s: s.date,
             reverse=True,
         )
@@ -312,7 +315,7 @@ class _Draft:
                 day
                 for day in (
                     *(s.date for s in recent),
-                    *default_session_dates(start, date),
+                    *default_session_dates(start, end),
                 )
                 if self.policy.mode(day) is Mode.PLAN
             },
