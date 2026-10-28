@@ -24,6 +24,17 @@ eaten stay aligned. Per-session ingredient lists build on this later.
 
 ## Session
 
+- **A session is a supply cycle**: on its day the groceries arrive (in
+  practice a delivery the same day) and the batch cooking happens, and it
+  covers the meals until the next session. Every meal in that window belongs
+  to it, cooked ahead or not (a salad made fresh on Friday still uses
+  Thursday's delivery). One cycle yields two lists from the same meals: what
+  to buy (every meal's ingredients) and what to cook (only recipes that are
+  batch-cooked; "made fresh" becomes a recipe property, #145). Known edge
+  cases, both for the future shopping list: a package often lasts more than
+  one cycle (milk, cottage cheese: "make sure there is enough", i.e. needs
+  minus stock on hand), and pantry staples such as coffee are never bought
+  per cycle (see `docs/spikes/inventory.md`).
 - A prep session is a date plus a list of items. Sessions are **not tied to
   weeks**: a Sunday session typically feeds that Sunday's dinner and the start
   of the next week.
@@ -60,7 +71,9 @@ A diary entry has an optional `session` (the session id). A linked entry must
 align with its session:
 
 1. the session lists the entry's recipe;
-2. the entry's date is on or after the session's date (same day allowed);
+2. the entry's date is on or after the session's date; on the session's own
+   day only dinner may come from it (the delivery and prep happen during the
+   day), except in Admin, which may link any meal;
 3. entries linked to an item never exceed its portions.
 
 The server enforces these on every edit. Rules span weeks, so they are
@@ -97,14 +110,14 @@ session is otherwise not changed, so such a link is refused.
 
 **Auto-link** (palette drop in Plan): the entry links to the first of
 
-1. the latest session within the 7 days before the entry's day that lists
-   the recipe with a free portion;
+1. the latest session within the 7 days before the entry's day (plus that
+   day itself for dinner) that lists the recipe with a free portion;
 2. the latest Plan date within those 7 days that has a session or is a
    default session day (Sun, Tue, Thu), which grows to fit;
 
-and stays unlinked if neither exists. The entry's own day never counts: a
-meal rarely comes from that day's own prep, so a same-day source only
-happens when chosen on purpose (dragging that session's item).
+and stays unlinked if neither exists. The entry's own day counts only for
+dinner (rule 2 above): breakfast, lunch and snacks come from an earlier
+session.
 
 ### Sessions
 

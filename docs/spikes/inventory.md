@@ -72,3 +72,15 @@ A shopping list for a week: sum the plan's ingredients, round up to whole
 packages, leave out staples. It needs no stored state, answers question 2 by
 forcing a staple definition, and shows the raw remainders each week would
 produce.
+
+## Notes from prep sessions
+
+Prep sessions are supply cycles (`docs/prep-sessions.md`): each session's
+meals say what that cycle needs. Two observations for the shopping list
+built on them:
+
+- Packages often outlast a cycle (milk, cottage cheese), so a cycle's list
+  is "make sure there is enough": needs minus stock on hand, rounded up to
+  packages, not every ingredient bought fresh.
+- Some items are never bought per cycle (coffee): a staple flag on the
+  ingredient (question 2 above) keeps them off the list.
