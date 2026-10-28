@@ -1,5 +1,7 @@
 """Shared YAML reading helpers for the taxonomy/catalog adapters."""
 
+import contextlib
+import os
 from pathlib import Path
 from typing import Any
 
@@ -37,3 +39,21 @@ def write_yaml(path: Path | str, data: Any) -> Path:
     with file_path.open("w", encoding="utf-8") as f:
         yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True)
     return file_path
+
+
+def write_yaml_atomic(path: Path | str, data: Any) -> Path:
+    """Write ``data`` as YAML to ``path`` via a temp file + rename.
+
+    A crash or error never leaves a half-written file. The parent directory
+    must already exist.
+    """
+    target = Path(path)
+    tmp = target.with_name(f".{target.name}.tmp")
+    try:
+        write_yaml(tmp, data)
+        os.replace(tmp, target)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            tmp.unlink()
+        raise
+    return target

@@ -141,3 +141,13 @@ def test_week_rejects_day_outside_its_week():
     DiaryWeekDTO.model_validate(_week(days=[_day("2026-10-12"), _day("2026-10-18")]))
     with pytest.raises(ValidationError, match="outside ISO week 2026-W42"):
         DiaryWeekDTO.model_validate(_week(days=[_day("2026-10-19")]))
+
+
+def test_entry_session_link_is_optional():
+    assert DiaryEntryDTO.model_validate(_entry()).session is None
+    session = uuid.uuid4()
+    linked = DiaryEntryDTO.model_validate({**_entry(), "session": str(session)})
+    assert linked.session == session
+    assert "session" not in DiaryEntryDTO.model_validate(_entry()).model_dump(
+        exclude_none=True
+    )

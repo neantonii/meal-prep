@@ -8,7 +8,8 @@ preserved — each entry is one serving) with summed cost/macros aggregates,
 with no hidden state.
 
 A ``LogEntry`` carries its own title, cost and macros: the numbers frozen when
-the entry was logged (#107), never looked up in current recipes.
+the entry was logged (#107), never looked up in current recipes. Its
+``session_id`` names the prep session it came from (``models.session``).
 
 Frozen dataclass value objects: no collaborators, no I/O, no mutation.
 Methods are pure functions of the fields alone. All amounts are raw floats
@@ -27,14 +28,15 @@ from meal_prep.models.ingredient import MacrosInfo
 
 @dataclass(frozen=True, slots=True)
 class LogEntry:
-    """One logged serving: its id, which recipe, and its frozen per-serving
-    title, cost and macros."""
+    """One logged serving: its id, which recipe, its frozen per-serving
+    title, cost and macros, and the prep session it came from (if any)."""
 
     entry_id: str
     recipe_id: str
     title: str
     cost: float
     macros: MacrosInfo
+    session_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -7,7 +7,8 @@ Usage (run from the workspace root):
 All locations are explicit parameters (CWD-relative by default); nothing is
 derived from the script's own path.
 Writes schemas/diary.schema.json, schemas/ingredient.schema.json,
-schemas/meal.schema.json and schemas/recipe.schema.json.
+schemas/meal.schema.json, schemas/recipe.schema.json and
+schemas/session.schema.json.
 Run after any DTO change and commit the diff; tests/test_schemas.py
 fails CI when the committed files drift from the live models.
 """
@@ -22,12 +23,14 @@ from meal_prep.dtos.ingredient import IngredientDTO
 from meal_prep.dtos.log import DiaryWeekDTO
 from meal_prep.dtos.meal import MealDTO
 from meal_prep.dtos.recipe import RecipeDTO
+from meal_prep.dtos.session import PrepSessionDTO
 
 _DTOS = {
     "diary": DiaryWeekDTO,
     "ingredient": IngredientDTO,
     "meal": MealDTO,
     "recipe": RecipeDTO,
+    "session": PrepSessionDTO,
 }
 
 

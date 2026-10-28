@@ -50,6 +50,11 @@ class DiaryEntryDTO(BaseModel):
     sugars_g: float = Field(..., ge=0, description="Per serving, when logged")
     sodium_mg: float = Field(..., ge=0, description="Per serving, when logged")
     potassium_mg: float = Field(..., ge=0, description="Per serving, when logged")
+    session: uuid.UUID | None = Field(
+        default=None,
+        description="Id of the prep session this serving came from; absent when "
+        "not from a session",
+    )
 
     @field_validator("recipe")
     @classmethod

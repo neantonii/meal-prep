@@ -1,7 +1,7 @@
 """Diary editing — single-entry operations on a diary week (#107).
 
 An entry's numbers are frozen exactly once, when it is added. Removing,
-moving and reordering never recompute them, so nothing here needs to match
+moving, reordering and (re)linking to a prep session never recompute them, so nothing here needs to match
 old and new entries. Every operation returns a new, re-validated
 ``DiaryWeekDTO`` (or ``None`` when the week ends up empty); storage is the
 caller's job.
@@ -24,11 +24,13 @@ class EntryNotFoundError(LookupError):
     """No entry with the given id in this week."""
 
 
-def freeze_entry(recipe: Recipe) -> DiaryEntryDTO:
-    """A new diary entry carrying ``recipe``'s current per-serving numbers."""
+def freeze_entry(recipe: Recipe, session: uuid.UUID | None = None) -> DiaryEntryDTO:
+    """A new diary entry carrying ``recipe``'s current per-serving numbers,
+    linked to prep session ``session`` when given."""
     macros = recipe.per_serving_macros
     return DiaryEntryDTO(
         id=uuid.uuid4(),
+        session=session,
         recipe=recipe.id,
         title=recipe.title,
         cost=recipe.cost_per_portion,
@@ -81,6 +83,18 @@ def _insert(
         target.insert(max(0, min(position, len(target))), entry)
 
 
+def find_entry(
+    diary: DiaryWeekDTO, entry_id: uuid.UUID
+) -> tuple[datetime.date, Mealtime, DiaryEntryDTO]:
+    """Where entry ``entry_id`` sits: its date, mealtime and the entry."""
+    for day in diary.days:
+        for mealtime in Mealtime:
+            for entry in getattr(day, mealtime.value) or ():
+                if entry.id == entry_id:
+                    return day.date, mealtime, entry
+    raise EntryNotFoundError(f"No entry {entry_id} in this week")
+
+
 def _take(slots: _Slots, entry_id: uuid.UUID) -> DiaryEntryDTO:
     for meals in slots.values():
         for entries in meals.values():
@@ -97,12 +111,14 @@ def add_entry(
     mealtime: Mealtime,
     recipe: Recipe,
     position: int | None = None,
+    session: uuid.UUID | None = None,
 ) -> tuple[DiaryWeekDTO, DiaryEntryDTO]:
     """Add a newly frozen entry for ``recipe``; return the week and entry.
 
-    ``position`` is its index in the slot; ``None`` appends.
+    ``position`` is its index in the slot; ``None`` appends. ``session`` links
+    the entry to a prep session (the link rules are ``services.prep``'s job).
     """
-    entry = freeze_entry(recipe)
+    entry = freeze_entry(recipe, session)
     slots = _slots(diary)
     _insert(slots, date, mealtime, entry, position)
     result = _build(week, slots)
@@ -135,3 +151,20 @@ def move_entry(
     result = _build(diary.week, slots)
     assert result is not None  # the moved entry is still in the week
     return result
+
+
+def set_entry_session(
+    diary: DiaryWeekDTO, entry_id: uuid.UUID, session: uuid.UUID | None
+) -> DiaryWeekDTO:
+    """Link one entry to prep session ``session`` (``None`` unlinks it),
+    keeping its place and its frozen numbers."""
+    slots = _slots(diary)
+    for meals in slots.values():
+        for entries in meals.values():
+            for index, entry in enumerate(entries):
+                if entry.id == entry_id:
+                    entries[index] = entry.model_copy(update={"session": session})
+                    result = _build(diary.week, slots)
+                    assert result is not None
+                    return result
+    raise EntryNotFoundError(f"No entry {entry_id} in this week")

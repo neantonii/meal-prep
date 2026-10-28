@@ -17,6 +17,9 @@ and any serialization-related modules (`yaml`, stdlib, etc.).
 - An empty Cooklang unit is preserved as `""` on the DTO (the service interprets
   it as `count`).
 - Recipe `id` must equal filename stem; `category` must equal parent dir name.
+- A session file is named by its date (`sessions/2026-11-01.yaml`), not by
+  its id: one session per day, and moving a session renames its file while
+  its id (what entries link to) stays.
 
 ## Test
 

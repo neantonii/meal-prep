@@ -114,17 +114,24 @@ Diary entries are frozen (#107): each one stores the recipe's title, cost and
 nutrition as they were when it was logged, so past weeks never change when
 recipes, ingredients or prices do.
 
+Prep sessions (`docs/prep-sessions.md`) live next to the weeks, one file per
+session day (`diary/sessions/2026-11-01.yaml`), created on first use; their
+items are frozen the same way. Diary entries link to the session they came
+from. Days after today are planned (auto-fill on), today and earlier are
+logged, and the header's Admin switch amends history.
+
 The UI is at `http://127.0.0.1:8080` on the host; the port is bound to
 loopback because the server has no auth (put a reverse proxy in front before
 exposing it). The container has a health check on `/api/health`
 (`docker ps` shows `healthy`).
 
 Backup/restore: the diary is plain YAML, one file per week
-(`diary/2026-W43.yaml`):
+(`diary/2026-W43.yaml`) plus one per prep session (`diary/sessions/`); back
+up the whole directory:
 
 ```sh
 rsync -a /srv/meal-prep/diary/ /backup/meal-prep/diary/
 ```
 
-Restore by rsyncing back. The server reads week files on each request, so no
-restart is needed.
+Restore by rsyncing back. The server picks up changed files on the next
+request, so no restart is needed.
