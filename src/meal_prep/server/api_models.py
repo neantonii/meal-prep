@@ -51,6 +51,13 @@ class DiaryDay(BaseModel):
     totals: dict[str, float]
 
 
+class MealRef(BaseModel):
+    """A diary meal: its day and mealtime."""
+
+    date: str
+    mealtime: str
+
+
 class SessionItem(BaseModel):
     """One recipe of a session: frozen numbers plus made vs eaten."""
 
@@ -61,6 +68,7 @@ class SessionItem(BaseModel):
     servings: int
     portions: int  # made: batches x servings
     eaten: int  # linked entries, in every week
+    meals: list[MealRef]  # those entries: which days and mealtimes
     kcal: float
     protein_g: float
     cost: float
@@ -74,6 +82,15 @@ class Session(BaseModel):
     mode: str  # "plan" or "log"
     in_window: bool  # False: an older session linked from this week
     items: list[SessionItem]
+
+
+class SessionDetail(BaseModel):
+    """One session for its own page: the card plus totals."""
+
+    session: Session
+    today: str
+    week: str  # ISO week of the session's date (for the way back)
+    totals: dict[str, float]  # portions, cost, kcal, protein_g over all items
 
 
 class DiaryWeek(BaseModel):

@@ -109,6 +109,25 @@ def default_session_dates(
     )
 
 
+def linked_meals(
+    weeks: Iterable[DiaryWeekDTO],
+) -> dict[tuple[uuid.UUID, str], list[tuple[datetime.date, Mealtime]]]:
+    """The meals linked per (session id, recipe id), over all ``weeks``, in
+    date and mealtime order."""
+    meals: dict[tuple[uuid.UUID, str], list[tuple[datetime.date, Mealtime]]] = {}
+    order = list(Mealtime)
+    for week in weeks:
+        for day in week.days:
+            for mealtime in Mealtime:
+                for entry in getattr(day, mealtime.value) or ():
+                    if entry.session is not None:
+                        key = (entry.session, entry.recipe)
+                        meals.setdefault(key, []).append((day.date, mealtime))
+    for found in meals.values():
+        found.sort(key=lambda m: (m[0], order.index(m[1])))
+    return meals
+
+
 def link_counts(weeks: Iterable[DiaryWeekDTO]) -> Counter[tuple[uuid.UUID, str]]:
     """Linked entries per (session id, recipe id), over all ``weeks``."""
     counts: Counter[tuple[uuid.UUID, str]] = Counter()

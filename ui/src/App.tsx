@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, sessionColor, shiftWeek, type CatalogGroup, type DiaryWeek, type Link, type Placement } from "./api";
 import { collision, droppedBelow, type DragData, type DropData } from "./dnd";
 import Palette from "./components/Palette";
+import SessionPage from "./components/SessionPage";
 import SessionsBar from "./components/SessionsBar";
 import WeekGrid from "./components/WeekGrid";
 
@@ -22,8 +23,15 @@ function weekFromUrl(): string | null {
   return w && /^\d{4}-W\d{2}$/.test(w) ? w : null;
 }
 
+/** A session's own page: `/?session=<id>`. */
+function sessionFromUrl(): string | null {
+  return new URLSearchParams(window.location.search).get("session");
+}
+
 export default function App() {
   const [week, setWeek] = useState<string | null>(weekFromUrl());
+  // The session whose own page is shown instead of the week, if any.
+  const [sessionPage, setSessionPage] = useState<string | null>(sessionFromUrl());
   const [groups, setGroups] = useState<CatalogGroup[]>([]);
   const [state, setState] = useState<DiaryWeek | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +50,7 @@ export default function App() {
       const data = await api.diary(w);
       setState(data);
       setWeek(w);
+      setSessionPage(null);
       if (push) window.history.pushState(null, "", `/?week=${w}`);
       else window.history.replaceState(null, "", `/?week=${w}`);
     } catch (e) {
@@ -71,7 +80,7 @@ export default function App() {
           week ? { week } : api.currentWeek(),
         ]);
         setGroups(cat.groups);
-        await openWeek(w.week);
+        if (!sessionFromUrl()) await openWeek(w.week);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       }
@@ -82,6 +91,11 @@ export default function App() {
   // Browser back/forward: reload the week from the URL.
   useEffect(() => {
     const onPop = () => {
+      const s = sessionFromUrl();
+      if (s) {
+        setSessionPage(s);
+        return;
+      }
       const w = weekFromUrl();
       if (w) void openWeek(w);
     };
@@ -170,7 +184,7 @@ export default function App() {
   return (
     <>
       <header className="top">
-        <div className="pager">
+        <div className="pager" style={{ visibility: sessionPage ? "hidden" : "visible" }}>
           <button title="Previous week" onClick={() => switchWeek(-1)}>
             ‹
           </button>
@@ -197,6 +211,13 @@ export default function App() {
         </div>
       )}
       {error && <div className="err">{error}</div>}
+      {sessionPage ? (
+        <SessionPage
+          id={sessionPage}
+          fromWeek={weekFromUrl()}
+          onBack={(w) => void openWeek(w, true)}
+        />
+      ) : (
       <DndContext
         sensors={sensors}
         collisionDetection={collision}
@@ -235,6 +256,11 @@ export default function App() {
                 change((w) => api.removeItem(w, session, recipe, admin))
               }
               onDelete={(session) => change((w) => api.deleteSession(w, session, admin))}
+              onOpenDetails={(session) => {
+                // Keep the week we came from, for the way back.
+                window.history.pushState(null, "", `/?session=${session}&week=${state.week}`);
+                setSessionPage(session);
+              }}
             />
           )}
           {state && (
@@ -253,6 +279,7 @@ export default function App() {
         {dragging && <div className="drag-preview">{dragging.title}</div>}
       </DragOverlay>
       </DndContext>
+      )}
     </>
   );
 }

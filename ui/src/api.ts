@@ -48,6 +48,12 @@ export interface DiaryDay {
   totals: Record<string, number>;
 }
 
+/** A diary meal: its day and mealtime. */
+export interface MealRef {
+  date: string;
+  mealtime: string;
+}
+
 /** One recipe of a prep session: frozen numbers plus made vs eaten. */
 export interface SessionItem {
   recipe: string;
@@ -59,6 +65,8 @@ export interface SessionItem {
   portions: number;
   /** linked entries, in every week */
   eaten: number;
+  /** those entries: which days and mealtimes */
+  meals: MealRef[];
   kcal: number;
   protein_g: number;
   cost: number;
@@ -72,6 +80,15 @@ export interface Session {
   /** false: an older session linked from this week */
   in_window: boolean;
   items: SessionItem[];
+}
+
+/** One session for its own page: the card plus totals. */
+export interface SessionDetail {
+  session: Session;
+  today: string;
+  /** ISO week of the session's date (for the way back) */
+  week: string;
+  totals: Record<string, number>;
 }
 
 export interface DiaryWeek {
@@ -118,6 +135,7 @@ export const api = {
   version: () => request<{ version: string; commit: string }>("/api/version"),
   catalog: () => request<{ groups: CatalogGroup[] }>("/api/catalog"),
   diary: (week: string) => request<DiaryWeek>(`/api/diary/${week}`),
+  session: (id: string) => request<SessionDetail>(`/api/sessions/${id}`),
   addEntry: (week: string, recipe: string, where: Placement, session: Link, admin: boolean) =>
     send<DiaryWeek>("POST", `/api/diary/${week}/entries`, admin, { ...where, recipe, session }),
   removeEntry: (week: string, id: string, admin: boolean) =>
@@ -154,6 +172,11 @@ export function sessionColor(date: string, monday: string): string {
   const offset = Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${monday}T00:00:00Z`)) / 86400000);
   const slots: Record<number, string> = { [-1]: "c0", 1: "c1", 3: "c2", 6: "c3" };
   return slots[offset] ?? (offset >= -1 && offset <= 6 ? "c4" : "c5");
+}
+
+/** "Mon lunch · Wed dinner" for a list of meals. */
+export function mealsLabel(meals: MealRef[]): string {
+  return meals.map((m) => `${dayLabel(m.date).split(" ")[0]} ${m.mealtime}`).join(" · ");
 }
 
 /** Shift an ISO week id ("2026-W43") by `delta` weeks. */
