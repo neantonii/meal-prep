@@ -174,6 +174,14 @@ def test_auto_link_creates_the_default_session_before_the_entry():
     assert wed.session == tue.id
 
 
+def test_auto_link_never_picks_a_same_day_session():
+    diary, _ = _add(EMPTY, MON)  # creates Sunday's session
+    tue = _session(TUE, (CHICKEN, 1))
+    diary = Diary(weeks=diary.weeks, sessions={**diary.sessions, tue.id: tue})
+    diary, breakfast = _add(diary, TUE)
+    assert diary.sessions[breakfast.session].date == SUN  # type: ignore[index]
+
+
 def test_auto_link_prefers_a_session_with_a_free_portion():
     diary = _with(_session(SUN, (CHICKEN, 1)))
     diary, entry = _add(diary, WED)  # Tuesday is nearer, but Sunday has room
@@ -194,10 +202,11 @@ def test_auto_link_never_changes_a_session_that_already_happened():
     past = _session(TODAY, (EGG, 1))  # one portion
     diary, first = _add(_with(past), SUN, EGG)
     assert first.session == past.id
-    # Full now; Sunday (Plan) gets a new session instead of raising Saturday's.
+    # Full now, and no Plan session before Sunday: unlinked, never a raise
+    # of Saturday's batches (nor Sunday's own session: same day is unusual).
     diary, second = _add(diary, SUN, EGG)
     assert diary.sessions[past.id] == past
-    assert diary.sessions[second.session].date == SUN  # type: ignore[index]
+    assert second.session is None
 
 
 def test_log_mode_adds_unlinked_entries_only():
