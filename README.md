@@ -105,7 +105,24 @@ chmod +x update.sh
 ```
 
 Every merge to `master` reaches the host within the hour; a change that
-needs a manual step (like a data migration) says so in its PR.
+needs a manual step says so in its PR.
+
+**Data migrations run by themselves.** When the stored diary format changes,
+the release carries a migration (`src/meal_prep/migrations/`). On start-up
+the server compares the diary's version (`diary/.migrations.yaml`) with the
+migrations it knows; if any are newer, it first copies the diary to
+`diary/.backups/<UTC time>-before-<n>/`, then applies them in order and
+checks that every file still loads. If one fails, the server does not start
+(the log names the error and the backup) and serves nothing half-migrated.
+A new, empty diary is just marked current.
+
+Rolling back past a migration (pinning an older image): stop the container,
+replace the diary's files with the backup folder's contents (keep the
+`.backups/` folder), remove `diary/.migrations.yaml` or set its `version`
+to the backup's number minus one, then start the older image. Images from
+this release on refuse to start on data migrated beyond what they know,
+rather than misreading it. Backups are never deleted automatically; prune old ones by
+hand.
 
 The server boots with an empty diary dir and creates a week file when the
 first entry of that week is logged.

@@ -76,8 +76,8 @@
     green on the new `master`; if it needs a rebase, rebase, push and wait
     for re-approval.
   - A merge deploys within the hour (README, "Every merge to `master`
-    reaches the host"). A PR that needs a manual step on the host (e.g. a
-    data migration) is merged only when the owner says so.
+    reaches the host"). A PR that needs a manual step on the host is
+    merged only when the owner says so.
   - Never push to `master`; never merge `master` into a branch (rebase
     instead); never merge PRs the agent didn't open (Dependabot's, the
     owner's) unless asked.
@@ -100,6 +100,15 @@ published versions have gaps.
 - PATCH: never written anywhere.
 - Renaming or recreating `.github/workflows/image.yml` restarts the run
   number at 1: bump MINOR in the same change so versions stay unique.
+
+## Diary data migrations
+
+A change that alters how diary or session files are stored (a new field
+that existing files should have, a rename, a move) ships a migration in
+`src/meal_prep/migrations/` (see its `__init__` docstring): the next number,
+raw YAML edits (never today's DTOs), idempotent, with a test from old-format
+files. The server applies it on start-up after a backup, so no manual host
+step is needed. Never edit or renumber a released migration.
 
 ## Committed schemas
 
