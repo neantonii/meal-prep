@@ -138,7 +138,9 @@ its linked entries, or onto a day that already has a session.
   item from the panel into a slot for a linked entry; drop a meal on a chip
   or the panel to relink it (same rules as any link).
 - Entries show their source as a colored left edge (the session's color;
-  unlinked entries have their own color). A date badge appears only for an
+  unlinked entries have their own color). Colors follow the four standard
+  slots of the page, the same every week: Sunday before, Tuesday, Thursday,
+  the week's Sunday; other days and older sessions get two more. A date badge appears only for an
   unusual source: anything but the latest session strictly before the
   entry's day (a same-day session is unusual).
 
