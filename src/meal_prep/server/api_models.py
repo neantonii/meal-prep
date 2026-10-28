@@ -84,6 +84,31 @@ class Session(BaseModel):
     items: list[SessionItem]
 
 
+class NeededIngredient(BaseModel):
+    """One ingredient to have on hand: ``packages`` of ``product`` (a
+    fraction is fine); the package fields are ``None`` for lines frozen
+    before packages were recorded."""
+
+    ingredient: str
+    name: str
+    card_url: str | None
+    product: str | None
+    package_amount: float | None
+    package_unit: str | None
+    packages: float | None
+    grams: float
+    cost: float
+    recipes: list[str]
+
+
+class AisleNeeds(BaseModel):
+    """``aisle`` is ``None`` for lines frozen before aisles were recorded."""
+
+    aisle: str | None
+    cost: float
+    ingredients: list[NeededIngredient]
+
+
 class SessionDetail(BaseModel):
     """One session for its own page: the card plus totals."""
 
@@ -91,6 +116,7 @@ class SessionDetail(BaseModel):
     today: str
     week: str  # ISO week of the session's date (for the way back)
     totals: dict[str, float]  # portions, cost, kcal, protein_g over all items
+    needs: list[AisleNeeds]  # what to have on hand by the session
 
 
 class DiaryWeek(BaseModel):

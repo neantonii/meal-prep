@@ -36,7 +36,12 @@ class RecipeCategory(StrEnum):
 
 
 class Aisle(StrEnum):
-    """Supermarket aisles in walking order (definition order is the order)."""
+    """Supermarket aisles in walking order (definition order is the order).
+
+    Frozen session lines store these values (``docs/prep-sessions.md``), so a
+    value is never renamed or removed: new aisles are only added (reordering
+    is fine). A retired aisle stays a member, unused by current ingredients.
+    """
 
     PRODUCE = "produce"
     MEAT = "meat"

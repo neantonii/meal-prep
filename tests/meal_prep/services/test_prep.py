@@ -11,7 +11,7 @@ import pytest
 from meal_prep.dtos.log import DiaryEntryDTO
 from meal_prep.dtos.session import PrepSessionDTO
 from meal_prep.enums import Aisle, Mealtime, RecipeCategory, StorageType
-from meal_prep.models.ingredient import MacrosInfo
+from meal_prep.models.ingredient import MacrosInfo, Package
 from meal_prep.models.recipe import Recipe, RecipeIngredient
 from meal_prep.services import prep
 from meal_prep.services.prep import Change, Diary, Mode, Policy, RuleError
@@ -51,6 +51,7 @@ def _recipe(recipe_id: str, servings: float = 4.0) -> Recipe:
                 grams=600.0,
                 cost=12.0,
                 macros=macros,
+                package=Package("Test 1 kg", 1.0, "kg", 1000.0),
             ),
         ),
         instructions="Cook.",

@@ -9,7 +9,7 @@ import pytest
 
 from meal_prep.dtos.log import DiaryWeekDTO
 from meal_prep.enums import Aisle, Mealtime, RecipeCategory, StorageType
-from meal_prep.models.ingredient import MacrosInfo
+from meal_prep.models.ingredient import MacrosInfo, Package
 from meal_prep.models.recipe import Recipe, RecipeIngredient
 from meal_prep.services.diary import (
     EntryNotFoundError,
@@ -49,6 +49,7 @@ def _recipe(recipe_id: str, *, cost: float = 1.0, cal: float = 100.0) -> Recipe:
                 grams=100.0,
                 cost=cost,
                 macros=macros,
+                package=Package("Test 1 kg", 1.0, "kg", 1000.0),
             ),
         ),
         instructions="Cook.",

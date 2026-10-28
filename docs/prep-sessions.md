@@ -11,8 +11,8 @@ eaten stay aligned. Per-session ingredient lists build on this later.
 
 ## Out of scope
 
-- Per-session required-ingredient / shopping list (next feature; the data it
-  needs is already frozen, see "Session item").
+- Subtracting stock on hand from the ingredient list (inventory, see
+  `docs/spikes/inventory.md`), and ticking lines off.
 - Free-form takeout / eating-out entries (#142) and AI macro estimates (#141).
   Every diary entry stays a recipe here; "no session" means a recipe entry
   that is not linked to any session.
@@ -62,8 +62,13 @@ eaten stay aligned. Per-session ingredient lists build on this later.
 - One item per recipe in a session.
 - **Frozen when added** (like diary entries, #107): title, servings per batch,
   per-serving cost and macros, and the per-batch ingredient lines (ingredient
-  id, name, grams, cost). Changing `batches` keeps them; nothing is
-  recomputed. To pick up a changed recipe, remove the item and add it again.
+  id, name, grams, cost, aisle, and the retail package: product title, its
+  authored size such as 4 l or 18 count, and packages per batch). Changing
+  `batches` keeps them; nothing is recomputed. To pick up a changed recipe,
+  remove the item and add it again.
+- Aisle values are stored, so they are never renamed or removed, only added
+  (`Aisle` in `enums.py`). Lines frozen before aisles and packages were
+  recorded have neither; a data migration fills them in (#151).
 
 ## Links
 
@@ -146,8 +151,26 @@ its linked entries, or onto a day that already has a session.
   recipe with its batches, portions, the meals it feeds ("Mon lunch · Tue
   lunch") and any spare warning. It closes on ×, Esc or a click outside.
 - "Details →" opens the session's own page (`/?session=<id>`): totals
-  (recipes, portions, cost, kcal, protein) and a table per recipe. The
-  ingredient totals and shopping list will live there.
+  (recipes, portions, cost, kcal, protein) and a table per recipe on the
+  left, the ingredient list on the right (below on a phone).
+
+## Ingredient list
+
+What to have on hand by the session: every item's frozen ingredient lines
+times its batches (spare portions included: whole batches are cooked),
+summed per ingredient. It is not a purchase list, since stock already at home
+is not subtracted (that needs inventory).
+
+- One table per aisle: packs of the frozen product (fractions included;
+  "< 0.1" for a pinch), the ingredient with its product title, the pack size
+  as authored (4 l, 18 pcs) and the cost. When the panel is narrow the pack
+  size column is dropped; hovering a line always spells it out ("0.3 × 750 g
+  pack · 225 g used · for …"), in case a product title is unclear.
+- Grouped by aisle in walking order, each with its cost. Spices start
+  collapsed (mostly staples); every other aisle is open. Lines without a
+  frozen aisle or package (older files) come last, in grams.
+- Computed by `PrepSession.needs()` (the model), so any client gets the same
+  list.
 - Empty placeholders fill the default days (Sun, Tue, Thu) in that range;
   "+ session" (Admin mode only) adds a placeholder on another day.
 - Older sessions linked from this week's entries (e.g. frozen portions)

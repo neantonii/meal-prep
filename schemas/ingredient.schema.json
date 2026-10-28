@@ -1,7 +1,7 @@
 {
   "$defs": {
     "Aisle": {
-      "description": "Supermarket aisles in walking order (definition order is the order).",
+      "description": "Supermarket aisles in walking order (definition order is the order).\n\nFrozen session lines store these values (``docs/prep-sessions.md``), so a\nvalue is never renamed or removed: new aisles are only added (reordering\nis fine). A retired aisle stays a member, unused by current ingredients.",
       "enum": [
         "produce",
         "meat",

@@ -83,12 +83,38 @@ export interface Session {
 }
 
 /** One session for its own page: the card plus totals. */
+/** One ingredient to have on hand by a session, summed over its batches.
+ * The package fields are null for lines saved before packages were. */
+export interface NeededIngredient {
+  ingredient: string;
+  name: string;
+  card_url: string | null;
+  product: string | null;
+  package_amount: number | null;
+  package_unit: string | null;
+  /** how many packages (a fraction is fine) */
+  packages: number | null;
+  grams: number;
+  cost: number;
+  /** titles of the recipes that use it */
+  recipes: string[];
+}
+
+/** The needed ingredients of one aisle; `aisle` null: not recorded. */
+export interface AisleNeeds {
+  aisle: string | null;
+  cost: number;
+  ingredients: NeededIngredient[];
+}
+
 export interface SessionDetail {
   session: Session;
   today: string;
   /** ISO week of the session's date (for the way back) */
   week: string;
   totals: Record<string, number>;
+  /** what to have on hand by the session, by aisle in walking order */
+  needs: AisleNeeds[];
 }
 
 export interface DiaryWeek {

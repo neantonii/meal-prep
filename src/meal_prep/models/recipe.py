@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from functools import reduce
 
 from meal_prep.enums import Aisle, RecipeCategory, StorageType
-from meal_prep.models.ingredient import MacrosInfo
+from meal_prep.models.ingredient import MacrosInfo, Package
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,6 +47,7 @@ class RecipeIngredient:
     grams: float
     cost: float
     macros: MacrosInfo
+    package: Package
     repeated: bool = False
 
 

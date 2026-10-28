@@ -30,6 +30,8 @@ def _ingredient() -> Ingredient:
         ),
         package_weight_g=1000.0,
         price_per_100g=0.499,
+        package_amount=1000.0,
+        package_unit="g",
     )
 
 

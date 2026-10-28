@@ -1,9 +1,34 @@
 {
   "$defs": {
+    "Aisle": {
+      "description": "Supermarket aisles in walking order (definition order is the order).\n\nFrozen session lines store these values (``docs/prep-sessions.md``), so a\nvalue is never renamed or removed: new aisles are only added (reordering\nis fine). A retired aisle stays a member, unused by current ingredients.",
+      "enum": [
+        "produce",
+        "meat",
+        "seafood",
+        "dairy",
+        "pantry",
+        "spices"
+      ],
+      "title": "Aisle",
+      "type": "string"
+    },
     "SessionIngredientDTO": {
       "additionalProperties": false,
       "description": "One ingredient line of one batch, as it was when the item was added.",
       "properties": {
+        "aisle": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Aisle"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Supermarket aisle when added"
+        },
         "cost": {
           "description": "Cost of those grams, in CAD",
           "minimum": 0,
@@ -26,6 +51,18 @@
           "minLength": 1,
           "title": "Name",
           "type": "string"
+        },
+        "package": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SessionPackageDTO"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Retail package when added"
         }
       },
       "required": [
@@ -157,6 +194,44 @@
         "ingredients"
       ],
       "title": "SessionItemDTO",
+      "type": "object"
+    },
+    "SessionPackageDTO": {
+      "additionalProperties": false,
+      "description": "The retail package an ingredient line is bought in, when added.",
+      "properties": {
+        "amount": {
+          "description": "Package size when added, in `unit` (e.g. 4)",
+          "exclusiveMinimum": 0,
+          "title": "Amount",
+          "type": "number"
+        },
+        "per_batch": {
+          "description": "Packages one batch uses (a fraction is fine)",
+          "minimum": 0,
+          "title": "Per Batch",
+          "type": "number"
+        },
+        "product": {
+          "description": "Product title when added",
+          "minLength": 1,
+          "title": "Product",
+          "type": "string"
+        },
+        "unit": {
+          "description": "Unit of `amount` (e.g. 'l', 'count')",
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "product",
+        "amount",
+        "unit",
+        "per_batch"
+      ],
+      "title": "SessionPackageDTO",
       "type": "object"
     }
   },

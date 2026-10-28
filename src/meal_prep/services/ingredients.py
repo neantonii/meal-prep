@@ -99,6 +99,12 @@ def prepare_ingredient(
         return factor
 
     package_weight_g = require_factor("package", "g", what="package weight")
+    retail = [edge for edge in edges if edge.source == "package"]
+    if len(retail) != 1:
+        raise ValueError(
+            f"Ingredient '{dto.id}' needs exactly one conversion from 'package' "
+            f"(its retail size), found {len(retail)}."
+        )
     for canonical in dto.custom_units:
         require_factor(canonical, "g", what=f"custom unit '{canonical}'")
 
@@ -136,6 +142,8 @@ def prepare_ingredient(
         conversion_graph=graph,
         package_weight_g=package_weight_g,
         price_per_100g=dto.reference.price / package_weight_g * 100.0,
+        package_amount=retail[0].factor,
+        package_unit=retail[0].target,
     )
 
 

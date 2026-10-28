@@ -20,6 +20,24 @@ import uuid
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from meal_prep.dtos._normalize import normalize_slug
+from meal_prep.enums import Aisle
+
+
+class SessionPackageDTO(BaseModel):
+    """The retail package an ingredient line is bought in, when added."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    product: str = Field(..., min_length=1, description="Product title when added")
+    amount: float = Field(
+        ..., gt=0, description="Package size when added, in `unit` (e.g. 4)"
+    )
+    unit: str = Field(
+        ..., min_length=1, description="Unit of `amount` (e.g. 'l', 'count')"
+    )
+    per_batch: float = Field(
+        ..., ge=0, description="Packages one batch uses (a fraction is fine)"
+    )
 
 
 class SessionIngredientDTO(BaseModel):
@@ -31,6 +49,13 @@ class SessionIngredientDTO(BaseModel):
     name: str = Field(..., min_length=1, description="Ingredient name when added")
     grams: float = Field(..., ge=0, description="Grams used by one batch")
     cost: float = Field(..., ge=0, description="Cost of those grams, in CAD")
+    # Added for the session's ingredient list; missing in older files.
+    aisle: Aisle | None = Field(
+        default=None, description="Supermarket aisle when added"
+    )
+    package: SessionPackageDTO | None = Field(
+        default=None, description="Retail package when added"
+    )
 
     @field_validator("ingredient")
     @classmethod
