@@ -54,7 +54,7 @@ function Spare({ count }: { count: number }) {
  * sessions, then the Sunday before through this Sunday) and, below it, the
  * items of the one session that is open. */
 export default function SessionsBar(props: Props) {
-  const { sessions, extraDates, today, onAddDate } = props;
+  const { sessions, extraDates, today, admin, onAddDate } = props;
   const [newDate, setNewDate] = useState("");
   // The open session, by date: it stays open across week pages that show it.
   const [openDate, setOpenDate] = useState<string | null>(null);
@@ -87,19 +87,22 @@ export default function SessionsBar(props: Props) {
             {...props}
           />
         ))}
-        <span className="add-session">
-          <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
-          <button
-            disabled={!newDate}
-            onClick={() => {
-              onAddDate(newDate);
-              setOpenDate(newDate);
-              setNewDate("");
-            }}
-          >
-            + session
-          </button>
-        </span>
+        {/* Sessions on non-standard days are rare: Admin only. */}
+        {admin && (
+          <span className="add-session">
+            <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
+            <button
+              disabled={!newDate}
+              onClick={() => {
+                onAddDate(newDate);
+                setOpenDate(newDate);
+                setNewDate("");
+              }}
+            >
+              + session
+            </button>
+          </span>
+        )}
       </div>
       {open && <SessionPanel session={open} onClose={() => setOpenDate(null)} {...props} />}
     </section>
