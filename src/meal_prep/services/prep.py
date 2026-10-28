@@ -430,20 +430,40 @@ def set_entry_session(
     week: str,
     entry_id: uuid.UUID,
     session: uuid.UUID | None,
+    session_date: datetime.date | None = None,
 ) -> Change:
-    """Link one entry to ``session`` (``None`` unlinks). Plan auto-fills;
-    Log refuses; Admin links only when the rules hold."""
+    """Link one entry to ``session`` (``None`` unlinks), or to the session on
+    ``session_date``, creating it with the entry's recipe when that day has
+    none yet (not for a day that already happened). Plan auto-fills; Log
+    refuses; Admin links only when the rules hold."""
     draft = _Draft(diary, policy, recipes)
     current = _week_of(draft, week)
     date, _, entry = entries.find_entry(current, entry_id)
-    if entry.session == session:
-        return Change()
     mode = policy.mode(date)
     if mode is Mode.LOG:
         raise RuleError(
             f"{day_label(date)} is in Log mode: an entry's session can only "
             "change in Admin mode"
         )
+    if session_date is not None:
+        existing = draft.session_on(session_date)
+        if existing is not None:
+            session = existing.id
+        elif policy.mode(session_date) is Mode.LOG:
+            raise RuleError(
+                f"The {day_label(session_date)} session already happened: "
+                "adding to it is Admin only"
+            )
+        else:
+            created = PrepSessionDTO(
+                id=uuid.uuid4(),
+                date=session_date,
+                items=[freeze_item(draft.recipe(entry.recipe))],
+            )
+            draft.put_session(created)
+            session = created.id
+    if entry.session == session:
+        return Change()
     unlinked = entries.set_entry_session(current, entry_id, None)
     draft.put_week(week, unlinked)
     if session is not None:

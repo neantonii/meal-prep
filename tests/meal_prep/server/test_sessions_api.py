@@ -172,3 +172,22 @@ def test_hand_edits_are_picked_up_and_bad_files_reported(
     assert _card(week, "2026-11-01")["items"][0]["title"].startswith("Old ")
     path.write_text("id: nope\n")
     assert client.get(f"/api/diary/{W45}").status_code == 422
+
+
+def test_dropping_a_meal_on_an_empty_day_creates_its_session(client: TestClient):
+    week = _ok(
+        client.post(
+            "/api/sessions/2026-11-05/items",
+            params={"week": W45},
+            json={"recipe": CHICKEN},
+        )
+    )
+    thu = _card(week, "2026-11-05")["id"]
+    week = _ok(_add(client, "2026-11-06", session=thu))
+    [entry] = _entries(week)
+    assert _card(week, "2026-11-03")["id"] is None  # Tuesday: placeholder
+    url = f"/api/diary/{W45}/entries/{entry['id']}/session"
+    week = _ok(client.put(url, json={"session_date": "2026-11-03"}))
+    tue = _card(week, "2026-11-03")
+    assert tue["id"] is not None
+    assert _entries(week)[0]["session"] == tue["id"]

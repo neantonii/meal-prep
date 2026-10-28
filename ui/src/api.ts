@@ -126,8 +126,11 @@ export const api = {
     send<DiaryWeek>("PATCH", `/api/diary/${week}/entries/${id}`, admin, where),
   linkEntry: (week: string, id: string, session: string | null, admin: boolean) =>
     send<DiaryWeek>("PUT", `/api/diary/${week}/entries/${id}/session`, admin, { session }),
-  addItem: (week: string, date: string, recipe: string, admin: boolean) =>
-    send<DiaryWeek>("POST", `/api/sessions/${date}/items?week=${week}`, admin, { recipe }),
+  /** Link to the session on `date`, created when that day has none yet. */
+  linkEntryToDay: (week: string, id: string, date: string, admin: boolean) =>
+    send<DiaryWeek>("PUT", `/api/diary/${week}/entries/${id}/session`, admin, {
+      session_date: date,
+    }),
   updateItem: (
     week: string,
     session: string,

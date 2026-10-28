@@ -136,9 +136,11 @@ its linked entries, or onto a day that already has a session.
 - Each item shows its batches ("2 batches") and, when the batch is
   underused, a warning ("⚠ 1 spare": portions made but not linked to a
   meal); chips sum the spare portions of their session.
-- Drop a palette recipe on a chip or the open panel to add an item; drag an
-  item from the panel into a slot for a linked entry; drop a meal on a chip
-  or the panel to relink it (same rules as any link).
+- Sessions only take meals: drop a meal on a chip or the open panel to
+  relink it (same rules as any link); on an empty placeholder day this
+  creates the session with the meal's recipe. Palette recipes go into slots
+  only (auto-link fills sessions); drag an item from the open panel into a
+  slot for a linked entry.
 - Entries show their source as a colored left edge (the session's color;
   unlinked entries have their own color). Colors follow the four standard
   slots of the page, the same every week: Sunday before, Tuesday, Thursday,

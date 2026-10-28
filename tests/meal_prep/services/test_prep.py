@@ -383,3 +383,22 @@ def test_moving_a_session_keeps_links_on_or_after_it():
     with pytest.raises(RuleError, match="haven't happened"):
         prep.move_session(_with(past), PLAN, past.id, SUN)
     assert prep.move_session(_with(past), ADMIN, past.id, SUN).sessions
+
+
+def test_relinking_to_an_empty_day_creates_its_session():
+    thu = _session(THU, (CHICKEN, 1))
+    fri = D(2026, 11, 6)
+    diary, entry = _add(_with(thu), fri, link=thu.id)
+    change = prep.set_entry_session(
+        diary, PLAN, RECIPES, WEEK, entry.id, None, session_date=TUE
+    )
+    diary = _apply(diary, change)
+    tue = next(s for s in diary.sessions.values() if s.date == TUE)
+    assert _entry(diary, entry.id).session == tue.id
+    assert [i.recipe for i in tue.items] == ["chicken"]
+    # A day that already happened, or one after the meal, is refused.
+    with pytest.raises(RuleError, match="already happened"):
+        prep.set_entry_session(diary, PLAN, RECIPES, WEEK, entry.id, None, TODAY)
+    with pytest.raises(RuleError, match="later"):
+        sat = D(2026, 11, 7)
+        prep.set_entry_session(diary, PLAN, RECIPES, WEEK, entry.id, None, sat)
