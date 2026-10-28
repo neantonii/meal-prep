@@ -286,18 +286,35 @@ class _Draft:
             ]
         self.put_session(session.model_copy(update={"items": new_items}))
 
-    def auto_link(self, recipe_id: str, date: datetime.date) -> uuid.UUID | None:
+    def same_day_ok(
+        self, session_date: datetime.date, date: datetime.date, mealtime: Mealtime
+    ) -> bool:
+        """A meal may come from its own day's session only at dinner: the
+        delivery and prep happen during that day (Admin: any meal)."""
+        return self.policy.admin or session_date != date or mealtime is Mealtime.DINNER
+
+    def require_same_day_ok(
+        self, session_date: datetime.date, date: datetime.date, mealtime: Mealtime
+    ) -> None:
+        if not self.same_day_ok(session_date, date, mealtime):
+            raise RuleError(
+                f"Only dinner can come from the same day's session "
+                f"({day_label(date)}); Admin can link any meal"
+            )
+
+    def auto_link(
+        self, recipe_id: str, date: datetime.date, mealtime: Mealtime
+    ) -> uuid.UUID | None:
         """The session a palette drop on ``date`` links to (Plan auto-link).
 
-        Only the ``AUTO_LINK_DAYS`` before ``date`` count, never the day
-        itself: a meal rarely comes from that day's own prep, so a same-day
-        source only happens when chosen on purpose. First the latest of those sessions
-        that lists the recipe with a free portion; else the latest Plan day
-        among them that has a session or is a default prep day (auto-filled,
-        creating the session when needed); else ``None``.
+        The ``AUTO_LINK_DAYS`` before ``date`` count, plus the day itself for
+        dinner (see ``same_day_ok``). First the latest of those sessions that
+        lists the recipe with a free portion; else the latest Plan day among
+        them that has a session or is a default prep day (the session grows
+        to fit, created when needed); else ``None``.
         """
         start = date - datetime.timedelta(days=AUTO_LINK_DAYS)
-        end = date - datetime.timedelta(days=1)
+        end = date if mealtime is Mealtime.DINNER else date - datetime.timedelta(days=1)
         recent = sorted(
             (s for s in self.sessions.values() if start <= s.date <= end),
             key=lambda s: s.date,
@@ -366,7 +383,9 @@ def add_entry(
     mode = policy.mode(date)
     session: uuid.UUID | None
     if link == "auto":
-        session = draft.auto_link(recipe.id, date) if mode is Mode.PLAN else None
+        session = (
+            draft.auto_link(recipe.id, date, mealtime) if mode is Mode.PLAN else None
+        )
     elif link is None:
         session = None
     else:
@@ -375,7 +394,7 @@ def add_entry(
                 f"{day_label(date)} is in Log mode: new entries can't be linked "
                 "to a session"
             )
-        draft.session(link)  # must exist
+        draft.require_same_day_ok(draft.session(link).date, date, mealtime)
         draft.make_room(link, recipe.id, date)
         session = link
     dto, entry = entries.add_entry(
@@ -408,8 +427,9 @@ def move_entry(
 ) -> Change:
     """Move or reorder one entry, keeping its link while it still holds.
 
-    In Plan a link the move breaks (the entry now precedes its session) is
-    re-linked by the auto-link rule; in Log and Admin the move is refused.
+    In Plan a link the move breaks (the entry now precedes its session, or
+    sits on its session's own day other than at dinner) is re-linked by the
+    auto-link rule; in Log and Admin the move is refused.
     """
     draft = _Draft(diary, policy, recipes)
     current = _week_of(draft, week)
@@ -420,11 +440,15 @@ def move_entry(
     if (
         session is not None
         and policy.mode(old_date, date) is Mode.PLAN
-        and (session not in draft.sessions or draft.sessions[session].date > date)
+        and (
+            session not in draft.sessions
+            or draft.sessions[session].date > date
+            or not draft.same_day_ok(draft.sessions[session].date, date, mealtime)
+        )
     ):
         unlinked = entries.set_entry_session(moved, entry_id, None)
         draft.put_week(week, unlinked)
-        session = draft.auto_link(entry.recipe, date)
+        session = draft.auto_link(entry.recipe, date, mealtime)
         draft.put_week(week, entries.set_entry_session(unlinked, entry_id, session))
     draft.check([session])
     return draft.change()
@@ -445,14 +469,17 @@ def set_entry_session(
     refuses; Admin adds the recipe or batches as needed, on any session."""
     draft = _Draft(diary, policy, recipes)
     current = _week_of(draft, week)
-    date, _, entry = entries.find_entry(current, entry_id)
+    date, mealtime, entry = entries.find_entry(current, entry_id)
     mode = policy.mode(date)
     if mode is Mode.LOG:
         raise RuleError(
             f"{day_label(date)} is in Log mode: an entry's session can only "
             "change in Admin mode"
         )
+    if session is not None:
+        draft.require_same_day_ok(draft.session(session).date, date, mealtime)
     if session_date is not None:
+        draft.require_same_day_ok(session_date, date, mealtime)
         existing = draft.session_on(session_date)
         if existing is not None:
             session = existing.id

@@ -98,10 +98,11 @@ def _add(
     recipe: Recipe = CHICKEN,
     link: prep.Link = "auto",
     policy: Policy = PLAN,
+    meal: Mealtime = Mealtime.LUNCH,
 ) -> tuple[Diary, DiaryEntryDTO]:
     week = _week(date)
     change, entry = prep.add_entry(
-        diary, policy, RECIPES, week, date, Mealtime.LUNCH, recipe, link=link
+        diary, policy, RECIPES, week, date, meal, recipe, link=link
     )
     return _apply(diary, change), entry
 
@@ -180,6 +181,23 @@ def test_auto_link_never_picks_a_same_day_session():
     diary = Diary(weeks=diary.weeks, sessions={**diary.sessions, tue.id: tue})
     diary, breakfast = _add(diary, TUE)
     assert diary.sessions[breakfast.session].date == SUN  # type: ignore[index]
+
+
+def test_only_dinner_comes_from_the_same_days_session():
+    tue = _session(TUE, (CHICKEN, 1))
+    diary = _with(tue)
+    diary, dinner = _add(diary, TUE, meal=Mealtime.DINNER)
+    assert dinner.session == tue.id  # auto-link: same day, dinner
+    diary, lunch = _add(diary, TUE)
+    assert diary.sessions[lunch.session].date == SUN  # type: ignore[index]
+    with pytest.raises(RuleError, match="Only dinner"):
+        _add(diary, TUE, link=tue.id)  # explicit, Plan: refused
+    _, admin = _add(diary, TUE, link=tue.id, policy=ADMIN)
+    assert admin.session == tue.id  # Admin: any meal
+    # Moving the dinner to lunch on the same day re-links it (Plan).
+    change = prep.move_entry(diary, PLAN, RECIPES, WEEK, dinner.id, TUE, Mealtime.LUNCH)
+    moved = _entry(_apply(diary, change), dinner.id)
+    assert moved.session != tue.id
 
 
 def test_auto_link_prefers_a_session_with_a_free_portion():
