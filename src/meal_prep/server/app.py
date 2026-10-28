@@ -22,6 +22,7 @@ from fastapi.staticfiles import StaticFiles
 
 from meal_prep.enums import RecipeCategory
 from meal_prep.library import load_library
+from meal_prep.migrations import migrate
 from meal_prep.server.api_models import CatalogEntry
 from meal_prep.server.cards import cards_router
 from meal_prep.server.diary_routes import diary_router
@@ -57,6 +58,9 @@ def create_app(
             raise FileNotFoundError(f"{label} does not exist: {path}")
 
     library = load_library(data_dir, recipes_dir)
+    # Bring stored diary files up to this release's format (backed up
+    # first) before anything is served; a failure stops the server.
+    migrate(diary_dir, library)
     editor = Editor(library, DiaryStore(diary_dir), today)
 
     app = FastAPI(title="Meal Prep Diary")

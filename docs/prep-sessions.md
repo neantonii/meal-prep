@@ -68,7 +68,8 @@ eaten stay aligned. Per-session ingredient lists build on this later.
   remove the item and add it again.
 - Aisle values are stored, so they are never renamed or removed, only added
   (`Aisle` in `enums.py`). Lines frozen before aisles and packages were
-  recorded have neither; a data migration fills them in (#151).
+  recorded have neither; migration 1 (`src/meal_prep/migrations/`) fills
+  them in from the ingredient data on the first start after upgrading.
 
 ## Links
 
