@@ -142,8 +142,12 @@ its linked entries, or onto a day that already has a session.
   · 17/24 eaten"): every session dated from the Sunday before the week
   through the week's own Sunday (typically Sun, Tue, Thu, Sun). A Sunday
   session shows in both weeks; it is one session.
-- Clicking a chip opens that session's items in a full-width panel below the
-  strip (one at a time); a session of ~10 recipes stays a few rows high.
+- Clicking a chip rolls the session out over the week table: one row per
+  recipe with its batches, portions, the meals it feeds ("Mon lunch · Tue
+  lunch") and any spare warning. It closes on ×, Esc or a click outside.
+- "Details →" opens the session's own page (`/?session=<id>`): totals
+  (recipes, portions, cost, kcal, protein) and a table per recipe. The
+  ingredient totals and shopping list will live there.
 - Empty placeholders fill the default days (Sun, Tue, Thu) in that range;
   "+ session" (Admin mode only) adds a placeholder on another day.
 - Older sessions linked from this week's entries (e.g. frozen portions)

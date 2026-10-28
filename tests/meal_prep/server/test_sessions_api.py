@@ -178,3 +178,21 @@ def test_dropping_a_meal_on_an_empty_day_creates_its_session(client: TestClient)
     assert tue["id"] is not None
     assert _entries(week)[0]["session"] == tue["id"]
     assert _card(week, "2026-11-05")["id"] is None  # Thursday: pruned
+
+
+def test_session_detail_lists_each_items_meals(client: TestClient):
+    _ok(_add(client, "2026-11-02"))  # Monday lunch: Sunday's session
+    week = _ok(_add(client, "2026-11-01", week=W44, mealtime="dinner"))
+    sun = _card(week, "2026-11-01")
+    [item] = sun["items"]
+    assert item["meals"] == [
+        {"date": "2026-11-01", "mealtime": "dinner"},
+        {"date": "2026-11-02", "mealtime": "lunch"},
+    ]
+    detail = _ok(client.get(f"/api/sessions/{sun['id']}"))
+    assert detail["week"] == W44
+    assert detail["session"]["items"][0]["meals"] == item["meals"]
+    assert detail["totals"]["portions"] == item["portions"]
+    assert detail["totals"]["cost"] == pytest.approx(item["portions"] * item["cost"])
+    missing = client.get("/api/sessions/00000000-0000-4000-8000-000000000000")
+    assert missing.status_code == 404

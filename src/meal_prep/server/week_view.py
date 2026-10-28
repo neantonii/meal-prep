@@ -7,6 +7,7 @@ shapes, with titles and numbers from the frozen entries and session items.
 from __future__ import annotations
 
 import datetime
+import uuid
 
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.library import Library
@@ -18,7 +19,9 @@ from meal_prep.server.api_models import (
     DiaryEntry,
     DiaryMeal,
     DiaryWeek,
+    MealRef,
     Session,
+    SessionDetail,
     SessionItem,
 )
 from meal_prep.server.weeks import week_dates
@@ -60,9 +63,22 @@ def _entry_out(entry: LogEntry, library: Library) -> DiaryEntry:
     )
 
 
+type _Meals = dict[tuple[str, str], list[MealRef]]
+
+
+def _meals_by_item(diary: prep.Diary) -> _Meals:
+    return {
+        (str(sid), recipe): [
+            MealRef(date=date.isoformat(), mealtime=mealtime.value)
+            for date, mealtime in found
+        ]
+        for (sid, recipe), found in prep.linked_meals(diary.weeks.values()).items()
+    }
+
+
 def _session_out(
     session: PrepSession,
-    eaten: dict[tuple[str, str], int],
+    meals: _Meals,
     policy: prep.Policy,
     in_window: bool,
     library: Library,
@@ -80,7 +96,8 @@ def _session_out(
                 batches=item.batches,
                 servings=item.servings,
                 portions=item.portions,
-                eaten=eaten.get((session.session_id, item.recipe_id), 0),
+                eaten=len(meals.get((session.session_id, item.recipe_id), [])),
+                meals=meals.get((session.session_id, item.recipe_id), []),
                 kcal=item.macros.calories_kcal,
                 protein_g=item.macros.protein_g,
                 cost=item.cost,
@@ -137,10 +154,7 @@ def week_response(
     # from the Sunday before through this Sunday, placeholders on empty
     # default days.
     start, end = prep.session_window(dates[0])
-    eaten = {
-        (str(sid), recipe): n
-        for (sid, recipe), n in prep.link_counts(diary.weeks.values()).items()
-    }
+    meals = _meals_by_item(diary)
     linked_here = {
         entry.session
         for day_dto in (dto.days if dto is not None else ())
@@ -159,7 +173,7 @@ def week_response(
             (
                 session_dto.date,
                 _session_out(
-                    prepare_session(session_dto), eaten, policy, in_window, library
+                    prepare_session(session_dto), meals, policy, in_window, library
                 ),
             )
         )
@@ -185,4 +199,33 @@ def week_response(
         days=days,
         sessions=[card for _, card in cards],
         totals=totals,
+    )
+
+
+def session_detail(
+    session_id: uuid.UUID, diary: prep.Diary, today: datetime.date, library: Library
+) -> SessionDetail:
+    """One session for its own page; ``SessionNotFoundError`` if unknown."""
+    dto = diary.sessions.get(session_id)
+    if dto is None:
+        raise prep.SessionNotFoundError(f"No session {session_id}")
+    session = prepare_session(dto)
+    card = _session_out(
+        session, _meals_by_item(diary), prep.Policy(today=today), True, library
+    )
+    year, number, _ = dto.date.isocalendar()
+    return SessionDetail(
+        session=card,
+        today=today.isoformat(),
+        week=f"{year}-W{number:02d}",
+        totals={
+            "portions": sum(item.portions for item in session.items),
+            "cost": sum(item.portions * item.cost for item in session.items),
+            "kcal": sum(
+                item.portions * item.macros.calories_kcal for item in session.items
+            ),
+            "protein_g": sum(
+                item.portions * item.macros.protein_g for item in session.items
+            ),
+        },
     )

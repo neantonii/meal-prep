@@ -8,10 +8,11 @@ from __future__ import annotations
 import logging
 import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
-from meal_prep.server.api_models import DiaryWeek, SessionMove
+from meal_prep.server.api_models import DiaryWeek, SessionDetail, SessionMove
 from meal_prep.server.editing import Editor
+from meal_prep.server.week_view import session_detail
 from meal_prep.services import prep
 
 logger = logging.getLogger("meal_prep.server")
@@ -19,6 +20,15 @@ logger = logging.getLogger("meal_prep.server")
 
 def session_router(editor: Editor) -> APIRouter:
     router = APIRouter(prefix="/api/sessions")
+
+    @router.get("/{session_id}")
+    def session_get(session_id: uuid.UUID) -> SessionDetail:
+        try:
+            return session_detail(
+                session_id, editor.load(), editor.today(), editor.library
+            )
+        except prep.SessionNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
 
     @router.delete("/{session_id}/items/{recipe_id}")
     def item_remove(
