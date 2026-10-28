@@ -1,17 +1,17 @@
-"""Prep session routes: add, change and remove items; move or delete a
-session. Each returns the page of ``week`` (the week the UI shows). The
-rules live in ``meal_prep.services.prep``.
+"""Prep session routes: change (Admin) and remove items; move or delete a
+session. Items are added by linking meals (``diary_routes``). Each returns
+the page of ``week`` (the week the UI shows). The rules live in
+``meal_prep.services.prep``.
 """
 
 from __future__ import annotations
 
-import datetime
 import logging
 import uuid
 
 from fastapi import APIRouter
 
-from meal_prep.server.api_models import DiaryWeek, ItemUpdate, NewItem, SessionMove
+from meal_prep.server.api_models import DiaryWeek, ItemUpdate, SessionMove
 from meal_prep.server.editing import Editor
 from meal_prep.services import prep
 
@@ -20,21 +20,6 @@ logger = logging.getLogger("meal_prep.server")
 
 def session_router(editor: Editor) -> APIRouter:
     router = APIRouter(prefix="/api/sessions")
-
-    @router.post("/{date}/items")
-    def item_add(
-        date: datetime.date, week: str, body: NewItem, admin: bool = False
-    ) -> DiaryWeek:
-        recipe = editor.recipe(body.recipe)
-
-        def op(diary: prep.Diary) -> prep.Change:
-            change, session_id = prep.add_item(
-                diary, editor.policy(admin), date, recipe, body.batches
-            )
-            logger.info("added %s to session %s (%s)", recipe.id, date, session_id)
-            return change
-
-        return editor.edit(week, op)
 
     @router.patch("/{session_id}/items/{recipe_id}")
     def item_update(

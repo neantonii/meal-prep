@@ -27,8 +27,10 @@ eaten stay aligned. Per-session ingredient lists build on this later.
 - A prep session is a date plus a list of items. Sessions are **not tied to
   weeks**: a Sunday session typically feeds that Sunday's dinner and the start
   of the next week.
-- At most one session per day. A session is saved once it has an item; the
-  last item removed deletes it.
+- At most one session per day. A session exists because meals are linked
+  to it: linking a meal creates it (or adds the recipe as an item), and in
+  Plan an item whose last meal goes is removed, a session with no items
+  left deleted. Once its day arrives a session stays as it was (a record).
 - Every session has a permanent id (UUID). Moving it to another day keeps the
   id, so entries linked to it are untouched.
 
@@ -37,9 +39,8 @@ eaten stay aligned. Per-session ingredient lists build on this later.
 - A recipe and `batches` (how many times it is made as written; a whole
   number).
 - **Batches are derived, not typed.** In Plan they follow the linked meals:
-  the fewest whole batches that cover them, at least one (an item can be
-  listed before its meals are planned); every edit recalculates them, up
-  or down. Once the session's day arrives they stay as they were, a record
+  the fewest whole batches that cover them; every edit recalculates them,
+  up or down. Once the session's day arrives they stay as they were, a record
   of what was made. Only Admin sets them by hand (corrections; a Plan
   session's batches follow its meals again on the next non-Admin edit).
 - Portions = batches × servings. Both are whole numbers, so portions are
@@ -112,7 +113,7 @@ never retroactively make more.
 
 | Edit | Plan | Log | Admin |
 |---|---|---|---|
-| Add an item | ✅ | refused | ✅ |
+| Add an item (only by linking a meal) | ✅ | refused | ✅ |
 | Set `batches` | derived from meals | refused | ✅ |
 | Remove an item / delete the session | ✅ | ✅ | ✅ |
 | Move to another day (API only; no UI) | ✅ (both days in Plan) | refused | ✅ |

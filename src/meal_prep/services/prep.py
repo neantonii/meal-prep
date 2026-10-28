@@ -172,24 +172,31 @@ class _Draft:
         return Change(weeks=dict(self._weeks_out), sessions=dict(self._sessions_out))
 
     def derive_batches(self) -> None:
-        """In Plan, batches follow the linked meals: the fewest whole batches
-        that cover them, at least one (an item can be listed before its meals
-        are planned). Once the session's day arrives they stay as they were:
-        a record of what was made. Admin edits are left as they are."""
+        """In Plan, a session follows its linked meals: each item's batches
+        are the fewest whole batches that cover its meals; an item with no
+        meals left is removed, and a session with no items left is deleted.
+        Once the session's day arrives it stays as it was: a record of what
+        was made. Admin edits are left as they are."""
         if self.policy.admin:
             return
         counts = link_counts(self.weeks.values())
         for session in list(self.sessions.values()):
             if self.policy.mode(session.date) is not Mode.PLAN:
                 continue
-            items = [
-                item
-                if (b := _batches_for(counts[(session.id, item.recipe)], item.servings))
-                == item.batches
-                else item.model_copy(update={"batches": b})
-                for item in session.items
-            ]
-            if items != list(session.items):
+            items = []
+            for item in session.items:
+                meals = counts[(session.id, item.recipe)]
+                if meals == 0:
+                    continue
+                batches = _batches_for(meals, item.servings)
+                items.append(
+                    item
+                    if batches == item.batches
+                    else item.model_copy(update={"batches": batches})
+                )
+            if not items:
+                self.drop_session(session.id)
+            elif items != list(session.items):
                 self.put_session(session.model_copy(update={"items": items}))
 
     # -- links ----------------------------------------------------------------
@@ -478,33 +485,6 @@ def set_entry_session(
 # ---------------------------------------------------------------------------
 # Session edits
 # ---------------------------------------------------------------------------
-
-
-def add_item(
-    diary: Diary,
-    policy: Policy,
-    date: datetime.date,
-    recipe: Recipe,
-    batches: int = 1,
-) -> tuple[Change, uuid.UUID]:
-    """Add ``recipe`` to the session on ``date``, creating the session when
-    the day has none. Refused in Log: nothing can be made after the fact."""
-    draft = _Draft(diary, policy, {})
-    if policy.mode(date) is Mode.LOG:
-        raise RuleError(
-            f"The {day_label(date)} session already happened: adding to it is "
-            "Admin only"
-        )
-    item = freeze_item(recipe, batches=batches)
-    session = draft.session_on(date)
-    if session is None:
-        session = PrepSessionDTO(id=uuid.uuid4(), date=date, items=[item])
-    elif _item(session, recipe.id) is not None:
-        raise RuleError(f"The {day_label(date)} session already has {recipe.title}")
-    else:
-        session = session.model_copy(update={"items": [*session.items, item]})
-    draft.put_session(session)
-    return draft.change(), session.id
 
 
 def _session_item(

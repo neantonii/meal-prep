@@ -220,7 +220,8 @@ def test_log_mode_adds_unlinked_entries_only():
 
 def test_explicit_link_in_plan_adds_the_missing_item():
     sun = _session(SUN, (RICE, 1))
-    diary, entry = _add(_with(sun), MON, link=sun.id)
+    diary, _ = _add(_with(sun), MON, RICE, link=sun.id)
+    diary, entry = _add(diary, MON, link=sun.id)
     assert entry.session == sun.id
     assert [i.recipe for i in _only(diary).items] == ["rice", "chicken"]
 
@@ -251,14 +252,17 @@ def test_admin_links_only_when_the_rules_hold():
 # -- removing, moving, relinking ------------------------------------------------
 
 
-def test_removing_an_entry_frees_its_portion():
-    sun = _session(SUN, (EGG, 1))
-    diary, entry = _add(_with(sun), MON, EGG, link=sun.id)
+def test_plan_items_without_meals_are_pruned():
+    sun = _session(SUN, (CHICKEN, 1))
+    diary, rice = _add(_with(sun), MON, RICE, link=sun.id)
+    diary, _ = _add(diary, MON, link=sun.id)
+    diary = _apply(diary, prep.remove_entry(diary, PLAN, WEEK, rice.id))
+    assert [i.recipe for i in diary.sessions[sun.id].items] == ["chicken"]
+    # A Plan session with no meals left disappears.
+    lone = _session(SUN, (EGG, 1))
+    diary, entry = _add(_with(lone), MON, EGG, link=lone.id)
     diary = _apply(diary, prep.remove_entry(diary, PLAN, WEEK, entry.id))
-    assert WEEK not in diary.weeks
-    _, again = _add(diary, MON, EGG, link=sun.id)
-    assert diary.sessions[sun.id].items[0].batches == 1
-    assert again.session == sun.id
+    assert diary.sessions == {} and WEEK not in diary.weeks
 
 
 def test_plan_batches_follow_the_meals_both_ways():
@@ -273,8 +277,8 @@ def test_plan_batches_follow_the_meals_both_ways():
     assert diary.sessions[sun.id].items[0].batches == 1
     for entry in added[1:]:
         diary = _apply(diary, prep.remove_entry(diary, PLAN, WEEK, entry.id))
-    # No meals left: the item stays listed, at one batch.
-    assert diary.sessions[sun.id].items[0].batches == 1
+    # No meals left: the session is gone.
+    assert sun.id not in diary.sessions
 
 
 def test_log_batches_stay_as_made_when_meals_go():
@@ -309,7 +313,8 @@ def test_moving_keeps_the_link_and_refuses_breaking_it_outside_plan():
 
 def test_relinking_plan_fills_log_refuses():
     sun = _session(SUN, (RICE, 1))
-    diary, entry = _add(_with(sun), MON, link=None)
+    diary, _ = _add(_with(sun), MON, RICE, link=sun.id)
+    diary, entry = _add(diary, MON, link=None)
     change = prep.set_entry_session(diary, PLAN, RECIPES, WEEK, entry.id, sun.id)
     diary = _apply(diary, change)
     assert _entry(diary, entry.id).session == sun.id
@@ -323,20 +328,6 @@ def test_relinking_plan_fills_log_refuses():
 
 
 # -- session edits -------------------------------------------------------------
-
-
-def test_add_item_creates_the_session_and_refuses_duplicates_and_log():
-    change, sid = prep.add_item(EMPTY, PLAN, TUE, CHICKEN, batches=2)
-    diary = _apply(EMPTY, change)
-    item = diary.sessions[sid].items[0]
-    # In Plan, batches follow the meals: none yet, so one batch.
-    assert (diary.sessions[sid].date, item.batches) == (TUE, 1)
-    with pytest.raises(RuleError, match="already has"):
-        prep.add_item(diary, PLAN, TUE, CHICKEN)
-    with pytest.raises(RuleError, match="already happened"):
-        prep.add_item(EMPTY, PLAN, TODAY, CHICKEN)
-    change, _ = prep.add_item(EMPTY, ADMIN, TODAY, CHICKEN)
-    assert change.sessions
 
 
 def test_setting_batches_is_admin_only_and_never_below_links():
@@ -354,15 +345,16 @@ def test_setting_batches_is_admin_only_and_never_below_links():
 
 
 def test_items_with_links_stay_and_the_last_item_deletes_the_session():
-    sun = _session(SUN, (CHICKEN, 1), (RICE, 1))
-    diary, _ = _add(_with(sun), MON, link=sun.id)
+    # A Log session keeps meal-less items (a record of what was made).
+    past = _session(TODAY, (CHICKEN, 1), (RICE, 1))
+    diary, _ = _add(_with(past), TODAY, link=past.id, policy=ADMIN)
     with pytest.raises(RuleError, match="linked"):
-        prep.remove_item(diary, PLAN, sun.id, "chicken")
+        prep.remove_item(diary, PLAN, past.id, "chicken")
     with pytest.raises(RuleError, match="linked"):
-        prep.delete_session(diary, PLAN, sun.id)
-    diary = _apply(diary, prep.remove_item(diary, PLAN, sun.id, "rice"))
-    assert [i.recipe for i in diary.sessions[sun.id].items] == ["chicken"]
-    alone = _with(_session(SUN, (RICE, 1)))
+        prep.delete_session(diary, PLAN, past.id)
+    diary = _apply(diary, prep.remove_item(diary, PLAN, past.id, "rice"))
+    assert [i.recipe for i in diary.sessions[past.id].items] == ["chicken"]
+    alone = _with(_session(TODAY, (RICE, 1)))
     gone = prep.remove_item(alone, PLAN, _only(alone).id, "rice")
     assert gone.sessions == {_only(alone).id: None}
     with pytest.raises(prep.SessionNotFoundError):
@@ -372,7 +364,9 @@ def test_items_with_links_stay_and_the_last_item_deletes_the_session():
 def test_moving_a_session_keeps_links_on_or_after_it():
     sun = _session(SUN, (CHICKEN, 1))
     tue = _session(TUE, (RICE, 1))
-    diary, _ = _add(_with(sun, tue), TUE, link=sun.id)
+    # Set up in Admin, so neither session is pruned before its meal lands.
+    diary, _ = _add(_with(sun, tue), WED, RICE, link=tue.id, policy=ADMIN)
+    diary, _ = _add(diary, TUE, link=sun.id, policy=ADMIN)
     moved = _apply(diary, prep.move_session(diary, PLAN, sun.id, MON))
     assert moved.sessions[sun.id].date == MON
     with pytest.raises(RuleError, match="later"):

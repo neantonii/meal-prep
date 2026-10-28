@@ -114,11 +114,6 @@ class EntryLink(BaseModel):
     session_date: datetime.date | None = None
 
 
-class NewItem(BaseModel):
-    recipe: str
-    batches: int = Field(default=1, ge=1)
-
-
 class ItemUpdate(BaseModel):
     batches: int = Field(..., ge=1)
 

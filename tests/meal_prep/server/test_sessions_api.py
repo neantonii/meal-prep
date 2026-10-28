@@ -90,21 +90,15 @@ def test_log_days_take_unlinked_entries_only_unless_admin(client: TestClient):
     assert later.status_code == 409
 
 
-def test_session_items_add_update_and_guard_links(client: TestClient):
-    week = _ok(
-        client.post(
-            "/api/sessions/2026-11-03/items",
-            params={"week": W45},
-            json={"recipe": RICE, "batches": 3},
-        )
-    )
+def test_session_items_follow_meals_and_guard_links(client: TestClient):
+    # A Wednesday meal auto-links to (and creates) Tuesday's session.
+    week = _ok(_add(client, "2026-11-04", RICE))
     tue = _card(week, "2026-11-03")
     [item] = tue["items"]
-    # In Plan, batches follow the meals: none planned yet, so one batch.
     assert item["batches"] == 1
     servings = item["servings"]
     sid = tue["id"]
-    for _ in range(servings + 1):  # needs two batches
+    for _ in range(servings):  # servings + 1 meals: two batches
         week = _ok(_add(client, "2026-11-04", RICE, session=sid))
     assert _card(week, "2026-11-03")["items"][0]["batches"] == 2
     url = f"/api/sessions/{sid}/items/{RICE}"
@@ -121,27 +115,31 @@ def test_session_items_add_update_and_guard_links(client: TestClient):
         f"/api/sessions/{sid}/items/{CHICKEN}", params={"week": W45}
     )
     assert missing.status_code == 404
-
-
-def test_moving_and_deleting_a_session(client: TestClient, tmp_path: Path):
-    week = _ok(
-        client.post(
-            "/api/sessions/2026-11-03/items",
-            params={"week": W45},
-            json={"recipe": RICE},
-        )
+    # Items can't be added without a meal any more.
+    added = client.post(
+        "/api/sessions/2026-11-05/items", params={"week": W45}, json={"recipe": RICE}
     )
+    assert added.status_code == 405
+
+
+def test_moving_a_session_and_pruning_it(client: TestClient, tmp_path: Path):
+    week = _ok(_add(client, "2026-11-04", RICE))  # creates Tuesday's session
     sid = _card(week, "2026-11-03")["id"]
+    [entry] = _entries(week)
     week = _ok(
         client.patch(
-            f"/api/sessions/{sid}", params={"week": W45}, json={"date": "2026-11-04"}
+            f"/api/sessions/{sid}", params={"week": W45}, json={"date": "2026-11-02"}
         )
     )
-    assert _card(week, "2026-11-04")["id"] == sid
+    assert _card(week, "2026-11-02")["id"] == sid
     assert _card(week, "2026-11-03")["id"] is None  # placeholder again
     sessions = tmp_path / "diary" / "sessions"
-    assert [p.name for p in sessions.iterdir()] == ["2026-11-04.yaml"]
-    week = _ok(client.delete(f"/api/sessions/{sid}", params={"week": W45}))
+    assert [p.name for p in sessions.iterdir()] == ["2026-11-02.yaml"]
+    assert (
+        client.delete(f"/api/sessions/{sid}", params={"week": W45}).status_code == 409
+    )
+    # Its last meal gone, the Plan session disappears by itself.
+    week = _ok(client.delete(f"/api/diary/{W45}/entries/{entry['id']}"))
     assert all(s["id"] is None for s in week["sessions"])
     assert list(sessions.iterdir()) == []
 
@@ -175,19 +173,14 @@ def test_hand_edits_are_picked_up_and_bad_files_reported(
 
 
 def test_dropping_a_meal_on_an_empty_day_creates_its_session(client: TestClient):
-    week = _ok(
-        client.post(
-            "/api/sessions/2026-11-05/items",
-            params={"week": W45},
-            json={"recipe": CHICKEN},
-        )
-    )
+    week = _ok(_add(client, "2026-11-06"))  # Friday: auto-links to Thursday
     thu = _card(week, "2026-11-05")["id"]
-    week = _ok(_add(client, "2026-11-06", session=thu))
     [entry] = _entries(week)
+    assert entry["session"] == thu is not None
     assert _card(week, "2026-11-03")["id"] is None  # Tuesday: placeholder
     url = f"/api/diary/{W45}/entries/{entry['id']}/session"
     week = _ok(client.put(url, json={"session_date": "2026-11-03"}))
     tue = _card(week, "2026-11-03")
     assert tue["id"] is not None
     assert _entries(week)[0]["session"] == tue["id"]
+    assert _card(week, "2026-11-05")["id"] is None  # Thursday: pruned
