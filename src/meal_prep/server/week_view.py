@@ -15,11 +15,13 @@ from meal_prep.models.log import LogEntry
 from meal_prep.models.recipe import Recipe
 from meal_prep.models.session import PrepSession
 from meal_prep.server.api_models import (
+    AisleNeeds,
     DiaryDay,
     DiaryEntry,
     DiaryMeal,
     DiaryWeek,
     MealRef,
+    NeededIngredient,
     Session,
     SessionDetail,
     SessionItem,
@@ -45,6 +47,38 @@ def _card_url(recipe: Recipe | None) -> str | None:
     if recipe is None:
         return None
     return f"/cards/recipe/{recipe.category.value}/{recipe.id}.html"
+
+
+def _ingredient_card_url(ingredient_id: str, library: Library) -> str | None:
+    ingredient = library.ingredients.get(ingredient_id)
+    if ingredient is None:
+        return None
+    return f"/cards/ingredient/{ingredient.aisle.value}/{ingredient.id}.html"
+
+
+def _needs_out(session: PrepSession, library: Library) -> list[AisleNeeds]:
+    return [
+        AisleNeeds(
+            aisle=None if group.aisle is None else group.aisle.value,
+            cost=group.cost,
+            ingredients=[
+                NeededIngredient(
+                    ingredient=ing.ingredient_id,
+                    name=ing.name,
+                    card_url=_ingredient_card_url(ing.ingredient_id, library),
+                    product=None if ing.package is None else ing.package.product,
+                    package_amount=None if ing.package is None else ing.package.amount,
+                    package_unit=None if ing.package is None else ing.package.unit,
+                    packages=ing.packages,
+                    grams=ing.grams,
+                    cost=ing.cost,
+                    recipes=list(ing.recipes),
+                )
+                for ing in group.ingredients
+            ],
+        )
+        for group in session.needs()
+    ]
 
 
 def _entry_out(entry: LogEntry, library: Library) -> DiaryEntry:
@@ -228,4 +262,5 @@ def session_detail(
                 item.portions * item.macros.protein_g for item in session.items
             ),
         },
+        needs=_needs_out(session, library),
     )

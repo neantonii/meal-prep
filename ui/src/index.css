@@ -98,7 +98,34 @@ details.cat summary { cursor: pointer; font-weight: 700; font-size: 0.85rem; pad
 .session-item .item-amount { color: var(--text); white-space: nowrap; }
 .session-item .item-meals { color: var(--text-muted); font-size: 0.82rem; }
 /* A session's own page. */
-.session-page { padding: 20px; max-width: 1100px; display: flex; flex-direction: column; gap: 14px; }
+.session-page { padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+  align-items: start; }
+@media (max-width: 900px) { .session-page { grid-template-columns: 1fr; } }
+.session-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; overflow-x: auto; }
+.needs { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.needs h3 { font-size: 1.1rem; display: flex; justify-content: space-between; gap: 10px; }
+.needs-note { font-size: 0.8rem; margin: 0; }
+.needs .aisle summary { cursor: pointer; display: flex; gap: 10px; align-items: baseline;
+  padding: 6px 0; border-bottom: 1px solid var(--border); color: var(--primary); }
+.needs .aisle summary::-webkit-details-marker { display: none; }
+.needs .aisle summary::before { content: "▸"; color: var(--text-muted); }
+.needs .aisle[open] summary::before { content: "▾"; }
+.needs .aisle summary .muted { font-size: 0.8rem; }
+.needs { container-type: inline-size; }
+table.needs-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; table-layout: fixed; }
+.needs-table th { text-align: left; color: var(--text-muted); font-size: 0.68rem; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 8px 2px 0; }
+.needs-table td { padding: 6px 8px 6px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+.needs-table .need-qty { width: 4.5em; font-weight: 600; white-space: nowrap;
+  font-variant-numeric: tabular-nums; }
+.needs-table .need-size { width: 6.5em; white-space: nowrap; }
+.needs-table .need-cost { width: 4.5em; text-align: right; padding-right: 0; color: var(--text-muted);
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+.need-name a { color: var(--text); text-decoration: underline; text-decoration-color: var(--border); }
+.need-meta { font-size: 0.75rem; }
+/* Narrow panel: the pack size moves to the row's hover text. */
+@container (max-width: 520px) { .needs-table .need-size { display: none; } }
 .session-page h2 { font-size: 1.3rem; display: flex; align-items: center; gap: 10px; }
 .session-page .back { align-self: flex-start; background: var(--surface-card); color: var(--text);
   border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; cursor: pointer; }

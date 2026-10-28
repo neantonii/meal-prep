@@ -154,6 +154,7 @@ def prepare_recipe(
                 grams=grams,
                 cost=ingredient.price_per_100g * grams / 100.0,
                 macros=ingredient.macros_per_100g.scaled(grams / 100.0),
+                package=ingredient.package,
                 repeated=decl_count[ing_id] > 1,
             )
         )

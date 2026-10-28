@@ -74,6 +74,18 @@ class MacrosInfo:
 
 
 @dataclass(frozen=True, slots=True)
+class Package:
+    """The retail package an ingredient is bought in: the product's title and
+    its authored size (``amount`` ``unit``, e.g. 4 l or 18 count), plus that
+    size in grams."""
+
+    product: str
+    amount: float
+    unit: str
+    weight_g: float
+
+
+@dataclass(frozen=True, slots=True)
 class Ingredient:
     """An enriched, immutable ingredient ready for downstream computation."""
 
@@ -95,6 +107,19 @@ class Ingredient:
 
     package_weight_g: float
     price_per_100g: float
+    # The authored retail edge ``package -> <unit>`` (e.g. 4 l, 18 count).
+    package_amount: float
+    package_unit: str
+
+    @property
+    def package(self) -> Package:
+        """The retail package, as one value."""
+        return Package(
+            product=self.product,
+            amount=self.package_amount,
+            unit=self.package_unit,
+            weight_g=self.package_weight_g,
+        )
 
     def resolve(self, token: str) -> str:
         """Resolve a unit noun (e.g. a Cooklang token) to its canonical unit.

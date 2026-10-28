@@ -196,3 +196,19 @@ def test_session_detail_lists_each_items_meals(client: TestClient):
     assert detail["totals"]["cost"] == pytest.approx(item["portions"] * item["cost"])
     missing = client.get("/api/sessions/00000000-0000-4000-8000-000000000000")
     assert missing.status_code == 404
+
+
+def test_session_detail_lists_what_to_have_by_aisle(client: TestClient):
+    week = _ok(_add(client, "2026-11-02"))
+    sun = _card(week, "2026-11-01")
+    needs = _ok(client.get(f"/api/sessions/{sun['id']}"))["needs"]
+    assert needs and all(group["aisle"] for group in needs)
+    lines = [line for group in needs for line in group["ingredients"]]
+    chicken = next(line for line in lines if line["ingredient"].startswith("boneless"))
+    assert chicken["product"] and chicken["package_unit"]
+    assert chicken["packages"] > 0
+    assert chicken["card_url"].startswith("/cards/ingredient/meat/")
+    assert chicken["recipes"] == [sun["items"][0]["title"]]
+    assert sum(group["cost"] for group in needs) == pytest.approx(
+        sum(line["cost"] for line in lines)
+    )

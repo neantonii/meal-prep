@@ -8,7 +8,7 @@ separately in ``tests/meal_prep/services/test_recipes.py``.
 from __future__ import annotations
 
 from meal_prep.enums import Aisle, RecipeCategory, StorageType
-from meal_prep.models.ingredient import MacrosInfo
+from meal_prep.models.ingredient import MacrosInfo, Package
 from meal_prep.models.recipe import Recipe, RecipeIngredient
 
 
@@ -50,6 +50,7 @@ def _recipe() -> Recipe:
                 grams=200.0,
                 cost=4.0,
                 macros=_macros(),
+                package=Package("Test 1 kg", 1.0, "kg", 1000.0),
             ),
             RecipeIngredient(
                 id="b",
@@ -63,6 +64,7 @@ def _recipe() -> Recipe:
                 grams=100.0,
                 cost=1.0,
                 macros=_macros(cal=50.0),
+                package=Package("Test 1 kg", 1.0, "kg", 1000.0),
             ),
         ),
         instructions="Cook.",
@@ -135,6 +137,7 @@ def test_recipe_ingredient_is_frozen():
         grams=1.0,
         cost=1.0,
         macros=_macros(),
+        package=Package("Test 1 kg", 1.0, "kg", 1000.0),
     )
     try:
         ing.grams = 5.0  # type: ignore[misc]

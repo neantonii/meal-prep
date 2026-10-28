@@ -26,6 +26,19 @@ def test_aisle_vocabulary_is_pinned():
     )
 
 
+def test_aisle_values_are_never_renamed():
+    # Session files freeze these strings (docs/prep-sessions.md): values may
+    # only be added, never renamed or removed, or old sessions stop loading.
+    assert {a.value for a in Aisle} >= {
+        "produce",
+        "meat",
+        "seafood",
+        "dairy",
+        "pantry",
+        "spices",
+    }
+
+
 def test_storage_type_vocabulary_is_pinned():
     assert set(StorageType) == {
         StorageType.AMBIENT,

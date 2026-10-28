@@ -18,7 +18,8 @@ Enrich DTOs into frozen models. Allowed imports: `dtos`, `models`, `engines`,
 - `diary.py` — single-entry diary editing: an entry's numbers are frozen once,
   when it is added; remove, move, reorder and relink never recompute them.
 - `sessions.py` — prep session items: frozen once, when added (numbers and
-  one batch's ingredient lines); `prepare_session` builds the model.
+  one batch's ingredient lines, with aisle and retail package);
+  `prepare_session` builds the model, whose `needs()` is the ingredient list.
 - `prep.py` — prep-session rules and editing modes (`docs/prep-sessions.md`):
   every edit works on the whole diary (links span weeks) and returns the
   documents to write; refusals raise `RuleError` with a user-facing message.

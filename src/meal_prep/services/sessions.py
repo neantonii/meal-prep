@@ -11,10 +11,16 @@ from meal_prep.dtos.session import (
     PrepSessionDTO,
     SessionIngredientDTO,
     SessionItemDTO,
+    SessionPackageDTO,
 )
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.recipe import Recipe
-from meal_prep.models.session import PrepSession, SessionIngredient, SessionItem
+from meal_prep.models.session import (
+    PackageSize,
+    PrepSession,
+    SessionIngredient,
+    SessionItem,
+)
 
 
 def whole_servings(recipe: Recipe) -> int:
@@ -51,7 +57,17 @@ def freeze_item(recipe: Recipe, batches: int = 1) -> SessionItemDTO:
         potassium_mg=macros.potassium_mg,
         ingredients=[
             SessionIngredientDTO(
-                ingredient=line.id, name=line.name, grams=line.grams, cost=line.cost
+                ingredient=line.id,
+                name=line.name,
+                grams=line.grams,
+                cost=line.cost,
+                aisle=line.aisle,
+                package=SessionPackageDTO(
+                    product=line.package.product,
+                    amount=line.package.amount,
+                    unit=line.package.unit,
+                    per_batch=line.grams / line.package.weight_g,
+                ),
             )
             for line in recipe.ingredients
         ],
@@ -82,6 +98,17 @@ def _item(dto: SessionItemDTO) -> SessionItem:
                 name=line.name,
                 grams=line.grams,
                 cost=line.cost,
+                aisle=line.aisle,
+                package=(
+                    None
+                    if line.package is None
+                    else PackageSize(
+                        product=line.package.product,
+                        amount=line.package.amount,
+                        unit=line.package.unit,
+                    )
+                ),
+                packages=None if line.package is None else line.package.per_batch,
             )
             for line in dto.ingredients
         ),

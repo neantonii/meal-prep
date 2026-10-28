@@ -8,7 +8,7 @@ from __future__ import annotations
 import pytest
 
 from meal_prep.enums import Aisle, RecipeCategory, StorageType
-from meal_prep.models.ingredient import MacrosInfo
+from meal_prep.models.ingredient import MacrosInfo, Package
 from meal_prep.models.recipe import Recipe, RecipeIngredient
 from meal_prep.planner.plan import WeekPlan
 from meal_prep.planner.solver import plan_week
@@ -58,6 +58,7 @@ def _recipe(
                 grams=200.0,
                 cost=cost,
                 macros=_macros(),
+                package=Package("Test 1 kg", 1.0, "kg", 1000.0),
             ),
         ),
         instructions="Cook.",

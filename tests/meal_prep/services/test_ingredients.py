@@ -41,3 +41,21 @@ def test_ingredient_dto_rejects_unknown_aisle(butter_dto):
     data["aisle"] = "bakery"
     with pytest.raises(ValidationError, match="bakery"):
         IngredientDTO.model_validate(data)
+
+
+def test_prepare_ingredient_keeps_the_authored_package_size(units, butter_dto):
+    package = prepare_ingredient(butter_dto, units).package
+    assert (package.amount, package.unit, package.weight_g) == (454, "g", 454)
+    assert package.product == butter_dto.reference.product
+
+
+def test_prepare_ingredient_needs_exactly_one_package_edge(units, butter_dto):
+    # The package weight still resolves (the graph is undirected), but the
+    # retail size must be authored from the package.
+    data = butter_dto.model_dump(by_alias=True)
+    data["conversions"] = [
+        {"from": "g", "to": "package", "factor": 1 / 454},
+        {"from": "tbsp", "to": "g", "factor": 14.2},
+    ]
+    with pytest.raises(ValueError, match="exactly one conversion from 'package'"):
+        prepare_ingredient(IngredientDTO.model_validate(data), units)

@@ -7,7 +7,7 @@ import pytest
 from meal_prep.dtos.log import DiaryWeekDTO
 from meal_prep.dtos.meal import MealDTO
 from meal_prep.enums import Aisle, Mealtime, RecipeCategory, StorageType
-from meal_prep.models.ingredient import MacrosInfo
+from meal_prep.models.ingredient import MacrosInfo, Package
 from meal_prep.models.meal import Meal
 from meal_prep.models.recipe import Recipe, RecipeIngredient
 from meal_prep.services.diary import freeze_entry
@@ -53,6 +53,7 @@ def _recipe(recipe_id: str, *, cost: float, cal: float) -> Recipe:
                 grams=200.0,
                 cost=cost * 2.0,
                 macros=_macros(cal=cal * 2.0, protein=20.0),
+                package=Package("Test 1 kg", 1.0, "kg", 1000.0),
             ),
         ),
         instructions="Cook.",
