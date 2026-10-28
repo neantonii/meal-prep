@@ -130,7 +130,7 @@ its linked entries, or onto a day that already has a session.
 - Clicking a chip opens that session's items in a full-width panel below the
   strip (one at a time); a session of ~10 recipes stays a few rows high.
 - Empty placeholders fill the default days (Sun, Tue, Thu) in that range;
-  "+ session" adds a placeholder on another day.
+  "+ session" (Admin mode only) adds a placeholder on another day.
 - Older sessions linked from this week's entries (e.g. frozen portions)
   appear as extra chips at the start.
 - Each item shows its batches ("2 batches") and, when the batch is
