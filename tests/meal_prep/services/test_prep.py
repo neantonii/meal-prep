@@ -357,3 +357,13 @@ def test_moving_a_session_keeps_links_on_or_after_it():
     with pytest.raises(RuleError, match="haven't happened"):
         prep.move_session(_with(past), PLAN, past.id, SUN)
     assert prep.move_session(_with(past), ADMIN, past.id, SUN).sessions
+
+
+def test_usual_session_is_the_latest_one_strictly_before_the_day():
+    sun = _session(SUN, (CHICKEN, 1))
+    tue = _session(TUE, (RICE, 1))
+    sessions = [tue, sun]
+    assert prep.usual_session(sessions, MON) == sun.id
+    assert prep.usual_session(sessions, TUE) == sun.id  # same day is unusual
+    assert prep.usual_session(sessions, WED) == tue.id
+    assert prep.usual_session(sessions, SUN) is None

@@ -192,6 +192,7 @@ export default function App() {
               }
               onMove={(session, date) => change((w) => api.moveSession(w, session, date, admin))}
               onDelete={(session) => change((w) => api.deleteSession(w, session, admin))}
+              onLinkEntry={handleLink}
             />
           )}
           {state && (
@@ -199,11 +200,9 @@ export default function App() {
               days={state.days}
               sessions={state.sessions}
               colors={colors}
-              admin={admin}
               onAdd={handleAdd}
               onRemove={handleRemove}
               onMove={handleMove}
-              onLink={handleLink}
             />
           )}
         </section>

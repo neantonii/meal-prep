@@ -108,17 +108,19 @@ details.cat summary { cursor: pointer; font-weight: 700; font-size: 0.85rem; pad
   border-radius: 8px; padding: 0 5px; color: var(--text-muted); border: 1px solid var(--border); }
 .mode-tag.plan { color: var(--primary); border-color: var(--primary); }
 tr.day.log td:not(.day-cell) { background: rgba(255, 255, 255, 0.015); }
-.session-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); }
-.badge { font-size: 0.7rem; border-radius: 8px; padding: 0 4px; border: 1px solid var(--border);
-  background: var(--bg); color: var(--text); white-space: nowrap; }
-select.badge { cursor: pointer; max-width: 84px; }
-.badge.none { color: var(--text-muted); }
-.c0 { background: #0e7490; border-color: #0e7490; }
-.c1 { background: #7c3aed; border-color: #7c3aed; }
-.c2 { background: #b45309; border-color: #b45309; }
-.c3 { background: #15803d; border-color: #15803d; }
-.c4 { background: #be185d; border-color: #be185d; }
-.c5 { background: #4d7c0f; border-color: #4d7c0f; }
+/* Session colors: each class sets --sc, used by dots, badges and entry edges. */
+.c0 { --sc: #0e7490; }
+.c1 { --sc: #7c3aed; }
+.c2 { --sc: #b45309; }
+.c3 { --sc: #15803d; }
+.c4 { --sc: #be185d; }
+.c5 { --sc: #4d7c0f; }
+.session-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--sc, var(--border)); }
+.badge { font-size: 0.7rem; border-radius: 8px; padding: 0 5px; white-space: nowrap;
+  background: var(--sc, var(--surface)); color: var(--text); }
+/* Entry edge: its session's color; unlinked entries get their own color. */
+.entry.linked { border-left: 3px solid var(--sc, var(--border)); }
+.entry.unlinked { border-left: 3px solid #64748b; }
 .actions button.admin-on { background: var(--danger); color: #2b0606; border: none; font-weight: 700; }
 .admin-banner { background: rgba(248, 113, 113, 0.12); color: var(--danger);
   border-bottom: 1px solid var(--danger); padding: 6px 20px; font-size: 0.85rem; }

@@ -25,6 +25,8 @@ export interface DiaryEntry {
   card_url: string | null;
   /** id of the prep session it came from */
   session: string | null;
+  /** linked to a session other than the latest one before its day */
+  unusual_session: boolean;
   kcal: number;
   protein_g: number;
   carbs_g: number;

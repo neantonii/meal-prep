@@ -127,8 +127,12 @@ its linked entries, or onto a day that already has a session.
   appear as extra chips at the start.
 - Each item shows "eaten/made" (linked entries in all weeks vs portions).
 - Drop a palette recipe on a chip or the open panel to add an item; drag an
-  item from the panel into a slot for a linked entry. Entries carry a session
-  badge; in Plan and Admin the badge changes or clears the link.
+  item from the panel into a slot for a linked entry; drop a meal on a chip
+  or the panel to relink it (same rules as any link).
+- Entries show their source as a colored left edge (the session's color;
+  unlinked entries have their own color). A date badge appears only for an
+  unusual source: anything but the latest session strictly before the
+  entry's day (a same-day session is unusual).
 
 ## Storage
 
