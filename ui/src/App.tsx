@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, shiftWeek, type CatalogGroup, type DiaryWeek, type Placement } from "./api";
+import { api, shiftWeek, type CatalogGroup, type DiaryWeek, type Link, type Placement } from "./api";
 import Palette from "./components/Palette";
+import SessionsBar from "./components/SessionsBar";
 import WeekGrid from "./components/WeekGrid";
+
+const SESSION_COLORS = 6;
 
 function weekFromUrl(): string | null {
   const w = new URLSearchParams(window.location.search).get("week");
@@ -15,6 +18,11 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState<string>("");
+  // Admin mode amends history; deliberately not remembered across reloads.
+  const [admin, setAdmin] = useState(false);
+  // Placeholder sessions added with "+ session", per week; saved once they
+  // get a recipe.
+  const [extraDates, setExtraDates] = useState<Record<string, string[]>>({});
   // Entry changes run one at a time, in the order they were made.
   const queue = useRef<Promise<void>>(Promise.resolve());
 
@@ -89,11 +97,21 @@ export default function App() {
     });
   };
 
-  const handleAdd = (recipe: string, where: Placement) =>
-    change((w) => api.addEntry(w, recipe, where));
+  const handleAdd = (recipe: string, where: Placement, session: Link) =>
+    change((w) => api.addEntry(w, recipe, where, session, admin));
   const handleRemove = (id: string) => change((w) => api.removeEntry(w, id));
   const handleMove = (id: string, where: Placement) =>
-    change((w) => api.moveEntry(w, id, where));
+    change((w) => api.moveEntry(w, id, where, admin));
+  const handleLink = (id: string, session: string | null) =>
+    change((w) => api.linkEntry(w, id, session, admin));
+
+  // Session colors follow card order, so a session keeps its color on a page.
+  const colors: Record<string, string> = {};
+  (state?.sessions ?? [])
+    .filter((s) => s.id !== null)
+    .forEach((s, i) => {
+      colors[s.id as string] = `c${i % SESSION_COLORS}`;
+    });
 
   const switchWeek = (delta: number) => {
     if (!state) return;
@@ -118,6 +136,13 @@ export default function App() {
         <h1>Diary</h1>
         <div className="actions" style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
           {version && <span className="version">{version}</span>}
+          <button
+            className={admin ? "admin-on" : ""}
+            title="Admin mode: amend history (rules still apply, nothing is auto-filled)"
+            onClick={() => setAdmin((a) => !a)}
+          >
+            {admin ? "Admin on" : "Admin"}
+          </button>
           {saving ? (
             <span className="dirty">saving…</span>
           ) : (
@@ -125,6 +150,11 @@ export default function App() {
           )}
         </div>
       </header>
+      {admin && (
+        <div className="admin-banner">
+          Admin mode: you are amending history. Rules still apply; nothing is auto-filled.
+        </div>
+      )}
       {error && <div className="err">{error}</div>}
       <main className="layout">
         <section>
@@ -141,11 +171,39 @@ export default function App() {
             </span>
           </div>
           {state && (
+            <SessionsBar
+              sessions={state.sessions}
+              today={state.today}
+              extraDates={extraDates[state.week] ?? []}
+              colors={colors}
+              admin={admin}
+              onAddDate={(date) =>
+                setExtraDates((cur) => ({
+                  ...cur,
+                  [state.week]: [...(cur[state.week] ?? []), date],
+                }))
+              }
+              onAddItem={(date, recipe) => change((w) => api.addItem(w, date, recipe, admin))}
+              onUpdateItem={(session, recipe, c) =>
+                change((w) => api.updateItem(w, session, recipe, c, admin))
+              }
+              onRemoveItem={(session, recipe) =>
+                change((w) => api.removeItem(w, session, recipe, admin))
+              }
+              onMove={(session, date) => change((w) => api.moveSession(w, session, date, admin))}
+              onDelete={(session) => change((w) => api.deleteSession(w, session, admin))}
+            />
+          )}
+          {state && (
             <WeekGrid
               days={state.days}
+              sessions={state.sessions}
+              colors={colors}
+              admin={admin}
               onAdd={handleAdd}
               onRemove={handleRemove}
               onMove={handleMove}
+              onLink={handleLink}
             />
           )}
         </section>
