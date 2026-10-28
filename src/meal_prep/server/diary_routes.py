@@ -89,9 +89,19 @@ def diary_router(editor: Editor) -> APIRouter:
     ) -> DiaryWeek:
         def op(diary: prep.Diary) -> prep.Change:
             change = prep.set_entry_session(
-                diary, editor.policy(admin), recipes, week, entry_id, body.session
+                diary,
+                editor.policy(admin),
+                recipes,
+                week,
+                entry_id,
+                body.session,
+                body.session_date,
             )
-            logger.info("linked entry %s to session %s", entry_id, body.session)
+            logger.info(
+                "linked entry %s to session %s",
+                entry_id,
+                body.session_date or body.session,
+            )
             return change
 
         return editor.edit(week, op)

@@ -107,7 +107,11 @@ class EntryPlacement(BaseModel):
 
 
 class EntryLink(BaseModel):
-    session: uuid.UUID | None
+    """A session id (``None`` unlinks), or ``session_date``: the session on
+    that day, created when the day has none yet."""
+
+    session: uuid.UUID | None = None
+    session_date: datetime.date | None = None
 
 
 class NewItem(BaseModel):

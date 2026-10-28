@@ -113,8 +113,6 @@ export default function App() {
   const handleRemove = (id: string) => change((w) => api.removeEntry(w, id, admin));
   const handleMove = (id: string, where: Placement) =>
     change((w) => api.moveEntry(w, id, where, admin));
-  const handleLink = (id: string, session: string | null) =>
-    change((w) => api.linkEntry(w, id, session, admin));
 
   // Drag and drop: mouse after 5px of movement (clicks on links still work),
   // touch after a short press (so the page still scrolls), and keyboard.
@@ -132,8 +130,13 @@ export default function App() {
     const to = over?.data.current as DropData | undefined;
     if (!from || !to || !over) return;
     if (to.kind === "session") {
-      if (from.kind === "recipe") change((w) => api.addItem(w, to.date, from.recipe, admin));
-      else if (from.kind === "entry" && to.session) handleLink(from.id, to.session);
+      // Only meals go onto sessions: relink, creating an empty day's session.
+      if (from.kind === "entry")
+        change((w) =>
+          to.session
+            ? api.linkEntry(w, from.id, to.session, admin)
+            : api.linkEntryToDay(w, from.id, to.date, admin),
+        );
       return;
     }
     const where: Placement = { date: to.date, mealtime: to.meal };

@@ -19,9 +19,10 @@ interface Props {
   onDelete: (session: string) => void;
 }
 
-/** A session as a drop target (its chip or open panel): a recipe adds an
- * item, a meal relinks to it (existing sessions only). `hint` says which,
- * while one hovers. The drop itself is handled in App's onDragEnd. */
+/** A session as a drop target (its chip or open panel): a meal dropped on
+ * it relinks to it; an empty placeholder day gets its session created.
+ * `hint` is true while a meal hovers. The drop itself is handled in App's
+ * onDragEnd. */
 function useSessionDrop(where: string, date: string, session: string | null) {
   const { setNodeRef, isOver } = useDroppable({
     id: `${where}:${date}`,
@@ -29,7 +30,7 @@ function useSessionDrop(where: string, date: string, session: string | null) {
   });
   const { active } = useDndContext();
   const kind = (active?.data.current as DragData | undefined)?.kind;
-  const hint = !isOver ? null : kind === "recipe" ? "recipe" : kind === "entry" && session ? "entry" : null;
+  const hint = isOver && kind === "entry";
   return { setNodeRef, hint };
 }
 
@@ -130,13 +131,11 @@ function SessionChip({
       {!session.in_window && <span className="muted">earlier</span>}
       <span className={`mode-tag ${mode}`}>{mode}</span>
       <span className="muted">
-        {hint === "entry"
+        {hint
           ? "drop to link here"
-          : hint === "recipe"
-            ? "drop to add"
-            : items.length === 0
-              ? "empty"
-              : `${items.length} recipe${items.length === 1 ? "" : "s"}`}
+          : items.length === 0
+            ? "empty"
+            : `${items.length} recipe${items.length === 1 ? "" : "s"}`}
       </span>
       {!hint && <Spare count={spare} />}
     </button>
@@ -164,11 +163,11 @@ function SessionPanel({
         <strong>{dayLabel(date)}</strong>
         <span className={`mode-tag ${mode}`}>{mode}</span>
         <span className="muted">
-          {hint === "entry"
+          {hint
             ? "drop to link this meal here"
             : canGrow
-              ? "drop recipes here · drag items into slots · drop a meal to link it"
-              : "drag items into slots · drop a meal to link it"}
+              ? "drag items into slots · drop a meal here to link it"
+              : "drag items into slots"}
         </span>
         <span className="session-actions">
           {id && (
@@ -182,7 +181,9 @@ function SessionPanel({
         </span>
       </div>
       {session.items.length === 0 ? (
-        <span className="empty-slot">{canGrow ? "drop recipes here" : "nothing prepped"}</span>
+        <span className="empty-slot">
+          {canGrow ? "nothing yet: drop a meal here to prep it in this session" : "nothing prepped"}
+        </span>
       ) : (
         <div className="session-items">
           {session.items.map((it) => (
