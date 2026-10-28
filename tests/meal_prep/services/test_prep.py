@@ -335,20 +335,6 @@ def test_relinking_plan_fills_log_refuses():
 # -- session edits -------------------------------------------------------------
 
 
-def test_setting_batches_is_admin_only_and_never_below_links():
-    past = _session(TODAY, (EGG, 3))
-    diary, _ = _add(_with(past), TODAY, EGG, link=past.id, policy=ADMIN)
-    diary, _ = _add(diary, TODAY, EGG, link=past.id, policy=ADMIN)
-    with pytest.raises(RuleError, match="Admin only"):
-        prep.update_item(diary, PLAN, past.id, "egg", batches=2)
-    lowered = _apply(diary, prep.update_item(diary, ADMIN, past.id, "egg", 2))
-    assert lowered.sessions[past.id].items[0].batches == 2
-    with pytest.raises(RuleError, match="full"):
-        prep.update_item(lowered, ADMIN, past.id, "egg", batches=1)
-    with pytest.raises(ValueError):
-        prep.update_item(lowered, ADMIN, past.id, "egg", batches=0)
-
-
 def test_items_with_links_stay_and_the_last_item_deletes_the_session():
     # A Log session keeps meal-less items (a record of what was made).
     past = _session(TODAY, (CHICKEN, 1), (RICE, 1))

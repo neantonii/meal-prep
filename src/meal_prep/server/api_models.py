@@ -114,9 +114,5 @@ class EntryLink(BaseModel):
     session_date: datetime.date | None = None
 
 
-class ItemUpdate(BaseModel):
-    batches: int = Field(..., ge=1)
-
-
 class SessionMove(BaseModel):
     date: datetime.date
