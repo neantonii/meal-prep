@@ -36,7 +36,6 @@ class SessionItem:
     recipe_id: str
     title: str
     batches: int
-    ad_hoc: bool
     servings: int  # per batch
     cost: float  # per serving
     macros: MacrosInfo  # per serving

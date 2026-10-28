@@ -95,12 +95,11 @@ def test_session_items_add_update_and_guard_links(client: TestClient):
         client.post(
             "/api/sessions/2026-11-03/items",
             params={"week": W45},
-            json={"recipe": RICE, "batches": 3, "ad_hoc": True},
+            json={"recipe": RICE, "batches": 3},
         )
     )
     tue = _card(week, "2026-11-03")
     [item] = tue["items"]
-    assert item["ad_hoc"] is True
     servings = item["servings"]
     assert item["portions"] == 3 * servings
     sid = tue["id"]
@@ -122,7 +121,7 @@ def test_session_items_add_update_and_guard_links(client: TestClient):
         client.patch(
             f"/api/sessions/{sid}/items/{RICE}",
             params={"week": W45},
-            json={"batches": 2, "ad_hoc": False},
+            json={"batches": 2},
         )
     )
     assert _card(week, "2026-11-03")["items"][0]["batches"] == 2

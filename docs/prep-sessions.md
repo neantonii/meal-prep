@@ -34,13 +34,13 @@ eaten stay aligned. Per-session ingredient lists build on this later.
 
 ## Session item
 
-- A recipe, `batches` (how many times it is made as written; a whole
-  number, default 1) and an `ad_hoc` flag.
+- A recipe and `batches` (how many times it is made as written; a whole
+  number, default 1).
 - Portions = batches × servings. Both are whole numbers, so portions are
   exact; a recipe with fractional servings can't be added to a session.
-- `ad_hoc` = cooked at mealtime rather than on prep day; its ingredients are
-  still bought for this session. It changes no amount. Future batch-prep
-  reports leave ad-hoc items out.
+- "Made fresh, not prepped ahead" (e.g. salads) will be a recipe property,
+  not a per-item choice (#145). Session files still carry an `ad_hoc` field;
+  it is deprecated and ignored until then.
 - One item per recipe in a session.
 - **Frozen when added** (like diary entries, #107): title, servings per batch,
   per-serving cost and macros, and the per-batch ingredient lines (ingredient
@@ -106,7 +106,6 @@ never retroactively make more.
 | Add an item | ✅ | refused | ✅ |
 | Raise `batches` | ✅ | refused | ✅ |
 | Lower `batches` / remove an item / delete the session | ✅ | ✅ | ✅ |
-| Change `ad_hoc` | ✅ | ✅ | ✅ |
 | Move to another day | ✅ (both days in Plan) | refused | ✅ |
 
 Never allowed: lowering portions below the linked entries, removing an item

@@ -79,7 +79,6 @@ def _session_out(
                 title=item.title,
                 card_url=_card_url(library.recipes.get(item.recipe_id)),
                 batches=item.batches,
-                ad_hoc=item.ad_hoc,
                 servings=item.servings,
                 portions=item.portions,
                 eaten=eaten.get((session.session_id, item.recipe_id), 0),

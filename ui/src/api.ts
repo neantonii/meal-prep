@@ -56,7 +56,6 @@ export interface SessionItem {
   title: string;
   card_url: string | null;
   batches: number;
-  ad_hoc: boolean;
   servings: number;
   /** made: batches x servings */
   portions: number;
@@ -135,14 +134,14 @@ export const api = {
     week: string,
     session: string,
     recipe: string,
-    change: { batches?: number; ad_hoc?: boolean },
+    batches: number,
     admin: boolean,
   ) =>
     send<DiaryWeek>(
       "PATCH",
       `/api/sessions/${session}/items/${recipe}?week=${week}`,
       admin,
-      change,
+      { batches },
     ),
   removeItem: (week: string, session: string, recipe: string, admin: boolean) =>
     send<DiaryWeek>("DELETE", `/api/sessions/${session}/items/${recipe}?week=${week}`, admin),

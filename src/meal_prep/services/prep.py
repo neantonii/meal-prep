@@ -449,7 +449,6 @@ def add_item(
     date: datetime.date,
     recipe: Recipe,
     batches: int = 1,
-    ad_hoc: bool = False,
 ) -> tuple[Change, uuid.UUID]:
     """Add ``recipe`` to the session on ``date``, creating the session when
     the day has none. Refused in Log: nothing can be made after the fact."""
@@ -459,7 +458,7 @@ def add_item(
             f"The {day_label(date)} session already happened: adding to it is "
             "Admin only"
         )
-    item = freeze_item(recipe, batches=batches, ad_hoc=ad_hoc)
+    item = freeze_item(recipe, batches=batches)
     session = draft.session_on(date)
     if session is None:
         session = PrepSessionDTO(id=uuid.uuid4(), date=date, items=[item])
@@ -488,27 +487,20 @@ def update_item(
     policy: Policy,
     session_id: uuid.UUID,
     recipe_id: str,
-    batches: int | None = None,
-    ad_hoc: bool | None = None,
+    batches: int,
 ) -> Change:
-    """Change an item's batches and/or ad-hoc flag, keeping its frozen
-    numbers. Raising batches is refused in Log; portions never drop below
-    the linked entries."""
+    """Change an item's batches, keeping its frozen numbers. Raising them is
+    refused in Log; portions never drop below the linked entries."""
     draft = _Draft(diary, policy, {})
     session, item = _session_item(draft, session_id, recipe_id)
-    update: dict[str, object] = {}
-    if batches is not None and batches != item.batches:
-        if batches > item.batches and policy.mode(session.date) is Mode.LOG:
-            raise RuleError(
-                f"The {day_label(session.date)} session already happened: "
-                "more can't be made after the fact (Admin only)"
-            )
-        update["batches"] = batches
-    if ad_hoc is not None and ad_hoc != item.ad_hoc:
-        update["ad_hoc"] = ad_hoc
-    if not update:
+    if batches == item.batches:
         return Change()
-    changed = SessionItemDTO.model_validate({**item.model_dump(), **update})
+    if batches > item.batches and policy.mode(session.date) is Mode.LOG:
+        raise RuleError(
+            f"The {day_label(session.date)} session already happened: "
+            "more can't be made after the fact (Admin only)"
+        )
+    changed = SessionItemDTO.model_validate({**item.model_dump(), "batches": batches})
     items = [changed if i is item else i for i in session.items]
     draft.put_session(session.model_copy(update={"items": items}))
     draft.check([session_id])

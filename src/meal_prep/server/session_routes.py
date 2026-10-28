@@ -29,7 +29,7 @@ def session_router(editor: Editor) -> APIRouter:
 
         def op(diary: prep.Diary) -> prep.Change:
             change, session_id = prep.add_item(
-                diary, editor.policy(admin), date, recipe, body.batches, body.ad_hoc
+                diary, editor.policy(admin), date, recipe, body.batches
             )
             logger.info("added %s to session %s (%s)", recipe.id, date, session_id)
             return change
@@ -46,19 +46,13 @@ def session_router(editor: Editor) -> APIRouter:
     ) -> DiaryWeek:
         def op(diary: prep.Diary) -> prep.Change:
             change = prep.update_item(
-                diary,
-                editor.policy(admin),
-                session_id,
-                recipe_id,
-                body.batches,
-                body.ad_hoc,
+                diary, editor.policy(admin), session_id, recipe_id, body.batches
             )
             logger.info(
-                "updated %s in session %s (batches %s, ad hoc %s)",
+                "updated %s in session %s (batches %s)",
                 recipe_id,
                 session_id,
                 body.batches,
-                body.ad_hoc,
             )
             return change
 

@@ -60,7 +60,6 @@ class SessionItem(BaseModel):
     title: str
     card_url: str | None
     batches: int
-    ad_hoc: bool
     servings: int
     portions: int  # made: batches x servings
     eaten: int  # linked entries, in every week
@@ -116,12 +115,10 @@ class EntryLink(BaseModel):
 class NewItem(BaseModel):
     recipe: str
     batches: int = Field(default=1, ge=1)
-    ad_hoc: bool = False
 
 
 class ItemUpdate(BaseModel):
-    batches: int | None = Field(default=None, ge=1)
-    ad_hoc: bool | None = None
+    batches: int = Field(..., ge=1)
 
 
 class SessionMove(BaseModel):

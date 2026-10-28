@@ -51,7 +51,7 @@ def _session(*items: dict) -> dict:
 def test_session_valid():
     session = PrepSessionDTO.model_validate(_session(_item()))
     [item] = session.items
-    assert (item.batches, item.ad_hoc, item.servings) == (2, False, 4)
+    assert (item.batches, item.servings) == (2, 4)
     assert item.ingredients[0].ingredient == "chicken-breast"
 
 
@@ -76,3 +76,9 @@ def test_session_needs_an_item():
 def test_ids_are_slugs():
     with pytest.raises(ValidationError):
         PrepSessionDTO.model_validate(_session(_item(recipe="Not A Slug")))
+
+
+def test_deprecated_ad_hoc_field_still_loads():
+    """Session files written before #145 carry ``ad_hoc``; they must load."""
+    session = PrepSessionDTO.model_validate(_session(_item(ad_hoc=True)))
+    assert session.items[0].recipe == "air-fried-chicken-breast"

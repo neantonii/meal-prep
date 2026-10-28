@@ -184,8 +184,8 @@ export default function App() {
                 }))
               }
               onAddItem={(date, recipe) => change((w) => api.addItem(w, date, recipe, admin))}
-              onUpdateItem={(session, recipe, c) =>
-                change((w) => api.updateItem(w, session, recipe, c, admin))
+              onUpdateItem={(session, recipe, batches) =>
+                change((w) => api.updateItem(w, session, recipe, batches, admin))
               }
               onRemoveItem={(session, recipe) =>
                 change((w) => api.removeItem(w, session, recipe, admin))

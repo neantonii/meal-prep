@@ -19,7 +19,7 @@ interface Props {
   admin: boolean;
   onAddDate: (date: string) => void;
   onAddItem: (date: string, recipe: string) => void;
-  onUpdateItem: (session: string, recipe: string, change: { batches?: number; ad_hoc?: boolean }) => void;
+  onUpdateItem: (session: string, recipe: string, batches: number) => void;
   onRemoveItem: (session: string, recipe: string) => void;
   onMove: (session: string, date: string) => void;
   onDelete: (session: string) => void;
@@ -208,7 +208,7 @@ function SessionPanel({
         onBlur={(e) => {
           const batches = Number(e.target.value);
           if (id && Number.isInteger(batches) && batches >= 1 && batches !== it.batches)
-            onUpdateItem(id, it.recipe, { batches });
+            onUpdateItem(id, it.recipe, batches);
           else e.target.value = String(it.batches);
         }}
         onKeyDown={(e) => {
@@ -221,17 +221,6 @@ function SessionPanel({
       >
         {it.eaten}/{it.portions}
       </span>
-      <button
-        className={`adhoc${it.ad_hoc ? " on" : ""}`}
-        title={
-          it.ad_hoc
-            ? "Ad hoc: cooked at mealtime (click to unset)"
-            : "Mark ad hoc: cooked at mealtime, not on prep day"
-        }
-        onClick={() => id && onUpdateItem(id, it.recipe, { ad_hoc: !it.ad_hoc })}
-      >
-        AH
-      </button>
       <button className="x" title="Remove from session" onClick={() => id && onRemoveItem(id, it.recipe)}>
         ×
       </button>
