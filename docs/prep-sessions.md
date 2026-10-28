@@ -101,9 +101,9 @@ link is refused.
 2. the latest Plan date within those 7 days that has a session or is a
    default session day (Sun, Tue, Thu), auto-filled;
 
-and stays unlinked if neither exists. The entry's own day never counts:
-like the badge rule below, a same-day source is unusual and only happens
-when chosen on purpose (dragging that session's item).
+and stays unlinked if neither exists. The entry's own day never counts: a
+meal rarely comes from that day's own prep, so a same-day source only
+happens when chosen on purpose (dragging that session's item).
 
 ### Sessions
 
@@ -142,9 +142,10 @@ its linked entries, or onto a day that already has a session.
 - Entries show their source as a colored left edge (the session's color;
   unlinked entries have their own color). Colors follow the four standard
   slots of the page, the same every week: Sunday before, Tuesday, Thursday,
-  the week's Sunday; other days and older sessions get two more. A date badge appears only for an
-  unusual source: anything but the latest session strictly before the
-  entry's day (a same-day session is unusual).
+  the week's Sunday; other days and older sessions get two more.
+- A date badge appears only when the source is not one of the page's four
+  standard sessions (an extra-day or older session); the standard ones are
+  told apart by color alone.
 
 ## Storage
 

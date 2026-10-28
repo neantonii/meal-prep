@@ -105,16 +105,6 @@ def default_session_dates(
     )
 
 
-def usual_session(
-    sessions: Iterable[PrepSessionDTO], date: datetime.date
-) -> uuid.UUID | None:
-    """The session a meal on ``date`` usually comes from: the latest one
-    strictly before that day. Any other link (a same-day session, an older
-    one) is unusual and worth showing."""
-    earlier = [s for s in sessions if s.date < date]
-    return max(earlier, key=lambda s: s.date).id if earlier else None
-
-
 def link_counts(weeks: Iterable[DiaryWeekDTO]) -> Counter[tuple[uuid.UUID, str]]:
     """Linked entries per (session id, recipe id), over all ``weeks``."""
     counts: Counter[tuple[uuid.UUID, str]] = Counter()
@@ -292,8 +282,8 @@ class _Draft:
         """The session a palette drop on ``date`` links to (Plan auto-link).
 
         Only the ``AUTO_LINK_DAYS`` before ``date`` count, never the day
-        itself: like ``usual_session``, a same-day source is unusual and only
-        happens when chosen on purpose. First the latest of those sessions
+        itself: a meal rarely comes from that day's own prep, so a same-day
+        source only happens when chosen on purpose. First the latest of those sessions
         that lists the recipe with a free portion; else the latest Plan day
         among them that has a session or is a default prep day (auto-filled,
         creating the session when needed); else ``None``.

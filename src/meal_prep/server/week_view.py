@@ -44,14 +44,13 @@ def _card_url(recipe: Recipe | None) -> str | None:
     return f"/cards/recipe/{recipe.category.value}/{recipe.id}.html"
 
 
-def _entry_out(entry: LogEntry, usual: str | None, library: Library) -> DiaryEntry:
+def _entry_out(entry: LogEntry, library: Library) -> DiaryEntry:
     return DiaryEntry(
         id=entry.entry_id,
         recipe=entry.recipe_id,
         title=entry.title,
         card_url=_card_url(library.recipes.get(entry.recipe_id)),
         session=entry.session_id,
-        unusual_session=entry.session_id is not None and entry.session_id != usual,
         kcal=entry.macros.calories_kcal,
         protein_g=entry.macros.protein_g,
         carbs_g=entry.macros.carbs_g,
@@ -114,8 +113,6 @@ def week_response(
                 )
             )
             continue
-        usual_id = prep.usual_session(diary.sessions.values(), date)
-        usual = str(usual_id) if usual_id is not None else None
         days.append(
             DiaryDay(
                 date=date.isoformat(),
@@ -123,7 +120,7 @@ def week_response(
                 meals=[
                     DiaryMeal(
                         mealtime=meal.mealtime.value,
-                        entries=[_entry_out(e, usual, library) for e in meal.entries],
+                        entries=[_entry_out(e, library) for e in meal.entries],
                     )
                     for meal in day.meals()
                 ],

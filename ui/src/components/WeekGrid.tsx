@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { DiaryDay, DiaryEntry, Link, Mealtime, Placement, Session } from "../api";
-import { MEALTIMES, dayLabel } from "../api";
+import { MEALTIMES, dayLabel, sessionColor } from "../api";
 import type { ItemDrag } from "./SessionsBar";
 
 /** What an entry being dragged carries: its id and where it sits now. */
@@ -17,17 +17,22 @@ interface Props {
   sessions: Session[];
   /** Color class per session id. */
   colors: Record<string, string>;
+  /** Monday of the page's week (for the standard session slots). */
+  monday: string;
   onAdd: (recipe: string, where: Placement, session: Link) => void;
   onRemove: (id: string) => void;
   onMove: (id: string, where: Placement) => void;
 }
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+// Color classes of the four standard session slots (see sessionColor).
+const STANDARD = new Set(["c0", "c1", "c2", "c3"]);
 
 export default function WeekGrid({
   days,
   sessions,
   colors,
+  monday,
   onAdd,
   onRemove,
   onMove,
@@ -67,11 +72,13 @@ export default function WeekGrid({
     }
   };
 
-  /** A date badge only for a link to an unusual session (not the latest
-   * one before the entry's day); the usual one shows as the edge color. */
+  /** A date badge only when the source is not one of the page's four
+   * standard sessions (Sun before, Tue, Thu, own Sun): those are told apart
+   * by the edge color alone. */
   const badge = (entry: DiaryEntry) => {
-    if (!entry.session || !entry.unusual_session) return null;
+    if (!entry.session) return null;
     const source = sessions.find((s) => s.id === entry.session);
+    if (source && STANDARD.has(sessionColor(source.date, monday))) return null;
     return (
       <span
         className={`badge ${colors[entry.session] ?? ""}`}

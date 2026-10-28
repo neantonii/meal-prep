@@ -31,8 +31,6 @@ class DiaryEntry(BaseModel):
     title: str
     card_url: str | None  # None when the recipe no longer exists
     session: str | None  # id of the prep session it came from
-    # Linked to a session other than the latest one before its day.
-    unusual_session: bool
     kcal: float
     protein_g: float
     carbs_g: float
