@@ -115,17 +115,20 @@ its linked entries, or onto a day that already has a session.
 
 ## Week page
 
-- Session cards above the grid: every session dated from the Sunday before
-  the week through the week's own Sunday (typically Sun, Tue, Thu, Sun). A
-  Sunday session shows in both weeks; it is one session.
+- A strip of one-line session chips above the grid (date, mode, "10 recipes
+  · 17/24 eaten"): every session dated from the Sunday before the week
+  through the week's own Sunday (typically Sun, Tue, Thu, Sun). A Sunday
+  session shows in both weeks; it is one session.
+- Clicking a chip opens that session's items in a full-width panel below the
+  strip (one at a time); a session of ~10 recipes stays a few rows high.
 - Empty placeholders fill the default days (Sun, Tue, Thu) in that range;
   "+ session" adds a placeholder on another day.
 - Older sessions linked from this week's entries (e.g. frozen portions)
-  appear as extra cards at the start.
-- Each item shows "made · eaten" (portions vs linked entries in all weeks).
-- Drop a palette recipe on a card to add an item; drag an item into a slot
-  for a linked entry. Entries carry a session badge; in Plan and Admin the
-  badge changes or clears the link.
+  appear as extra chips at the start.
+- Each item shows "eaten/made" (linked entries in all weeks vs portions).
+- Drop a palette recipe on a chip or the open panel to add an item; drag an
+  item from the panel into a slot for a linked entry. Entries carry a session
+  badge; in Plan and Admin the badge changes or clears the link.
 
 ## Storage
 
