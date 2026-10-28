@@ -119,7 +119,9 @@ def test_session_items_follow_meals_and_guard_links(client: TestClient):
     added = client.post(
         "/api/sessions/2026-11-05/items", params={"week": W45}, json={"recipe": RICE}
     )
-    assert added.status_code == 405
+    # No such route: 404, or 405 when a built UI bundle is mounted at "/".
+    assert added.status_code in (404, 405)
+    assert _card(_ok(client.get(f"/api/diary/{W45}")), "2026-11-05")["id"] is None
 
 
 def test_moving_a_session_and_pruning_it(client: TestClient, tmp_path: Path):
