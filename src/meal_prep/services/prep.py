@@ -258,16 +258,17 @@ class _Draft:
     def make_room(
         self, session_id: uuid.UUID, recipe_id: str, entry_date: datetime.date
     ) -> None:
-        """Plan auto-fill: let ``session_id`` take one more ``recipe_id``.
+        """Let ``session_id`` take one more ``recipe_id`` (an explicit link).
 
         Adds the item (1 batch) or raises its batches until one more portion
-        fits, but only when the session itself is still in Plan; otherwise
-        it leaves the session alone and ``check`` reports the problem.
+        fits: for a session still in Plan, or any session in Admin (the link
+        is the deliberate correction). A session that already happened is
+        otherwise left alone and ``check`` reports the problem.
         """
         session = self.session(session_id)
         if session.date > entry_date:
             return  # check() explains: the session is later than the entry
-        if self.policy.mode(session.date) is not Mode.PLAN:
+        if self.policy.mode(session.date) is Mode.LOG:
             return
         item = _item(session, recipe_id)
         needed = self.count(session_id, recipe_id) + 1
@@ -375,8 +376,7 @@ def add_entry(
                 "to a session"
             )
         draft.session(link)  # must exist
-        if mode is Mode.PLAN:
-            draft.make_room(link, recipe.id, date)
+        draft.make_room(link, recipe.id, date)
         session = link
     dto, entry = entries.add_entry(
         draft.week(week), week, date, mealtime, recipe, position, session
@@ -442,7 +442,7 @@ def set_entry_session(
     """Link one entry to ``session`` (``None`` unlinks), or to the session on
     ``session_date``, creating it with the entry's recipe when that day has
     none yet (not for a day that already happened). Plan auto-fills; Log
-    refuses; Admin links only when the rules hold."""
+    refuses; Admin adds the recipe or batches as needed, on any session."""
     draft = _Draft(diary, policy, recipes)
     current = _week_of(draft, week)
     date, _, entry = entries.find_entry(current, entry_id)
@@ -475,8 +475,7 @@ def set_entry_session(
     draft.put_week(week, unlinked)
     if session is not None:
         draft.session(session)  # must exist
-        if mode is Mode.PLAN:
-            draft.make_room(session, entry.recipe, date)
+        draft.make_room(session, entry.recipe, date)
         draft.put_week(week, entries.set_entry_session(unlinked, entry_id, session))
     draft.check([session])
     return draft.change()
