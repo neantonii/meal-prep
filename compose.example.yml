@@ -19,3 +19,6 @@ services:
     volumes:
       - ./diary:/app/diary
       - ./logs:/app/logs
+      # The host's time zone decides which day is "today" (Plan vs Log);
+      # without it the container runs on UTC and the day turns over early.
+      - /etc/localtime:/etc/localtime:ro
