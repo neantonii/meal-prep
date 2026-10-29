@@ -40,3 +40,12 @@ def test_workflows_install_no_toolchains():
         )
     ]
     assert not offenders, f"use the Dockerfile toolchain instead: {offenders}"
+
+
+def test_compose_example_uses_the_host_time_zone():
+    """The server's "today" (Plan vs Log) is the container's local date; with
+    no zone it is UTC and turns over hours early in the evening."""
+    compose = (_ROOT / "compose.example.yml").read_text(encoding="utf-8")
+    assert re.search(
+        r"^\s*- /etc/localtime:/etc/localtime:ro$", compose, re.MULTILINE
+    ), "mount the host's /etc/localtime read-only"

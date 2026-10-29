@@ -67,6 +67,11 @@ cd /srv/meal-prep
 docker compose pull && docker compose up -d
 ```
 
+The container uses the host's time zone (`/etc/localtime`, mounted in
+`compose.example.yml`) to decide which day is "today", which splits Plan from
+Log. Check it with `timedatectl` on the host; a host on UTC turns the day over
+hours early in the evening.
+
 If `docker compose pull` is denied, the GHCR package is private (the
 default for a new package): make it public under the repo's *Packages* →
 *Package settings*, or run `docker login ghcr.io` on the host with a token
