@@ -12,7 +12,10 @@ values — the page can never show unvalidated numbers.
 
 Usage (run from the repo root so data/ and src/ resolve):
     python .agents/skills/meal-ingredient/scripts/render_ingredient_review.py \\
-        <draft.yaml> <provenance.yaml> <photo> <out.html>
+        <draft.yaml> <provenance.yaml> <photo|-> <out.html>
+
+Pass ``-`` as the photo when none exists (fresh meat or produce bought
+without a label photo); the card then says so in place of the image.
 """
 
 from __future__ import annotations
@@ -131,20 +134,31 @@ def _panel(title: str, sub: str, body: str) -> str:
     return f'<div class="panel"><h2>{html.escape(title)}</h2>\n{sub_html}{body}</div>'
 
 
-def _error_page(title: str, errors: list[str], photo: str) -> str:
+def _photo_panel(photo: str | None, title: str = "") -> str:
+    head = f"<h2>{html.escape(title)}</h2>\n" if title else ""
+    if photo is None:
+        body = '<p class="basis">No photo: every value comes from chat or USDA.</p>'
+    else:
+        body = f'<img class="photo" src="{html.escape(photo)}">'
+    return f'<div class="panel">{head}{body}</div>'
+
+
+def _error_page(title: str, errors: list[str], photo: str | None) -> str:
     items = "\n".join(f'<p class="err">- {html.escape(e)}</p>' for e in errors)
     return (
         "<!DOCTYPE html>\n<html><head><meta charset='UTF-8'>"
         f"<title>Label review — {html.escape(title)}</title>"
         f"<style>{_CSS}</style></head><body><div class='container'>"
         f"<h1>Label review — {html.escape(title)}</h1>"
-        f'<div class="panel"><h2>Original label</h2>\n<img class="photo" src="{html.escape(photo)}"></div>'
+        f"{_photo_panel(photo, 'Original label')}"
         f'<div class="panel"><h2>Validation errors</h2>\n{items}</div>'
         "</div></body></html>"
     )
 
 
-def render(dto: IngredientDTO, provenance: IngredientProvenance, photo_src: str) -> str:
+def render(
+    dto: IngredientDTO, provenance: IngredientProvenance, photo_src: str | None
+) -> str:
     """Enrich via the real pipeline and render DTO + model as HTML.
 
     Values come from the DTO, color from provenance; the DTO feeds
@@ -246,7 +260,7 @@ def render(dto: IngredientDTO, provenance: IngredientProvenance, photo_src: str)
         f"<title>{html.escape(dto.name)}</title>"
         f"<style>{_CSS}</style></head><body><div class='container'>"
         f"{head}"
-        f'<div class="panel"><img class="photo" src="{html.escape(photo_src)}"></div>'
+        f"{_photo_panel(photo_src)}"
         f"{_panel('Nutrition', _basis_subline(m.unit, m.amount, basis_g), macro_grid)}"
         f"{_panel('Details', '', facts_html)}"
         f"{conversions_html}"
@@ -254,12 +268,14 @@ def render(dto: IngredientDTO, provenance: IngredientProvenance, photo_src: str)
     )
 
 
-def _photo_data_uri(photo_path: str) -> str:
+def _photo_data_uri(photo_path: str) -> str | None:
     """Embed photo bytes so the HTML is self-contained.
 
     A repo-relative `src` breaks wherever the preview panel does not serve
     the working tree; a data URI renders anywhere.
     """
+    if photo_path == "-":
+        return None
     suffix = Path(photo_path).suffix.lower().lstrip(".") or "png"
     raw = Path(photo_path).read_bytes()
     return f"data:image/{suffix};base64,{base64.b64encode(raw).decode()}"

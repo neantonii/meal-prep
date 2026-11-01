@@ -5,65 +5,73 @@ description: This skill should be used when the user asks to "look up USDA", "ch
 
 # USDA FoodData Central Lookup
 
-Pull raw FoodData Central (FDC) records so the agent can reason about them.
-The script fetches data only — no nutrient mapping, no DTO shaping, no
-plausibility checks. Picking the match and interpreting the nutrients is
-agent work, not script work.
+Find the FoodData Central (FDC) record closest to an ingredient and read
+its per-100 g macros. Picking the match and judging the numbers is agent
+work; the commands below only fetch.
 
 ## When to Use
 
 The meal-ingredient skill invokes this on every entry, in parallel with
-label transcription — not as a fallback. Two roles for the fetched record:
+label transcription. The record plays one of two roles:
 
-- Panel entries: the panel stays source of truth; the USDA record is the
-  reasoning reference behind staging decisions and the cross-check in
+- Panel entries: the panel stays source of truth; the record is the
+  reference behind staging decisions and the cross-check in
   `meal-ingredient/references/sanity-checks.md`.
-- No-label ingredients (fresh meat, produce, bakery): USDA is the macro
-  source. Fetch the record, reason about the closest match, and stage the
-  macros as `usda` provenance.
+- No-label ingredients (fresh meat, produce, bakery): the record is the
+  macro source, staged with `usda` provenance.
 
-## Script
+## Auth
 
-`scripts/usda_lookup.py` (stdlib only). Copy these invocations exactly —
-the `USDA_KEY=...` prefix is the auth, not decoration. Never run a bare
-command (it fails with `USDA_KEY is not set`), never `export` the key,
-never probe the environment for it, never invent flags like `--api-key`
-(the script takes none):
+The API key is an environment network secret: the proxy adds an
+`X-Api-Key` header to requests to `api.nal.usda.gov`, so the commands
+carry no key. A `403` with `API_KEY_MISSING` (or a refused connection)
+means the secret or the allowed domain is not set up in this
+environment — tell the user; do not hunt for a key.
+
+## Commands
+
+Search (Foundation and SR Legacy are the baseline whole-food records;
+drop `dataType` to include noisy Branded label data):
 
 ```sh
-USDA_KEY="$USDA_KEY" python .agents/skills/meal-usda/scripts/usda_lookup.py search "<query>" [--limit N] [--data-types Foundation "SR Legacy"]
-USDA_KEY="$USDA_KEY" python .agents/skills/meal-usda/scripts/usda_lookup.py fetch <fdcId> --macros [--out .agent_tmp/usda.json]
+curl -s -X POST https://api.nal.usda.gov/fdc/v1/foods/search \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"<food> raw","pageSize":8,"dataType":["Foundation","SR Legacy"]}' \
+  | jq '{totalHits, foods: [.foods[] | {fdcId, description, dataType}]}'
 ```
 
-- `search` prints `totalHits` plus identity fields per hit (`fdcId`,
-  `description`, `dataType`, `brandOwner`). Defaults to
-  `--data-types Foundation "SR Legacy"` — baseline whole-food records.
-  Pass `--data-types` empty to include Branded; expect noisy label data.
-- `fetch --macros` prints identity plus macro nutrients only
-  (energy, protein, fat, carbs, fiber, sugars, sodium, potassium,
-  sat fat) — the numbers that answer the draft's macro fields. Omit the
-  flag only when you need the full record (portions, serving info);
-  never dump full JSON to hand-filter nutrients.
+Fetch one record's macros, keyed by the catalog's `macros` field names:
+
+```sh
+curl -s https://api.nal.usda.gov/fdc/v1/food/<fdcId> | jq '
+  (reduce (.foodNutrients[] | select(.amount != null)) as $n
+     ({}; .[$n.nutrient.number | tostring] = $n.amount)) as $a
+  | {fdcId, description, dataType,
+     calories_kcal: ($a["208"] // $a["958"] // $a["957"]),
+     protein_g: $a["203"], fat_g: $a["204"], carbs_g: $a["205"],
+     fiber_g: $a["291"], sugars_g: $a["269"], saturated_fat_g: $a["606"],
+     sodium_mg: $a["307"], potassium_mg: $a["306"]}'
+```
+
+Nutrients are matched by FDC nutrient number, never by name (names vary:
+SR Legacy says "Total Sugars", not "Sugars, total"). `null` means the
+record does not report it. Energy: SR Legacy reports `208`; Foundation
+records often only carry the Atwater energies (`958` specific factors,
+then `957` general) — the fallback picks them in that order. Values are
+per 100 g and compare directly with enriched per-100 g macros. Drop the
+`jq` filter only when you need the full record (portions, serving info).
 
 ## Flow
 
-Keep it tight, not precious — the API budget is ~2000 calls/day, so an
-extra call with value is fine. What dies here is pointless thrash:
-re-running searches that already answered, fetching three candidates to
-compare, dumping full records to hand-filter nutrients.
+1. Search with a plain-food query (`"<food> raw"`, `"<food>"`). Results
+   are not ranked for you — read the list and pick the closest
+   description; prefer SR Legacy (macro-complete) over Foundation (often
+   a sparse analytical subset). If no same-food hit appears, re-query
+   once with different wording.
+2. Fetch the pick. If protein or energy is `null`, fetch the next-closest
+   candidate, then stop and reason from the best record you have.
+3. Cite the record (`fdcId`, description, dataType) in chat and in the
+   close-out report.
 
-1. `search` with a plain-food query (`"<food> raw"`, `"<food>"`), limit
-   5–10. Read the candidate list and pick the closest description
-   yourself — the script ranks nothing, so the right hit may sit at
-   rank 5. Prefer SR Legacy (macro-complete) over Foundation (sometimes
-   a sparse analytical subset with no energy/protein rows at all). If no
-   same-food SR Legacy hit is in the list, re-query once with different
-   wording.
-2. `fetch` the pick with `--macros`. Foundation and SR Legacy values
-   are per 100 g and compare directly against enriched per-100g macros.
-   If the result has no energy/protein (sparse record), fetch the
-   next-closest candidate — then stop and reason from the best record
-   you have.
-3. Record the decision: cite the FDC ID (`fdcId`, description, dataType)
-   in chat and in the close-out report. Staged USDA macros carry `usda`
-   provenance and render green on the review card.
+Keep it tight: no re-running searches that already answered, no fetching
+several candidates to compare.

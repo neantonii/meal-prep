@@ -98,8 +98,8 @@ badges — see the custom-unit caveat in meal-ingredient §3).
 
 Author each `to be added` item by invoking the meal-ingredient skill, one
 entry at a time, running its full flow every time: label photo (request
-it — never stage user-pasted numbers as `panel`, never render a card
-without a real photo), transcription, stage, review card, validate, land
+it — never stage user-pasted numbers as `panel`, never fake a photo;
+with none, the card renders without one), transcription, stage, review card, validate, land
 in the aisle file. No printf-and-placeholder shortcuts: the entry is done
 only when it validates in its aisle file in the current tree. Return here
 after each entry validates.
@@ -127,11 +127,12 @@ phrasing from a sibling recipe — match its technique, not its units.
 
 ### 4. Validate, regenerate cards, show
 
-Validate by preparing the recipe against the real catalog (raises on
-unknown ingredient, unregistered unit, unknown cookware):
+Validate by loading the library (raises on unknown ingredient,
+unregistered unit, unknown cookware) and print the per-portion numbers
+for the read-back:
 
 ```sh
-python -c "from pathlib import Path; import renderer; from meal_prep.library import MealPrepLibrary; lib = MealPrepLibrary.load(data_dir=Path('data'), recipes_dir=Path('recipes')); from meal_prep.services.recipes import prepare_recipe; prepare_recipe(lib.recipes['<slug>'], lib.catalog, lib.equipment); print('ok')"
+uv run python -c "from pathlib import Path; from meal_prep.library import load_library; r = load_library(Path('data'), Path('recipes')).recipes['<slug>']; print(r.servings, r.portion_cooked_g, r.cost_per_portion, r.per_serving_macros)"
 ```
 
 Fix `ValueError`s by correcting the draft, never the service. Then run
@@ -140,8 +141,12 @@ ones), grep the new card for stray `%` strings (unparsed timer residue),
 and open the new card with `show_preview`:
 
 ```sh
-python -c "from pathlib import Path; import renderer; from meal_prep.library import MealPrepLibrary; lib = MealPrepLibrary.load(data_dir=Path('data'), recipes_dir=Path('recipes')); renderer.render_all_recipe_cards(lib, Path('recipe_cards'))"
+mkdir -p recipe_cards ingredient_cards
+uv run python -c "from pathlib import Path; from meal_prep import renderer; from meal_prep.library import load_library; from meal_prep.ingredient_cards import render_all_ingredient_cards; lib = load_library(Path('data'), Path('recipes')); render_all_ingredient_cards(lib.ingredients.values(), Path('ingredient_cards')); renderer.render_all_recipe_cards(lib.recipes.values(), Path('recipe_cards'), ingredient_cards_dir=Path('ingredient_cards'))"
 ```
+
+Without `show_preview` (cloud sessions), screenshot the page with
+Playwright and send the PNG: the phone viewer shows HTML as source.
 
 Present the card with a read-back: per-serving macros, cost, yield, and
 which cooking judgments were guesses. Iterate on feedback, or commit when
