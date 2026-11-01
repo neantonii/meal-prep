@@ -147,8 +147,11 @@ and conversion edges (§3), all as best guesses. The card also needs the
 photo bytes on disk (vision reads from the message, the renderer reads a
 file), so save it fresh every run with `extract_chat_image.py` — never
 reuse a stale file from `.agent_tmp/`, and never fabricate image bytes
-(no placeholders, no 1px PNGs) to satisfy the renderer. No photo means
-no card yet: request the photo first. Use distinct per-run filenames
+(no placeholders, no 1px PNGs) to satisfy the renderer. Request the photo
+first; when the user has none (fresh meat or produce sold by weight often
+has no page to screenshot), pass `-` as the photo: the card says so, every
+user-given fact stages `staged`, and the macros come from USDA. Use
+distinct per-run filenames
 (`draft-<slug>.yaml`, never a bare `draft.yaml` that collides with other
 sessions):
 
@@ -164,6 +167,9 @@ Open with `show_preview` the moment it renders. Before presenting,
 extract the card's own validation report (grep the HTML for
 "Validation errors") and fix or disclose every error — never present a
 card with unacknowledged errors.
+
+Without `show_preview` (cloud sessions), screenshot the page with
+Playwright and send the PNG: the phone viewer shows HTML as source.
 
 Present the read-back with the card: panel-literal values (white) vs your
 guesses (yellow) vs USDA-sourced values (green, with the cited FDC ID),
