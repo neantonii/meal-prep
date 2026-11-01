@@ -197,3 +197,33 @@
 
   custom_units:
     link: [link, links]
+
+- id: chicken-livers
+  name: Chicken Livers
+  step_name: chicken livers
+  aisle: meat
+  storage: refrigerated
+  shelf_life_days: 2
+
+  reference:
+    brand: Sobeys
+    product: Sobeys Chicken Livers 1 lb
+    price: 4.49
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 119.0
+    protein_g: 16.92
+    fat_g: 4.83
+    carbs_g: 0.73
+    fiber_g: 0.0
+    saturated_fat_g: 1.563
+    sugars_g: 0.0
+    sodium_mg: 71.0
+    potassium_mg: 230.0
+
+  conversions:
+    - from: package
+      to: lb
+      factor: 1
