@@ -159,3 +159,16 @@ def test_apostrophes_in_steps_stay_text():
     # Escaping ' to &#x27; would let the #cookware pattern eat "#x27".
     assert "it won't stick." in html
     assert "X27" not in html
+
+
+def test_kitchen_amounts_render_as_fractions():
+    from meal_prep.renderer import _format_display_amount
+
+    assert _format_display_amount(2 / 3, "package") == "2/3 package"
+    assert _format_display_amount(0.125, "tsp") == "1/8 tsp"
+    assert _format_display_amount(1.5, "tbsp") == "1 1/2 tbsp"
+    assert _format_display_amount(2.0, "count") == "2"
+    assert _format_display_amount(0.3, "cup") == "0.3 cup"
+    # Metric measures stay decimal.
+    assert _format_display_amount(0.5, "g") == "0.5 g"
+    assert _format_display_amount(2 / 3, "ml") == "0.666667 ml"
