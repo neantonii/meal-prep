@@ -119,17 +119,19 @@ applies to sessions still in Plan or dated today, and in Admin to any
 session; an earlier session is otherwise not changed, so such a link is
 refused.
 
-**Auto-link** (palette drop on a day after today, Admin or not): the entry
-links to the first of
+**Auto-link** (palette drop on a day after today, Admin or not): a meal
+belongs to the latest prep day before it, its supply cycle. Among the 7 days
+before the entry's day (plus that day itself for dinner), that is the latest
+day with a session, or a default session day (Sun, Tue, Thu) still open
+(today or later). The entry links to
 
-1. the latest session within the 7 days before the entry's day (plus that
-   day itself for dinner) that lists the recipe with a free portion still
-   within the recipe's fridge days on the entry's day (a 4-day recipe made
-   Tuesday feeds up to Saturday);
-2. the latest open date (today or later) within those 7 days that has a
-   session or is a default session day (Sun, Tue, Thu), which grows to fit;
+1. that day's session, if it lists the recipe with a free portion;
+2. else that day's session grown to fit (created on a default day), if the
+   day is still open;
 
-and stays unlinked if neither exists. The entry's own day counts only for
+and stays unlinked otherwise. Earlier sessions are never reached into, however
+long their food keeps: a spare from last week is not assumed to be eaten
+(a manual link may still pick it). The entry's own day counts only for
 dinner, since the delivery and prep happen during that day: breakfast, lunch
 and snacks come from an earlier session (a manual link may still choose the
 same day for any meal).
