@@ -95,3 +95,33 @@
 
 
 
+
+- id: cooked-pacific-white-shrimp
+  name: Cooked Pacific White Shrimp, Peeled Tail-On
+  step_name: cooked shrimp
+  aisle: seafood
+  storage: frozen
+  shelf_life_days: 365
+
+  reference:
+    brand: Best Buy
+    product: Best Buy Frozen Shrimp Pacific White Peeled Tail-On 300 g
+    price: 8.00
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 110.0
+    protein_g: 23.0
+    fat_g: 1.5
+    carbs_g: 2.0
+    fiber_g: 0.0
+    saturated_fat_g: 0.5
+    sugars_g: 0.0
+    sodium_mg: 400.0
+    potassium_mg: 175.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 300
