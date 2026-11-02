@@ -725,3 +725,36 @@
     - from: ml
       to: g
       factor: 1.01
+
+- id: sesame-oil
+  name: Sesame Oil
+  step_name: sesame oil
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 365
+
+  reference:
+    brand: Longo's
+    product: Longo's Sesame Oil 185 ml
+    price: 4.99
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 884.0
+    protein_g: 0.0
+    fat_g: 100.0
+    carbs_g: 0.0
+    fiber_g: 0.0
+    saturated_fat_g: 14.2
+    sugars_g: 0.0
+    sodium_mg: 0.0
+    potassium_mg: 0.0
+
+  conversions:
+    - from: package
+      to: ml
+      factor: 185
+    - from: ml
+      to: g
+      factor: 0.92
