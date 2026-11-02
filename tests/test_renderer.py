@@ -149,3 +149,13 @@ def test_interpolated_values_are_html_escaped():
     assert "Oven &amp; &lt;Rack&gt;" in html
     # No raw, unescaped dangerous fragment survives.
     assert "<script>alert(1)</script>" not in html
+
+
+def test_apostrophes_in_steps_stay_text():
+    from dataclasses import replace
+
+    recipe = replace(_recipe(), instructions="Dry them or it won't stick.")
+    html = renderer.render_recipe_card(recipe)
+    # Escaping ' to &#x27; would let the #cookware pattern eat "#x27".
+    assert "it won't stick." in html
+    assert "X27" not in html

@@ -442,8 +442,10 @@ def _format_step_text(
     # Escape the authored prose up front so surrounding text (and any embedded
     # ``&``/``<``/``>``) is never emitted raw; the badge HTML injected below is
     # generated and separately escaped. Cooklang tokens use only ``@ # ~ { } %``
-    # and word characters, so escaping does not disturb the patterns.
-    text = html.escape(text)
+    # and word characters, so escaping does not disturb the patterns. Quotes
+    # stay literal (``quote=False``): prose is element text, never an
+    # attribute, and ``'`` -> ``&#x27;`` would match the ``#cookware`` pattern.
+    text = html.escape(text, quote=False)
 
     def replace_ingredient(match: re.Match[str]) -> str:
         if match.group(1):
