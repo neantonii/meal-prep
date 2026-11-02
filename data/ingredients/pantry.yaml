@@ -628,3 +628,36 @@
     - from: shot
       to: g
       factor: 30
+
+- id: soy-sauce
+  name: Naturally Brewed Soy Sauce
+  step_name: soy sauce
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 730
+
+  reference:
+    brand: Kikkoman
+    product: Kikkoman Soy Sauce 591 ml
+    price: 6.99
+
+  macros:
+    unit: tbsp
+    amount: 1
+    calories_kcal: 10.0
+    protein_g: 2.0
+    fat_g: 0.1
+    carbs_g: 1.0
+    fiber_g: 0.1
+    saturated_fat_g: 0.0
+    sugars_g: 0.1
+    sodium_mg: 960.0
+    potassium_mg: 75.0
+
+  conversions:
+    - from: package
+      to: ml
+      factor: 591
+    - from: ml
+      to: g
+      factor: 1.08
