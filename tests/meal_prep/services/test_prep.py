@@ -212,6 +212,17 @@ def test_auto_link_prefers_a_session_with_a_free_portion():
     assert entry.session == _only(diary).id
 
 
+def test_auto_link_never_reaches_past_the_latest_session():
+    # Tuesday's spare chicken belongs to Tuesday's cycle, which ended when
+    # Saturday's session (today, Log, no chicken) began: Sunday's lunch
+    # stays unlinked rather than taking the older spare portion.
+    tue = _session(D(2026, 10, 27), (CHICKEN, 1))
+    sat = _session(TODAY, (RICE, 1))
+    diary, entry = _add(_with(tue, sat), SUN)
+    assert entry.session is None
+    assert diary.sessions == {tue.id: tue, sat.id: sat}
+
+
 def test_auto_link_raises_batches_when_the_item_is_full():
     diary = _with(_session(SUN, (CHICKEN, 1)))
     for _ in range(4):
