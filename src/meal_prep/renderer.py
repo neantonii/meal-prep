@@ -409,15 +409,42 @@ _CSS = """
 """
 
 
+_KITCHEN_DENOMINATORS = (2, 3, 4, 8)
+_METRIC_UNITS = frozenset({"g", "kg", "ml", "l"})
+
+
+def _format_kitchen_number(quantity: float) -> str:
+    """Show halves, thirds, quarters and eighths as fractions (``1 1/2``, ``2/3``).
+
+    Authored fractions load as floats (``2/3`` -> 0.666...); printing them with
+    ``:g`` gives ``0.666667``. Anything else falls back to ``:g``.
+    """
+    whole = int(quantity)
+    rest = quantity - whole
+    if rest < 1e-9:
+        return f"{quantity:g}"
+    for denominator in _KITCHEN_DENOMINATORS:
+        numerator = round(rest * denominator)
+        if 0 < numerator < denominator and abs(rest - numerator / denominator) < 1e-6:
+            fraction = f"{numerator}/{denominator}"
+            return f"{whole} {fraction}" if whole else fraction
+    return f"{quantity:g}"
+
+
 def _format_display_amount(quantity: float, unit: str) -> str:
     """Format a quantity + unit for display, dropping the reserved ``count`` noun.
 
     A count is just a number; appending the word "count" would be noise. Every
-    other unit is shown verbatim (e.g. ``1 tbsp``).
+    other unit is shown verbatim (e.g. ``1 tbsp``). Kitchen measures read as
+    fractions (``2/3 package``, ``1/8 tsp``); metric weights and volumes stay
+    decimal (``0.5 g``).
     """
+    number = (
+        f"{quantity:g}" if unit in _METRIC_UNITS else _format_kitchen_number(quantity)
+    )
     if unit == "count":
-        return f"{quantity:g}"
-    return f"{quantity:g} {html.escape(unit)}"
+        return number
+    return f"{number} {html.escape(unit)}"
 
 
 def _format_step_text(
