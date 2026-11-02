@@ -98,6 +98,11 @@ edits are allowed:
 "Today" is the server's local date. An edit is checked against the mode of
 every date it touches; if any is Log, Log rules apply (Admin overrides all).
 
+**Today's session is still open.** The prep happens during the session's
+day, so a session dated today can still take new meals and grow, as in
+Plan; from tomorrow it is a record of what was made. Meals logged today
+follow Log rules as usual.
+
 ### Entries
 
 | Edit | Plan | Log | Admin |
@@ -110,18 +115,19 @@ every date it touches; if any is Log, Log rules apply (Admin overrides all).
 
 **A session grows to fit its meals.** Linking a meal to a session that lacks
 its recipe adds it; batches follow the meals (see "Session item"). This
-applies to sessions still in Plan, and in Admin to any session; a Log
-session is otherwise not changed, so such a link is refused.
+applies to sessions still in Plan or dated today, and in Admin to any
+session; an earlier session is otherwise not changed, so such a link is
+refused.
 
 **Auto-link** (palette drop on a day after today, Admin or not): the entry
 links to the first of
 
 1. the latest session within the 7 days before the entry's day (plus that
-   day itself for dinner), if it lists the recipe with a free portion. Only
-   the latest: its supply cycle covers the entry, so an older session's
-   spare portion is never taken;
-2. the latest Plan date within those 7 days that has a session or is a
-   default session day (Sun, Tue, Thu), which grows to fit;
+   day itself for dinner) that lists the recipe with a free portion still
+   within the recipe's fridge days on the entry's day (a 4-day recipe made
+   Tuesday feeds up to Saturday);
+2. the latest open date (today or later) within those 7 days that has a
+   session or is a default session day (Sun, Tue, Thu), which grows to fit;
 
 and stays unlinked if neither exists. The entry's own day counts only for
 dinner, since the delivery and prep happen during that day: breakfast, lunch

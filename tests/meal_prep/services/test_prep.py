@@ -19,6 +19,7 @@ from meal_prep.services.sessions import freeze_item, prepare_session
 
 D = datetime.date
 TODAY = D(2026, 10, 31)  # Saturday
+YESTERDAY = D(2026, 10, 30)
 SUN, MON, TUE, WED, THU = (D(2026, 11, day) for day in (1, 2, 3, 4, 5))
 WEEK = "2026-W45"  # Mon 2 Nov - Sun 8 Nov
 LAST_WEEK = "2026-W44"
@@ -212,15 +213,18 @@ def test_auto_link_prefers_a_session_with_a_free_portion():
     assert entry.session == _only(diary).id
 
 
-def test_auto_link_never_reaches_past_the_latest_session():
-    # Tuesday's spare chicken belongs to Tuesday's cycle, which ended when
-    # Saturday's session (today, Log, no chicken) began: Sunday's lunch
-    # stays unlinked rather than taking the older spare portion.
-    tue = _session(D(2026, 10, 27), (CHICKEN, 1))
-    sat = _session(TODAY, (RICE, 1))
-    diary, entry = _add(_with(tue, sat), SUN)
-    assert entry.session is None
-    assert diary.sessions == {tue.id: tue, sat.id: sat}
+def test_auto_link_skips_spare_portions_past_their_fridge_days():
+    # Last Tuesday's spare chicken keeps 4 days: until Saturday. Monday's
+    # lunch skips it and grows Sunday's (default day) session instead.
+    last_tue = _session(D(2026, 10, 27), (CHICKEN, 1))
+    diary, entry = _add(_with(last_tue), MON)
+    assert diary.sessions[entry.session].date == SUN  # type: ignore[index]
+    assert diary.sessions[last_tue.id] == last_tue
+    # A spare is still taken on its last fridge day: Thursday's (4 days)
+    # feeds Monday.
+    thu = _session(D(2026, 10, 29), (CHICKEN, 1))
+    _, mon = _add(_with(thu), MON)
+    assert mon.session == thu.id
 
 
 def test_auto_link_raises_batches_when_the_item_is_full():
@@ -234,14 +238,35 @@ def test_auto_link_raises_batches_when_the_item_is_full():
 
 
 def test_auto_link_never_changes_a_session_that_already_happened():
-    past = _session(TODAY, (EGG, 1))  # one portion
+    past = _session(YESTERDAY, (EGG, 1))  # one portion
     diary, first = _add(_with(past), SUN, EGG)
     assert first.session == past.id
-    # Full now, and no Plan session before Sunday: unlinked, never a raise
-    # of Saturday's batches (nor Sunday's own session: never the same day).
+    # Full now, and no open session before Sunday: unlinked, never a raise
+    # of Friday's batches (nor Sunday's own session: never the same day).
     diary, second = _add(diary, SUN, EGG)
     assert diary.sessions[past.id] == past
     assert second.session is None
+
+
+def test_todays_session_is_still_open():
+    # The prep happens during the session's day, so today's session still
+    # takes meals: auto-link raises its batches...
+    today = _session(TODAY, (EGG, 1))
+    diary, _ = _add(_with(today), SUN, EGG)
+    diary, second = _add(diary, SUN, EGG)
+    assert second.session == today.id
+    assert diary.sessions[today.id].items[0].batches == 2
+    # ...an explicit link adds a recipe it lacks...
+    diary, lunch = _add(diary, SUN, link=today.id)
+    assert [i.recipe for i in diary.sessions[today.id].items] == ["egg", "chicken"]
+    assert lunch.session == today.id
+    # ...and relinking to today creates its session when it has none.
+    diary, mon = _add(EMPTY, MON, link=None)
+    change = prep.set_entry_session(
+        diary, PLAN, RECIPES, WEEK, mon.id, None, session_date=TODAY
+    )
+    diary = _apply(diary, change)
+    assert diary.sessions[_entry(diary, mon.id).session].date == TODAY  # type: ignore[index]
 
 
 def test_log_mode_adds_unlinked_entries_only():
@@ -268,7 +293,7 @@ def test_explicit_link_refuses_a_later_session():
 
 
 def test_explicit_link_cannot_fill_a_session_that_already_happened():
-    past = _session(TODAY, (RICE, 1))
+    past = _session(YESTERDAY, (RICE, 1))
     with pytest.raises(RuleError, match="has no Chicken"):
         _add(_with(past), SUN, link=past.id)
 
@@ -418,7 +443,7 @@ def test_relinking_to_an_empty_day_creates_its_session():
     assert [i.recipe for i in tue.items] == ["chicken"]
     # A day that already happened, or one after the meal, is refused.
     with pytest.raises(RuleError, match="already happened"):
-        prep.set_entry_session(diary, PLAN, RECIPES, WEEK, entry.id, None, TODAY)
+        prep.set_entry_session(diary, PLAN, RECIPES, WEEK, entry.id, None, YESTERDAY)
     with pytest.raises(RuleError, match="later"):
         sat = D(2026, 11, 7)
         prep.set_entry_session(diary, PLAN, RECIPES, WEEK, entry.id, None, sat)
