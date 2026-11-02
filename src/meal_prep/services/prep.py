@@ -316,10 +316,12 @@ class _Draft:
 
         The ``AUTO_LINK_DAYS`` before ``date`` count, plus the day itself for
         dinner only: the delivery and prep happen during that day (a manual
-        link may use the same day for any meal). First the latest of those sessions that
-        lists the recipe with a free portion; else the latest Plan day among
-        them that has a session or is a default prep day (the session grows
-        to fit, created when needed); else ``None``.
+        link may use the same day for any meal). First the latest of those
+        sessions, if it lists the recipe with a free portion: a session is a
+        supply cycle that runs until the next one, so an older session's
+        spare portion never feeds a meal after a newer session. Else the
+        latest Plan day among them that has a session or is a default prep
+        day (the session grows to fit, created when needed); else ``None``.
         """
         start = date - datetime.timedelta(days=AUTO_LINK_DAYS)
         end = date if mealtime is Mealtime.DINNER else date - datetime.timedelta(days=1)
@@ -328,11 +330,12 @@ class _Draft:
             key=lambda s: s.date,
             reverse=True,
         )
-        counts = link_counts(self.weeks.values())
-        for session in recent:
-            item = _item(session, recipe_id)
-            if item is not None and counts[(session.id, recipe_id)] < _portions(item):
-                return session.id
+        if recent:
+            current = recent[0]
+            item = _item(current, recipe_id)
+            counts = link_counts(self.weeks.values())
+            if item is not None and counts[(current.id, recipe_id)] < _portions(item):
+                return current.id
         plan_days = sorted(
             {
                 day

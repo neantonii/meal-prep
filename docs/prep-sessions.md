@@ -117,7 +117,9 @@ session is otherwise not changed, so such a link is refused.
 links to the first of
 
 1. the latest session within the 7 days before the entry's day (plus that
-   day itself for dinner) that lists the recipe with a free portion;
+   day itself for dinner), if it lists the recipe with a free portion. Only
+   the latest: its supply cycle covers the entry, so an older session's
+   spare portion is never taken;
 2. the latest Plan date within those 7 days that has a session or is a
    default session day (Sun, Tue, Thu), which grows to fit;
 
