@@ -694,3 +694,34 @@
     - from: ml
       to: g
       factor: 1.08
+
+- id: rice-vinegar
+  name: Genuine Brewed Rice Vinegar
+  step_name: rice vinegar
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 730
+
+  reference:
+    brand: Marukan
+    product: Marukan Rice Vinegar Sodium & Sugar Free 355 ml
+    price: 4.49
+
+  macros:
+    unit: ml
+    amount: 100
+    calories_kcal: 0.0
+    protein_g: 0.0
+    fat_g: 0.0
+    carbs_g: 0.0
+    fiber_g: 0.0
+    sugars_g: 0.0
+    sodium_mg: 0.0
+
+  conversions:
+    - from: package
+      to: ml
+      factor: 355
+    - from: ml
+      to: g
+      factor: 1.01
