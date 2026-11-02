@@ -87,10 +87,11 @@ wording — before asking for a new edge (see meal-ingredient §2).
 Whole-package quantities never need a new unit or a gram expansion: when
 the recipe consumes a whole package or half of one, write
 `@id{1%package}` / `@id{1/2%package}` directly — `package` is
-gram-reachable on every entry, so no edge is needed. Other fractions
-(thirds, quarters) are awkward to portion and do not divide most packs
-cleanly — scale the recipe to a whole or half package instead, or weigh
-out grams. Never expand a whole
+gram-reachable on every entry, so no edge is needed. A recipe that uses
+part of a pack (`@id{2/3%package}`) also writes it as a fraction of the
+package, never as grams, and gives the gram weight in the step prose
+for the cook to weigh out ("take 2/3 of the bag (200 g)"); the card
+prints kitchen fractions. Never expand a whole
 package into grams (`@coleslaw-mix{397%g}`): the gram figure is an awkward
 retail artifact, and the checklist renders `1 package` while the step text
 shows the ingredient name either way (amounts are omitted from step
