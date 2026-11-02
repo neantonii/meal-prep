@@ -320,49 +320,40 @@ class _Draft:
     ) -> uuid.UUID | None:
         """The session a palette drop on ``date`` links to (Plan auto-link).
 
-        The ``AUTO_LINK_DAYS`` before ``date`` count, plus the day itself for
-        dinner only: the delivery and prep happen during that day (a manual
-        link may use the same day for any meal). First the latest of those
-        sessions that lists the recipe with a free portion still within the
-        recipe's fridge days on ``date``; else the latest open day among them
-        (today or later) that has a session or is a default prep day (the
-        session grows to fit, created when needed); else ``None``.
+        A meal belongs to the latest prep day before it (its supply cycle):
+        among the ``AUTO_LINK_DAYS`` before ``date`` (plus the day itself for
+        dinner only, as the delivery and prep happen during that day), the
+        latest day with a session, or an open default prep day. That day's
+        session if it lists the recipe with a free portion; else the session
+        grows to fit (created when needed) if the day is still open; else
+        ``None``. Older sessions are never reached into, however long their
+        food keeps (a manual link may still pick one).
         """
         start = date - datetime.timedelta(days=AUTO_LINK_DAYS)
         end = date if mealtime is Mealtime.DINNER else date - datetime.timedelta(days=1)
-        recent = sorted(
-            (s for s in self.sessions.values() if start <= s.date <= end),
-            key=lambda s: s.date,
-            reverse=True,
-        )
-        counts = link_counts(self.weeks.values())
-        fridge = datetime.timedelta(days=self.recipe(recipe_id).fridge_days)
-        for session in recent:
-            item = _item(session, recipe_id)
-            if (
-                item is not None
-                and counts[(session.id, recipe_id)] < _portions(item)
-                and date <= session.date + fridge
-            ):
-                return session.id
-        plan_days = sorted(
-            {
-                day
-                for day in (
-                    *(s.date for s in recent),
-                    *default_session_dates(start, end),
-                )
-                if self.policy.session_open(day)
-            },
-            reverse=True,
-        )
-        if not plan_days:
+        sessions = {s.date: s for s in self.sessions.values() if start <= s.date <= end}
+        open_defaults = {
+            day
+            for day in default_session_dates(start, end)
+            if self.policy.session_open(day)
+        }
+        days = sessions.keys() | open_defaults
+        if not days:
             return None
-        day = plan_days[0]
-        existing = self.session_on(day)
-        if existing is not None:
-            self.make_room(existing.id, recipe_id, date)
-            return existing.id
+        day = max(days)
+        session = sessions.get(day)
+        if session is not None:
+            item = _item(session, recipe_id)
+            free = item is not None and self.count(session.id, recipe_id) < _portions(
+                item
+            )
+            if free:
+                return session.id
+        if not self.policy.session_open(day):
+            return None
+        if session is not None:
+            self.make_room(session.id, recipe_id, date)
+            return session.id
         created = PrepSessionDTO(
             id=uuid.uuid4(), date=day, items=[freeze_item(self.recipe(recipe_id))]
         )

@@ -207,24 +207,24 @@ def test_auto_link_runs_on_plan_days_in_admin_too():
     assert logged.session is None  # Log days: unlinked, Admin or not
 
 
-def test_auto_link_prefers_a_session_with_a_free_portion():
-    diary = _with(_session(SUN, (CHICKEN, 1)))
-    diary, entry = _add(diary, WED)  # Tuesday is nearer, but Sunday has room
-    assert entry.session == _only(diary).id
+def test_auto_link_takes_a_free_portion_from_the_meals_own_cycle():
+    sun = _session(SUN, (CHICKEN, 1))  # 4 portions
+    diary, _ = _add(_with(sun), SUN, link=sun.id, meal=Mealtime.DINNER)
+    diary, mon = _add(diary, MON)
+    assert mon.session == sun.id  # Sunday's spare: Monday is in its cycle
+    # Tuesday is a prep day, so Wednesday's lunch is in Tuesday's cycle: its
+    # session is created rather than Sunday's spare borrowed.
+    diary, wed = _add(diary, WED)
+    assert diary.sessions[wed.session].date == TUE  # type: ignore[index]
 
 
-def test_auto_link_skips_spare_portions_past_their_fridge_days():
-    # Last Tuesday's spare chicken keeps 4 days: until Saturday. Monday's
-    # lunch skips it and grows Sunday's (default day) session instead.
+def test_auto_link_never_borrows_from_an_earlier_cycle():
+    # Last Tuesday's spare chicken stays put, however long it would keep:
+    # Monday's lunch is in Sunday's cycle, whose session is created.
     last_tue = _session(D(2026, 10, 27), (CHICKEN, 1))
     diary, entry = _add(_with(last_tue), MON)
     assert diary.sessions[entry.session].date == SUN  # type: ignore[index]
     assert diary.sessions[last_tue.id] == last_tue
-    # A spare is still taken on its last fridge day: Thursday's (4 days)
-    # feeds Monday.
-    thu = _session(D(2026, 10, 29), (CHICKEN, 1))
-    _, mon = _add(_with(thu), MON)
-    assert mon.session == thu.id
 
 
 def test_auto_link_raises_batches_when_the_item_is_full():
