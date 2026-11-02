@@ -149,6 +149,7 @@ function SessionChip({
 function SessionPanel({
   session,
   onClose,
+  today,
   monday,
   admin,
   onRemoveItem,
@@ -156,8 +157,9 @@ function SessionPanel({
   onOpenDetails,
 }: Props & { session: Session; onClose: () => void }) {
   const { id, date, mode } = session;
-  // What the rules allow here (the server has the final say).
-  const canGrow = admin || mode === "plan";
+  // What the rules allow here (the server has the final say): today's
+  // session is still open, as the prep happens during its day.
+  const canGrow = admin || mode === "plan" || date === today;
   const { setNodeRef, hint } = useSessionDrop("session-panel", date, id);
   const panel = useRef<HTMLDivElement | null>(null);
 

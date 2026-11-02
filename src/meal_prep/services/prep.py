@@ -69,6 +69,11 @@ class Policy:
         """``day`` is after today (a Plan day), whether or not Admin is on."""
         return day > self.today
 
+    def session_open(self, day: datetime.date) -> bool:
+        """A session on ``day`` can still take new meals and grow: from today
+        on (the prep happens during the session's day), or any day in Admin."""
+        return self.admin or day >= self.today
+
 
 @dataclass(frozen=True, slots=True)
 class Diary:
@@ -285,13 +290,14 @@ class _Draft:
 
         Adds the item (1 batch) or raises its batches until one more portion
         fits: for a session still in Plan, or any session in Admin (the link
-        is the deliberate correction). A session that already happened is
+        is the deliberate correction). Today's session is still open: the
+        prep happens during its day. A session that already happened is
         otherwise left alone and ``check`` reports the problem.
         """
         session = self.session(session_id)
         if session.date > entry_date:
             return  # check() explains: the session is later than the entry
-        if self.policy.mode(session.date) is Mode.LOG:
+        if not self.policy.session_open(session.date):
             return
         item = _item(session, recipe_id)
         needed = self.count(session_id, recipe_id) + 1
@@ -317,11 +323,10 @@ class _Draft:
         The ``AUTO_LINK_DAYS`` before ``date`` count, plus the day itself for
         dinner only: the delivery and prep happen during that day (a manual
         link may use the same day for any meal). First the latest of those
-        sessions, if it lists the recipe with a free portion: a session is a
-        supply cycle that runs until the next one, so an older session's
-        spare portion never feeds a meal after a newer session. Else the
-        latest Plan day among them that has a session or is a default prep
-        day (the session grows to fit, created when needed); else ``None``.
+        sessions that lists the recipe with a free portion still within the
+        recipe's fridge days on ``date``; else the latest open day among them
+        (today or later) that has a session or is a default prep day (the
+        session grows to fit, created when needed); else ``None``.
         """
         start = date - datetime.timedelta(days=AUTO_LINK_DAYS)
         end = date if mealtime is Mealtime.DINNER else date - datetime.timedelta(days=1)
@@ -330,12 +335,16 @@ class _Draft:
             key=lambda s: s.date,
             reverse=True,
         )
-        if recent:
-            current = recent[0]
-            item = _item(current, recipe_id)
-            counts = link_counts(self.weeks.values())
-            if item is not None and counts[(current.id, recipe_id)] < _portions(item):
-                return current.id
+        counts = link_counts(self.weeks.values())
+        fridge = datetime.timedelta(days=self.recipe(recipe_id).fridge_days)
+        for session in recent:
+            item = _item(session, recipe_id)
+            if (
+                item is not None
+                and counts[(session.id, recipe_id)] < _portions(item)
+                and date <= session.date + fridge
+            ):
+                return session.id
         plan_days = sorted(
             {
                 day
@@ -343,7 +352,7 @@ class _Draft:
                     *(s.date for s in recent),
                     *default_session_dates(start, end),
                 )
-                if self.policy.ahead(day)
+                if self.policy.session_open(day)
             },
             reverse=True,
         )
@@ -487,7 +496,7 @@ def set_entry_session(
         existing = draft.session_on(session_date)
         if existing is not None:
             session = existing.id
-        elif policy.mode(session_date) is Mode.LOG:
+        elif not policy.session_open(session_date):
             raise RuleError(
                 f"The {day_label(session_date)} session already happened: "
                 "adding to it is Admin only"
