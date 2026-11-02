@@ -263,3 +263,36 @@
       to: g
       factor: 0.5
 
+
+- id: ground-ginger
+  name: Ground Ginger
+  step_name: ground ginger
+  aisle: spices
+  storage: ambient
+  shelf_life_days: 730
+
+  reference:
+    brand: Compliments
+    product: Compliments Spice Ground Ginger 105 g
+    price: 6.49
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 335.0
+    protein_g: 9.0
+    fat_g: 4.2
+    carbs_g: 71.6
+    fiber_g: 14.1
+    saturated_fat_g: 2.6
+    sugars_g: 3.4
+    sodium_mg: 27.0
+    potassium_mg: 1320.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 105
+    - from: tsp
+      to: g
+      factor: 2.0
