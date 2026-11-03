@@ -691,3 +691,35 @@
     - from: package
       to: g
       factor: 350
+
+- id: honeycrisp-apples
+  name: Honeycrisp Apples
+  step_name: apple
+  aisle: produce
+  storage: refrigerated
+  shelf_life_days: 30
+
+  reference:
+    brand: Compliments
+    product: Compliments Apples Honey Crisp 1.36 kg
+    price: 7.99
+
+  macros:
+    unit: g
+    amount: 138
+    calories_kcal: 80.0
+    protein_g: 0.14
+    fat_g: 0.14
+    carbs_g: 19.0
+    fiber_g: 3.0
+    sugars_g: 14.0
+    sodium_mg: 0.19
+    potassium_mg: 135.0
+
+  conversions:
+    - from: package
+      to: kg
+      factor: 1.36
+    - from: count
+      to: g
+      factor: 151
