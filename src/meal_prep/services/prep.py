@@ -361,6 +361,25 @@ class _Draft:
         return created.id
 
 
+def _links_today(
+    draft: _Draft, date: datetime.date, *sessions: uuid.UUID | datetime.date | None
+) -> bool:
+    """A meal dated today may change its link while every session involved
+    (by id or date; ``None`` is no session) is still open: today's own, as
+    the prep happens during its day."""
+    if date != draft.policy.today:
+        return False
+    days: list[datetime.date] = []
+    for s in sessions:
+        if isinstance(s, datetime.date):
+            days.append(s)
+        elif s is not None:
+            if s not in draft.sessions:
+                return False
+            days.append(draft.sessions[s].date)
+    return all(draft.policy.session_open(day) for day in days)
+
+
 def _item(session: PrepSessionDTO, recipe_id: str) -> SessionItemDTO | None:
     return next((i for i in session.items if i.recipe == recipe_id), None)
 
@@ -401,7 +420,7 @@ def add_entry(
     elif link is None:
         session = None
     else:
-        if mode is Mode.LOG:
+        if mode is Mode.LOG and not _links_today(draft, date, link):
             raise RuleError(
                 f"{day_label(date)} is in Log mode: new entries can't be linked "
                 "to a session"
@@ -473,12 +492,14 @@ def set_entry_session(
     """Link one entry to ``session`` (``None`` unlinks), or to the session on
     ``session_date``, creating it with the entry's recipe when that day has
     none yet (not for a day that already happened). Plan auto-fills; Log
-    refuses; Admin adds the recipe or batches as needed, on any session."""
+    refuses, except a meal dated today moving to or from today's session;
+    Admin adds the recipe or batches as needed, on any session."""
     draft = _Draft(diary, policy, recipes)
     current = _week_of(draft, week)
     date, _, entry = entries.find_entry(current, entry_id)
     mode = policy.mode(date)
-    if mode is Mode.LOG:
+    target = session_date if session_date is not None else session
+    if mode is Mode.LOG and not _links_today(draft, date, entry.session, target):
         raise RuleError(
             f"{day_label(date)} is in Log mode: an entry's session can only "
             "change in Admin mode"
