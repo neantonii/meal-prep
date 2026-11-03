@@ -9,6 +9,7 @@ from __future__ import annotations
 import datetime
 import uuid
 
+from meal_prep.enums import RecipeCategory
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.library import Library
 from meal_prep.models.log import LogEntry
@@ -110,6 +111,15 @@ def _meals_by_item(diary: prep.Diary) -> _Meals:
     }
 
 
+_CATEGORY_ORDER = {category: i for i, category in enumerate(RecipeCategory)}
+
+
+def _category_rank(recipe: Recipe | None) -> int:
+    """Session items list by category, in ``RecipeCategory`` order (the
+    palette's); items whose recipe is gone come last."""
+    return _CATEGORY_ORDER[recipe.category] if recipe else len(_CATEGORY_ORDER)
+
+
 def _session_out(
     session: PrepSession,
     meals: _Meals,
@@ -127,6 +137,11 @@ def _session_out(
                 recipe=item.recipe_id,
                 title=item.title,
                 card_url=_card_url(library.recipes.get(item.recipe_id)),
+                category=(
+                    recipe.category.value
+                    if (recipe := library.recipes.get(item.recipe_id))
+                    else None
+                ),
                 batches=item.batches,
                 servings=item.servings,
                 portions=item.portions,
@@ -136,7 +151,10 @@ def _session_out(
                 protein_g=item.macros.protein_g,
                 cost=item.cost,
             )
-            for item in session.items
+            for item in sorted(
+                session.items,
+                key=lambda i: _category_rank(library.recipes.get(i.recipe_id)),
+            )
         ],
     )
 
