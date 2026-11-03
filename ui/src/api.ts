@@ -59,6 +59,8 @@ export interface SessionItem {
   recipe: string;
   title: string;
   card_url: string | null;
+  /** the recipe's category; null once the recipe no longer exists */
+  category: string | null;
   batches: number;
   servings: number;
   /** made: batches x servings */

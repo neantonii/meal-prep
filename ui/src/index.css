@@ -97,6 +97,10 @@ details.cat summary { cursor: pointer; font-weight: 700; font-size: 0.85rem; pad
   text-underline-offset: 3px; }
 .session-item .item-amount { color: var(--text); white-space: nowrap; }
 .session-item .item-meals { color: var(--text-muted); font-size: 0.82rem; }
+.session-group + .session-group { margin-top: 6px; }
+.session-group-title { color: var(--text-muted); font-size: 0.72rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 4px 2px;
+  border-bottom: 1px solid var(--border); }
 /* A session's own page. */
 .session-page { padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
   align-items: start; }
