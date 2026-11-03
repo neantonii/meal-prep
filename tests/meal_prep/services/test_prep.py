@@ -292,6 +292,45 @@ def test_explicit_link_refuses_a_later_session():
         _add(_with(tue), MON, link=tue.id)
 
 
+def test_todays_meals_can_move_to_and_from_todays_session():
+    # Today's dinner (Log) joins today's session, which grows to fit: the
+    # session picker and a drop on the session chip alike.
+    today = _session(TODAY, (RICE, 1))
+    diary, dinner = _add(_with(today), TODAY, link=None, meal=Mealtime.DINNER)
+    change = prep.set_entry_session(
+        diary, PLAN, RECIPES, LAST_WEEK, dinner.id, today.id
+    )
+    diary = _apply(diary, change)
+    assert _entry(diary, dinner.id, LAST_WEEK).session == today.id
+    assert [i.recipe for i in diary.sessions[today.id].items] == ["rice", "chicken"]
+    diary, snack = _add(diary, TODAY, link=today.id, meal=Mealtime.SNACKS)
+    assert snack.session == today.id
+    # ...and leaves it again.
+    change = prep.set_entry_session(diary, PLAN, RECIPES, LAST_WEEK, dinner.id, None)
+    assert _entry(_apply(diary, change), dinner.id, LAST_WEEK).session is None
+    # Relinking to today creates today's session when it has none.
+    diary, lunch = _add(EMPTY, TODAY, link=None)
+    change = prep.set_entry_session(
+        diary, PLAN, RECIPES, LAST_WEEK, lunch.id, None, session_date=TODAY
+    )
+    linked = _entry(_apply(diary, change), lunch.id, LAST_WEEK).session
+    assert _apply(diary, change).sessions[linked].date == TODAY  # type: ignore[index]
+
+
+def test_todays_meals_never_move_to_earlier_sessions():
+    yesterday = _session(YESTERDAY, (CHICKEN, 1))
+    diary, dinner = _add(_with(yesterday), TODAY, link=None, meal=Mealtime.DINNER)
+    with pytest.raises(RuleError, match="Admin"):
+        prep.set_entry_session(diary, PLAN, RECIPES, LAST_WEEK, dinner.id, yesterday.id)
+    with pytest.raises(RuleError, match="Log mode"):
+        _add(diary, TODAY, link=yesterday.id)
+    # Yesterday's meals stay as they are, even towards today's session.
+    today = _session(TODAY, (CHICKEN, 1))
+    diary, old = _add(_with(today), YESTERDAY, link=None)
+    with pytest.raises(RuleError, match="Admin"):
+        prep.set_entry_session(diary, PLAN, RECIPES, LAST_WEEK, old.id, today.id)
+
+
 def test_explicit_link_cannot_fill_a_session_that_already_happened():
     past = _session(YESTERDAY, (RICE, 1))
     with pytest.raises(RuleError, match="has no Chicken"):

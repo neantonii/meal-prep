@@ -100,8 +100,9 @@ every date it touches; if any is Log, Log rules apply (Admin overrides all).
 
 **Today's session is still open.** The prep happens during the session's
 day, so a session dated today can still take new meals and grow, as in
-Plan; from tomorrow it is a record of what was made. Meals logged today
-follow Log rules as usual.
+Plan; from tomorrow it is a record of what was made. Meals dated today may
+also be linked to today's session, or unlinked from it (today's dinner
+from today's prep); otherwise they follow Log rules as usual.
 
 ### Entries
 
