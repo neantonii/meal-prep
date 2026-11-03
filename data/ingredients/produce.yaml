@@ -661,3 +661,33 @@
     - from: cup
       to: g
       factor: 120
+
+- id: extra-firm-tofu
+  name: Organic Extra Firm Tofu
+  step_name: tofu
+  aisle: produce
+  storage: refrigerated
+  shelf_life_days: 30
+
+  reference:
+    brand: Farm Boy
+    product: Farm Boy Organic Tofu Extra Firm 350 g
+    price: 3.49
+
+  macros:
+    unit: g
+    amount: 85
+    calories_kcal: 150.0
+    protein_g: 15.0
+    fat_g: 10.0
+    carbs_g: 1.0
+    fiber_g: 1.0
+    saturated_fat_g: 1.5
+    sugars_g: 0.0
+    sodium_mg: 0.0
+    potassium_mg: 125.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 350
