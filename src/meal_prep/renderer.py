@@ -333,6 +333,17 @@ _CSS = """
             margin-right: 6px;
         }
 
+        a.ing-name {
+            color: var(--text);
+            text-decoration: underline dotted var(--text-muted);
+            text-underline-offset: 3px;
+        }
+
+        a.ing-name:hover {
+            color: var(--primary);
+            text-decoration-color: var(--primary);
+        }
+
         .ing-meta {
             font-size: 0.75rem;
             color: var(--text-muted);
