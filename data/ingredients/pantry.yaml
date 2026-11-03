@@ -823,3 +823,39 @@
     - from: ml
       to: g
       factor: 0.54
+
+- id: whey-protein-isolate
+  name: Unflavored Grass-Fed Whey Protein Isolate
+  step_name: protein powder
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 365
+
+  reference:
+    brand: NAKED
+    product: NAKED Whey Isolate Protein Unflavored 907 g
+    price: 109.99
+
+  macros:
+    unit: g
+    amount: 32
+    calories_kcal: 120.0
+    protein_g: 30.0
+    fat_g: 0.0
+    carbs_g: 0.0
+    fiber_g: 0.0
+    saturated_fat_g: 0.0
+    sugars_g: 0.0
+    sodium_mg: 65.0
+    potassium_mg: 15.0
+
+  custom_units:
+    scoop: [scoop, scoops]
+
+  conversions:
+    - from: package
+      to: g
+      factor: 907
+    - from: scoop
+      to: g
+      factor: 16
