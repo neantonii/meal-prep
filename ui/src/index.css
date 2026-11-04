@@ -112,7 +112,7 @@ details.cat summary { cursor: pointer; font-weight: 700; font-size: 0.85rem; pad
    page scrolls only enough to tuck the header away. */
 @media (min-width: 901px) {
   .session-main, .needs { position: sticky; top: 8px; max-height: calc(100dvh - 16px);
-    overflow-y: auto; }
+    overflow-y: auto; overscroll-behavior: contain; }
 }
 .needs h3 { font-size: 1rem; display: flex; justify-content: space-between; gap: 10px; }
 .needs-note { font-size: 0.8rem; margin: 0; }
