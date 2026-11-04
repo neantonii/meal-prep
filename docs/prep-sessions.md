@@ -11,8 +11,8 @@ eaten stay aligned. Per-session ingredient lists build on this later.
 
 ## Out of scope
 
-- Subtracting stock on hand from the ingredient list (inventory, see
-  `docs/spikes/inventory.md`), and ticking lines off.
+- Subtracting counted stock from the ingredient list (inventory, see
+  `docs/spikes/inventory.md`); the checklist below only records yes/no.
 - Free-form takeout / eating-out entries (#142) and AI macro estimates (#141).
   Every diary entry stays a recipe here; "no session" means a recipe entry
   that is not linked to any session.
@@ -183,6 +183,24 @@ is not subtracted (that needs inventory).
   frozen aisle or package (older files) come last, in grams.
 - Computed by `PrepSession.needs()` (the model), so any client gets the same
   list.
+- Clicking recipe rows on the left (several at once) narrows the list to
+  their ingredients; a shared ingredient keeps its whole-session amount.
+
+### Shopping checklist
+
+Go through the list (or recipe by recipe) and tick what is at home; the rest
+is the shopping list.
+
+- **Tick** a line: on hand for this session. Stored on the session
+  (`have`: ingredient ids); a session starts with nothing ticked. Allowed in
+  every mode, since it records what is at home, not what was made or eaten.
+- **∞ (always)**: on hand in every session (oils, spices, sauces). Stored
+  once in `diary/staples.yaml` (`always_have`, `schemas/staples.schema.json`),
+  so it spans sessions; a new ingredient starts without it.
+- Each recipe row shows how many of its ingredients are on hand ("3/5", ✓
+  when all are) and a "have all" button that ticks the rest.
+- **To buy**: only what isn't on hand, in whole packs (a started pack counts
+  as one), with whole-pack costs; "copy as text" puts it on the clipboard.
 - Empty placeholders fill the default days (Sun, Tue, Thu) in that range;
   "+ session" (Admin mode only) adds a placeholder on another day.
 - Older sessions linked from this week's entries (e.g. frozen portions)
@@ -212,4 +230,7 @@ is not subtracted (that needs inventory).
   file stays loadable.
 - Multi-file edits write sessions before weeks and delete sessions last, so
   an interrupted edit can leave a spare portion but never break a rule.
+- The shopping checklist adds an optional `have` list to session files
+  (written only once used) and `diary/staples.yaml`; existing files need no
+  migration.
 - Maps to two linked tables if the diary moves to SQLite (#125).

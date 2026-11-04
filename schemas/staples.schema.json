@@ -1,0 +1,15 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "always_have": {
+      "description": "Ingredient ids always on hand, in every session",
+      "items": {
+        "type": "string"
+      },
+      "title": "Always Have",
+      "type": "array"
+    }
+  },
+  "title": "StaplesDTO",
+  "type": "object"
+}

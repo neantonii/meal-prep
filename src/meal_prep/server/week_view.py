@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import datetime
 import uuid
+from collections.abc import Collection
 
 from meal_prep.enums import RecipeCategory
 from meal_prep.models.ingredient import MacrosInfo
@@ -57,7 +58,12 @@ def _ingredient_card_url(ingredient_id: str, library: Library) -> str | None:
     return f"/cards/ingredient/{ingredient.aisle.value}/{ingredient.id}.html"
 
 
-def _needs_out(session: PrepSession, library: Library) -> list[AisleNeeds]:
+def _needs_out(
+    session: PrepSession,
+    library: Library,
+    have: Collection[str] = (),
+    always: Collection[str] = (),
+) -> list[AisleNeeds]:
     return [
         AisleNeeds(
             aisle=None if group.aisle is None else group.aisle.value,
@@ -74,6 +80,8 @@ def _needs_out(session: PrepSession, library: Library) -> list[AisleNeeds]:
                     grams=ing.grams,
                     cost=ing.cost,
                     recipes=list(ing.recipes),
+                    have=ing.ingredient_id in have,
+                    always=ing.ingredient_id in always,
                 )
                 for ing in group.ingredients
             ],
@@ -255,9 +263,14 @@ def week_response(
 
 
 def session_detail(
-    session_id: uuid.UUID, diary: prep.Diary, today: datetime.date, library: Library
+    session_id: uuid.UUID,
+    diary: prep.Diary,
+    today: datetime.date,
+    library: Library,
+    always: Collection[str] = (),
 ) -> SessionDetail:
-    """One session for its own page; ``SessionNotFoundError`` if unknown."""
+    """One session for its own page; ``SessionNotFoundError`` if unknown.
+    ``always`` holds the staples (ingredient ids on hand in every session)."""
     dto = diary.sessions.get(session_id)
     if dto is None:
         raise prep.SessionNotFoundError(f"No session {session_id}")
@@ -280,5 +293,5 @@ def session_detail(
                 item.portions * item.macros.protein_g for item in session.items
             ),
         },
-        needs=_needs_out(session, library),
+        needs=_needs_out(session, library, set(dto.have), set(always)),
     )

@@ -100,6 +100,8 @@ class NeededIngredient(BaseModel):
     grams: float
     cost: float
     recipes: list[str]
+    have: bool  # ticked as on hand for this session
+    always: bool  # a staple: on hand in every session
 
 
 class AisleNeeds(BaseModel):
@@ -108,6 +110,19 @@ class AisleNeeds(BaseModel):
     aisle: str | None
     cost: float
     ingredients: list[NeededIngredient]
+
+
+class HaveUpdate(BaseModel):
+    """Tick (or untick) ingredients on a session's shopping checklist."""
+
+    ingredients: list[str]
+    have: bool
+
+
+class AlwaysUpdate(BaseModel):
+    """Mark an ingredient as a staple (on hand in every session), or not."""
+
+    always: bool
 
 
 class SessionDetail(BaseModel):

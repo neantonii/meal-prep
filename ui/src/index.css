@@ -136,6 +136,25 @@ table.needs-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; 
   font-variant-numeric: tabular-nums; white-space: nowrap; }
 .need-name a { color: var(--text); text-decoration: underline; text-decoration-color: var(--border); }
 .need-meta { font-size: 0.7rem; }
+/* Shopping checklist. */
+.needs-table .need-check { width: 1.6em; padding-right: 4px; }
+.needs-table .need-check input { accent-color: var(--primary); cursor: pointer; }
+.needs-table tr.on-hand td:not(.need-check) { opacity: 0.45; }
+.need-name .always { background: none; border: 1px solid transparent; border-radius: 4px;
+  color: var(--text-muted); cursor: pointer; font-size: 0.85rem; line-height: 1;
+  margin-left: 6px; padding: 0 4px; opacity: 0.5; }
+.need-name .always:hover { opacity: 1; border-color: var(--border); }
+.need-name .always.on { color: var(--primary); opacity: 1; border-color: var(--primary); }
+.needs-views { display: flex; gap: 6px; }
+.needs-views button { background: var(--surface-card); color: var(--text); cursor: pointer;
+  border: 1px solid var(--border); border-radius: 6px; padding: 2px 10px; font-size: 0.8rem; }
+.needs-views button.on { border-color: var(--primary); color: var(--primary); }
+.needs-views button:last-child:not(:first-child):not(:nth-child(2)) { margin-left: auto; }
+table.session-table td.have { white-space: nowrap; }
+table.session-table td.have button { background: var(--surface-card); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px; padding: 0 6px; font-size: 0.72rem;
+  cursor: pointer; }
+.have-done { color: var(--ok, #4ade80); font-weight: 700; }
 /* Narrow panel: the pack size moves to the row's hover text. */
 @container (max-width: 520px) { .needs-table .need-size { display: none; } }
 .session-page h2 { font-size: 1.1rem; display: flex; align-items: center; gap: 10px; }

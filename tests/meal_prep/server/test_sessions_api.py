@@ -225,3 +225,51 @@ def test_session_items_come_grouped_by_category(client: TestClient):
         (RICE, "modular_carb"),
         ("flat-white", "breakfast"),
     ]
+
+
+def _need(detail: dict, ingredient: str) -> dict:
+    return next(
+        i
+        for g in detail["needs"]
+        for i in g["ingredients"]
+        if i["ingredient"] == ingredient
+    )
+
+
+def test_shopping_checklist_ticks_per_session_and_staples_across(
+    client: TestClient, tmp_path: Path
+):
+    _ok(_add(client, "2026-11-02", CHICKEN))  # Sunday's session
+    _ok(_add(client, "2026-11-04", RICE))  # Tuesday's session
+    week = _ok(client.get(f"/api/diary/{W45}"))
+    sun, tue = _card(week, "2026-11-01")["id"], _card(week, "2026-11-03")["id"]
+    sun_file = tmp_path / "diary" / "sessions" / "2026-11-01.yaml"
+    assert "have:" not in sun_file.read_text()  # only once the checklist is used
+
+    # A tick is per session, in any mode (Sunday is Plan here, Log works too).
+    body = {"ingredients": ["boneless-chicken-breast"], "have": True}
+    detail = _ok(client.put(f"/api/sessions/{sun}/have", json=body))
+    assert _need(detail, "boneless-chicken-breast")["have"] is True
+    assert _need(detail, "olive-oil")["have"] is False
+    assert "boneless-chicken-breast" in sun_file.read_text()
+    body["have"] = False
+    detail = _ok(client.put(f"/api/sessions/{sun}/have", json=body))
+    assert _need(detail, "boneless-chicken-breast")["have"] is False
+    assert "have:" not in sun_file.read_text()
+
+    # A staple spans sessions, and new ingredients start without it.
+    detail = _ok(
+        client.put(f"/api/sessions/{sun}/always/kosher-salt", json={"always": True})
+    )
+    assert _need(detail, "kosher-salt")["always"] is True
+    other = _ok(client.get(f"/api/sessions/{tue}"))
+    assert _need(other, "kosher-salt")["always"] is True
+    assert all(
+        not i["always"]
+        for g in other["needs"]
+        for i in g["ingredients"]
+        if i["ingredient"] != "kosher-salt"
+    )
+    assert "kosher-salt" in (tmp_path / "diary" / "staples.yaml").read_text()
+    bad = client.put(f"/api/sessions/{sun}/always/no-such-thing", json={"always": True})
+    assert bad.status_code == 422

@@ -571,6 +571,27 @@ def remove_item(
     return draft.change()
 
 
+def set_have(
+    diary: Diary,
+    policy: Policy,
+    session_id: uuid.UUID,
+    ingredient_ids: Iterable[str],
+    have: bool,
+) -> Change:
+    """Tick (``have``) or untick ingredients on a session's shopping
+    checklist. Allowed in every mode: it records what is at home, not what
+    was made or eaten."""
+    draft = _Draft(diary, policy, {})
+    session = draft.session(session_id)
+    ids = set(session.have)
+    if have:
+        ids.update(ingredient_ids)
+    else:
+        ids.difference_update(ingredient_ids)
+    draft.put_session(session.model_copy(update={"have": sorted(ids)}))
+    return draft.change()
+
+
 def move_session(
     diary: Diary, policy: Policy, session_id: uuid.UUID, date: datetime.date
 ) -> Change:

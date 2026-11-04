@@ -1,4 +1,5 @@
-import type { AisleNeeds, NeededIngredient } from "../api";
+import { useState } from "react";
+import { onHand, type AisleNeeds, type NeededIngredient } from "../api";
 
 /** "1.4", "2", or "< 0.1" for a pinch. */
 function packagesLabel(n: number): string {
@@ -22,7 +23,60 @@ function aisleLabel(aisle: string | null): string {
   return aisle ? aisle.charAt(0).toUpperCase() + aisle.slice(1) : "Not recorded";
 }
 
-function Line({ it }: { it: NeededIngredient }) {
+/** Whole packs to buy (a started pack counts as one); null when the line
+ * has no package (frozen before packages were recorded). */
+function packsToBuy(it: NeededIngredient): number | null {
+  return it.packages === null ? null : Math.max(1, Math.ceil(it.packages - 1e-9));
+}
+
+/** What whole packs cost: the line's cost scaled from the packs it uses. */
+function buyCost(it: NeededIngredient): number {
+  const packs = packsToBuy(it);
+  if (packs === null || !it.packages) return it.cost;
+  return (it.cost / it.packages) * packs;
+}
+
+type View = "all" | "buy";
+
+/** ``needs`` narrowed to the ingredients of the ``picked`` recipes (by
+ * title) and, in the to-buy view, to what isn't on hand; aisle counts and
+ * costs recomputed. A shared ingredient keeps its whole-session amount. */
+function narrow(needs: AisleNeeds[], picked: Set<string>, view: View): AisleNeeds[] {
+  return needs
+    .map((group) => {
+      const ingredients = group.ingredients.filter(
+        (it) =>
+          (picked.size === 0 || it.recipes.some((r) => picked.has(r))) &&
+          (view === "all" || !onHand(it)),
+      );
+      const cost = ingredients.reduce((n, it) => n + (view === "buy" ? buyCost(it) : it.cost), 0);
+      return { ...group, ingredients, cost };
+    })
+    .filter((group) => group.ingredients.length > 0);
+}
+
+/** The to-buy list as plain text, for a note or a message. */
+function asText(groups: AisleNeeds[], day: string): string {
+  const lines = [`To buy for ${day}`];
+  for (const group of groups) {
+    lines.push("", aisleLabel(group.aisle));
+    for (const it of group.ingredients) {
+      const packs = packsToBuy(it);
+      const amount = packs === null ? gramsLabel(it.grams) : `${packs} ×`;
+      lines.push(`- ${amount} ${it.product ?? it.name}`);
+    }
+  }
+  return lines.join("\n");
+}
+
+interface LineProps {
+  it: NeededIngredient;
+  view: View;
+  onHave: (ids: string[], have: boolean) => void;
+  onAlways: (id: string, always: boolean) => void;
+}
+
+function Line({ it, view, onHave, onAlways }: LineProps) {
   const name = it.card_url ? (
     <a href={it.card_url} target="_blank" rel="noreferrer">
       {it.name}
@@ -43,56 +97,90 @@ function Line({ it }: { it: NeededIngredient }) {
   ]
     .filter(Boolean)
     .join(" · ");
+  const buying = view === "buy";
+  const packs = packsToBuy(it);
+  const qty = buying
+    ? packs === null
+      ? gramsLabel(it.grams)
+      : String(packs)
+    : it.packages !== null
+      ? packagesLabel(it.packages)
+      : gramsLabel(it.grams);
   return (
-    <tr className="need" title={hover}>
-      <td className="need-qty">
-        {it.packages !== null ? packagesLabel(it.packages) : gramsLabel(it.grams)}
+    <tr className={`need${onHand(it) ? " on-hand" : ""}`} title={hover}>
+      <td className="need-check">
+        <input
+          type="checkbox"
+          checked={onHand(it)}
+          disabled={it.always}
+          title={it.always ? "Always on hand (untick ∞ to change)" : "I have enough for this session"}
+          onChange={(e) => onHave([it.ingredient], e.target.checked)}
+        />
       </td>
+      <td className="need-qty">{qty}</td>
       <td className="need-name">
         {name}
+        <button
+          className={`always${it.always ? " on" : ""}`}
+          title={
+            it.always
+              ? "Always on hand, in every session: click to stop"
+              : "Always on hand, in every session (oils, spices, sauces)"
+          }
+          onClick={() => onAlways(it.ingredient, !it.always)}
+        >
+          ∞
+        </button>
         {it.product && <div className="need-meta muted">{it.product}</div>}
       </td>
       <td className="need-size muted">{size ?? "—"}</td>
-      <td className="need-cost">${it.cost.toFixed(2)}</td>
+      <td className="need-cost">${(buying ? buyCost(it) : it.cost).toFixed(2)}</td>
     </tr>
   );
 }
 
-/** ``needs`` narrowed to the ingredients of the ``picked`` recipes (by
- * title), aisle counts and costs recomputed; every aisle when none picked.
- * A shared ingredient keeps its whole-session amount. */
-function narrow(needs: AisleNeeds[], picked: Set<string>): AisleNeeds[] {
-  if (picked.size === 0) return needs;
-  return needs
-    .map((group) => {
-      const ingredients = group.ingredients.filter((it) => it.recipes.some((r) => picked.has(r)));
-      return { ...group, ingredients, cost: ingredients.reduce((n, it) => n + it.cost, 0) };
-    })
-    .filter((group) => group.ingredients.length > 0);
-}
-
-/** What to have on hand by a session, by aisle in walking order. Not a
- * purchase list: what is already at home isn't subtracted. Spices start
- * collapsed (mostly staples), unless recipes are picked. */
-export default function NeedsList({
-  needs,
-  day,
-  picked,
-  onShowAll,
-}: {
+interface Props {
   needs: AisleNeeds[];
   day: string;
   picked: Set<string>;
   onShowAll: () => void;
-}) {
-  const shown = narrow(needs, picked);
+  onHave: (ids: string[], have: boolean) => void;
+  onAlways: (id: string, always: boolean) => void;
+}
+
+/** What to have on hand by a session, by aisle in walking order, with a
+ * checklist: tick what is at home (∞: always, in every session). "To buy"
+ * keeps only the rest, in whole packs. Spices start collapsed in the full
+ * list (mostly staples), unless recipes are picked. */
+export default function NeedsList({ needs, day, picked, onShowAll, onHave, onAlways }: Props) {
+  const [view, setView] = useState<View>("all");
+  const [copied, setCopied] = useState(false);
+  const shown = narrow(needs, picked, view);
   const total = shown.reduce((n, g) => n + g.cost, 0);
+  const toBuy = narrow(needs, picked, "buy").reduce((n, g) => n + g.ingredients.length, 0);
   const filtered = picked.size > 0;
+  const copy = () => {
+    void navigator.clipboard.writeText(asText(shown, day)).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
   return (
     <aside className="needs">
       <h3>
         Needed by {day} <span className="muted">${total.toFixed(2)}</span>
       </h3>
+      <div className="needs-views">
+        <button className={view === "all" ? "on" : ""} onClick={() => setView("all")}>
+          All
+        </button>
+        <button className={view === "buy" ? "on" : ""} onClick={() => setView("buy")}>
+          To buy ({toBuy})
+        </button>
+        {view === "buy" && shown.length > 0 && (
+          <button onClick={copy}>{copied ? "copied" : "copy as text"}</button>
+        )}
+      </div>
       {filtered ? (
         <p className="needs-filter">
           <span className="muted">
@@ -102,16 +190,19 @@ export default function NeedsList({
         </p>
       ) : (
         <p className="muted needs-note">
-          Everything the session's batches use, in packs (hover a line for its pack size and
-          grams). Click recipes on the left to show only theirs.
+          {view === "buy"
+            ? "What isn't ticked, in whole packs. Tick what you have in the All view."
+            : "Tick what you have; ∞ marks it on hand in every session. Click recipes on the left to show only theirs."}
         </p>
       )}
-      {shown.length === 0 && <p className="muted">Nothing yet.</p>}
+      {shown.length === 0 && (
+        <p className="muted">{view === "buy" ? "Nothing to buy." : "Nothing yet."}</p>
+      )}
       {shown.map((group) => (
         <details
-          key={`${group.aisle ?? "none"}:${filtered}`}
+          key={`${group.aisle ?? "none"}:${filtered}:${view}`}
           className="aisle"
-          open={filtered || group.aisle !== "spices"}
+          open={filtered || view === "buy" || group.aisle !== "spices"}
         >
           <summary>
             <strong>{aisleLabel(group.aisle)}</strong>
@@ -122,6 +213,7 @@ export default function NeedsList({
           <table className="needs-table">
             <thead>
               <tr>
+                <th className="need-check" />
                 <th className="need-qty">Packs</th>
                 <th>Ingredient</th>
                 <th className="need-size">Pack size</th>
@@ -130,7 +222,13 @@ export default function NeedsList({
             </thead>
             <tbody>
               {group.ingredients.map((it) => (
-                <Line key={`${it.ingredient}:${it.product ?? ""}`} it={it} />
+                <Line
+                  key={`${it.ingredient}:${it.product ?? ""}`}
+                  it={it}
+                  view={view}
+                  onHave={onHave}
+                  onAlways={onAlways}
+                />
               ))}
             </tbody>
           </table>
