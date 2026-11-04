@@ -217,13 +217,34 @@ function SessionPanel({
         </span>
       ) : (
         <div className="session-items">
-          {session.items.map((it) => (
-            <ItemRow key={it.recipe} it={it} session={id} onRemoveItem={onRemoveItem} />
+          {byCategory(session.items).map(([category, items]) => (
+            <div className="session-group" key={category ?? "other"}>
+              <div className="session-group-title">{categoryLabel(category)}</div>
+              {items.map((it) => (
+                <ItemRow key={it.recipe} it={it} session={id} onRemoveItem={onRemoveItem} />
+              ))}
+            </div>
           ))}
         </div>
       )}
     </div>
   );
+}
+
+/** Items grouped by category; the server already lists them in category
+ * order, so a group is a run of items sharing one. */
+function byCategory(items: SessionItem[]): [string | null, SessionItem[]][] {
+  const groups: [string | null, SessionItem[]][] = [];
+  for (const it of items) {
+    const last = groups[groups.length - 1];
+    if (last && last[0] === it.category) last[1].push(it);
+    else groups.push([it.category, [it]]);
+  }
+  return groups;
+}
+
+function categoryLabel(category: string | null): string {
+  return category ? category.replaceAll("_", " ") : "other (recipe removed)";
 }
 
 /** One recipe of the open session: batches, portions, the meals it feeds. */

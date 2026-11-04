@@ -172,3 +172,10 @@ def test_kitchen_amounts_render_as_fractions():
     # Metric measures stay decimal.
     assert _format_display_amount(0.5, "g") == "0.5 g"
     assert _format_display_amount(2 / 3, "ml") == "0.666667 ml"
+
+
+def test_ingredient_links_are_styled_for_the_dark_card():
+    # Unstyled, the links fall back to the browser's dark blue, unreadable
+    # on the card's dark background.
+    html = renderer.render_recipe_card(_recipe())
+    assert "a.ing-name {\n            color: var(--text);" in html

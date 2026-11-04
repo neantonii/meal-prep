@@ -661,3 +661,65 @@
     - from: cup
       to: g
       factor: 120
+
+- id: extra-firm-tofu
+  name: Organic Extra Firm Tofu
+  step_name: tofu
+  aisle: produce
+  storage: refrigerated
+  shelf_life_days: 30
+
+  reference:
+    brand: Farm Boy
+    product: Farm Boy Organic Tofu Extra Firm 350 g
+    price: 3.49
+
+  macros:
+    unit: g
+    amount: 85
+    calories_kcal: 150.0
+    protein_g: 15.0
+    fat_g: 10.0
+    carbs_g: 1.0
+    fiber_g: 1.0
+    saturated_fat_g: 1.5
+    sugars_g: 0.0
+    sodium_mg: 0.0
+    potassium_mg: 125.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 350
+
+- id: honeycrisp-apples
+  name: Honeycrisp Apples
+  step_name: apple
+  aisle: produce
+  storage: refrigerated
+  shelf_life_days: 30
+
+  reference:
+    brand: Compliments
+    product: Compliments Apples Honey Crisp 1.36 kg
+    price: 7.99
+
+  macros:
+    unit: g
+    amount: 138
+    calories_kcal: 80.0
+    protein_g: 0.14
+    fat_g: 0.14
+    carbs_g: 19.0
+    fiber_g: 3.0
+    sugars_g: 14.0
+    sodium_mg: 0.19
+    potassium_mg: 135.0
+
+  conversions:
+    - from: package
+      to: kg
+      factor: 1.36
+    - from: count
+      to: g
+      factor: 151

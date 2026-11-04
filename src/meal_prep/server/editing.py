@@ -6,15 +6,17 @@ from __future__ import annotations
 
 import datetime
 import threading
+import uuid
 from collections.abc import Callable
 
 from fastapi import HTTPException
 
+from meal_prep.dtos.staples import StaplesDTO
 from meal_prep.models.library import Library
 from meal_prep.models.recipe import Recipe
-from meal_prep.server.api_models import DiaryWeek
+from meal_prep.server.api_models import DiaryWeek, SessionDetail
 from meal_prep.server.store import DiaryFileError, DiaryStore
-from meal_prep.server.week_view import week_response
+from meal_prep.server.week_view import session_detail, week_response
 from meal_prep.server.weeks import week_dates
 from meal_prep.services import prep
 from meal_prep.services.diary import EntryNotFoundError
@@ -63,6 +65,43 @@ class Editor:
         """The week page as the diary is now."""
         self.check_week(week)
         return week_response(week, self.load(), self.today(), self.library)
+
+    def detail(self, session_id: uuid.UUID) -> SessionDetail:
+        """A session's own page as the diary is now; 404 if unknown."""
+        try:
+            staples = self.store.load_staples().always_have
+            return session_detail(
+                session_id, self.load(), self.today(), self.library, staples
+            )
+        except DiaryFileError as e:
+            raise HTTPException(status_code=422, detail=str(e)) from e
+        except prep.SessionNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+
+    def edit_session(
+        self, session_id: uuid.UUID, op: Callable[[prep.Diary], prep.Change]
+    ) -> SessionDetail:
+        """Run one session edit under the lock, write it, return its page."""
+        with self._lock:
+            diary = self.load()
+            try:
+                change = op(diary)
+            except prep.SessionNotFoundError as e:
+                raise HTTPException(status_code=404, detail=str(e)) from e
+            except ValueError as e:
+                raise HTTPException(status_code=422, detail=str(e)) from e
+            self.store.apply(diary, change)
+        return self.detail(session_id)
+
+    def set_staple(self, ingredient_id: str, always: bool) -> None:
+        """Add or remove one staple (``staples.yaml``)."""
+        with self._lock:
+            try:
+                ids = set(self.store.load_staples().always_have)
+                ids = ids | {ingredient_id} if always else ids - {ingredient_id}
+                self.store.save_staples(StaplesDTO(always_have=sorted(ids)))
+            except (DiaryFileError, ValueError) as e:
+                raise HTTPException(status_code=422, detail=str(e)) from e
 
     def edit(self, week: str, op: Callable[[prep.Diary], prep.Change]) -> DiaryWeek:
         """Run one edit under the lock, write it, return ``week``'s page.
