@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { api, dayLabel, mealsLabel, type SessionDetail } from "../api";
+import {
+  api,
+  dayLabel,
+  mealsLabel,
+  onHand,
+  type NeededIngredient,
+  type SessionDetail,
+} from "../api";
 import NeedsList from "./NeedsList";
 
 interface Props {
@@ -37,14 +44,25 @@ export default function SessionPage({ id, fromWeek, onBack }: Props) {
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
   }, [id]);
 
-  if (error) return <div className="err">{error}</div>;
-  if (!detail) return <div className="session-page muted">loading…</div>;
+  // Checklist edits answer with the refreshed page.
+  const run = (call: Promise<SessionDetail>) =>
+    call.then(setDetail).catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
+  const onHave = (ids: string[], have: boolean) => run(api.setHave(id, ids, have));
+  const onAlways = (ingredient: string, always: boolean) =>
+    run(api.setAlways(id, ingredient, always));
+
+  if (!detail) {
+    return error ? <div className="err">{error}</div> : <div className="session-page muted">loading…</div>;
+  }
   const { session, totals } = detail;
+  const lines: NeededIngredient[] = detail.needs.flatMap((g) => g.ingredients);
+  const linesOf = (title: string) => lines.filter((l) => l.recipes.includes(title));
   const week = fromWeek ?? detail.week;
 
   return (
     <main className="session-page">
       <div className="session-main">
+        {error && <div className="err">{error}</div>}
         <button className="back" onClick={() => onBack(week)}>
           ← Week {week}
         </button>
@@ -81,11 +99,14 @@ export default function SessionPage({ id, fromWeek, onBack }: Props) {
                 <th>Meals</th>
                 <th>Cost</th>
                 <th>kcal / serving</th>
+                <th title="Ingredients on hand (ticked, or always)">Have</th>
               </tr>
             </thead>
             <tbody>
               {session.items.map((it) => {
                 const spare = it.portions - it.eaten;
+                const own = linesOf(it.title);
+                const missing = own.filter((l) => !onHand(l));
                 return (
                   <tr
                     key={it.recipe}
@@ -115,6 +136,31 @@ export default function SessionPage({ id, fromWeek, onBack }: Props) {
                     <td className="meals">{mealsLabel(it.meals) || "—"}</td>
                     <td>${(it.portions * it.cost).toFixed(2)}</td>
                     <td>{Math.round(it.kcal)}</td>
+                    <td className="have">
+                      {missing.length === 0 ? (
+                        <span className="have-done" title="Everything on hand">
+                          ✓
+                        </span>
+                      ) : (
+                        <>
+                          <span className="muted">
+                            {own.length - missing.length}/{own.length}
+                          </span>{" "}
+                          <button
+                            title="Tick every ingredient of this recipe as on hand"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onHave(
+                                missing.map((l) => l.ingredient),
+                                true,
+                              );
+                            }}
+                          >
+                            have all
+                          </button>
+                        </>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -127,6 +173,8 @@ export default function SessionPage({ id, fromWeek, onBack }: Props) {
         day={dayLabel(session.date)}
         picked={picked}
         onShowAll={() => setPicked(new Set())}
+        onHave={onHave}
+        onAlways={onAlways}
       />
     </main>
   );

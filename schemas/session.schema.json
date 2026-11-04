@@ -243,6 +243,14 @@
       "title": "Date",
       "type": "string"
     },
+    "have": {
+      "description": "Ingredient ids marked as on hand for this session",
+      "items": {
+        "type": "string"
+      },
+      "title": "Have",
+      "type": "array"
+    },
     "id": {
       "description": "Session id (UUID); never changes",
       "format": "uuid",

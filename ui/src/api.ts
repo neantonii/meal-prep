@@ -100,9 +100,18 @@ export interface NeededIngredient {
   cost: number;
   /** titles of the recipes that use it */
   recipes: string[];
+  /** ticked as on hand for this session */
+  have: boolean;
+  /** a staple: on hand in every session */
+  always: boolean;
 }
 
 /** The needed ingredients of one aisle; `aisle` null: not recorded. */
+/** On hand: ticked for this session, or a staple. */
+export function onHand(it: NeededIngredient): boolean {
+  return it.have || it.always;
+}
+
 export interface AisleNeeds {
   aisle: string | null;
   cost: number;
@@ -181,6 +190,14 @@ export const api = {
     send<DiaryWeek>("DELETE", `/api/sessions/${session}/items/${recipe}?week=${week}`, admin),
   deleteSession: (week: string, session: string, admin: boolean) =>
     send<DiaryWeek>("DELETE", `/api/sessions/${session}?week=${week}`, admin),
+  /** Tick (or untick) ingredients on the session's shopping checklist. */
+  setHave: (session: string, ingredients: string[], have: boolean) =>
+    send<SessionDetail>("PUT", `/api/sessions/${session}/have`, false, { ingredients, have }),
+  /** Mark an ingredient as always on hand, in every session (or not). */
+  setAlways: (session: string, ingredient: string, always: boolean) =>
+    send<SessionDetail>("PUT", `/api/sessions/${session}/always/${ingredient}`, false, {
+      always,
+    }),
 };
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
