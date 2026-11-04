@@ -20,6 +20,15 @@ function batchLabel(batches: number): string {
 export default function SessionPage({ id, fromWeek, onBack }: Props) {
   const [detail, setDetail] = useState<SessionDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Recipes picked on the left (by title): the needs list shows only theirs.
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const toggle = (title: string) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(title)) next.delete(title);
+      else next.add(title);
+      return next;
+    });
 
   useEffect(() => {
     api
@@ -78,10 +87,20 @@ export default function SessionPage({ id, fromWeek, onBack }: Props) {
               {session.items.map((it) => {
                 const spare = it.portions - it.eaten;
                 return (
-                  <tr key={it.recipe}>
+                  <tr
+                    key={it.recipe}
+                    className={picked.has(it.title) ? "picked" : undefined}
+                    title="Click to show only this recipe's ingredients"
+                    onClick={() => toggle(it.title)}
+                  >
                     <td>
                       {it.card_url ? (
-                        <a href={it.card_url} target="_blank" rel="noreferrer">
+                        <a
+                          href={it.card_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           {it.title}
                         </a>
                       ) : (
@@ -103,7 +122,12 @@ export default function SessionPage({ id, fromWeek, onBack }: Props) {
           </table>
         )}
       </div>
-      <NeedsList needs={detail.needs} day={dayLabel(session.date)} />
+      <NeedsList
+        needs={detail.needs}
+        day={dayLabel(session.date)}
+        picked={picked}
+        onShowAll={() => setPicked(new Set())}
+      />
     </main>
   );
 }
