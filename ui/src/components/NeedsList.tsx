@@ -58,23 +58,61 @@ function Line({ it }: { it: NeededIngredient }) {
   );
 }
 
+/** ``needs`` narrowed to the ingredients of the ``picked`` recipes (by
+ * title), aisle counts and costs recomputed; every aisle when none picked.
+ * A shared ingredient keeps its whole-session amount. */
+function narrow(needs: AisleNeeds[], picked: Set<string>): AisleNeeds[] {
+  if (picked.size === 0) return needs;
+  return needs
+    .map((group) => {
+      const ingredients = group.ingredients.filter((it) => it.recipes.some((r) => picked.has(r)));
+      return { ...group, ingredients, cost: ingredients.reduce((n, it) => n + it.cost, 0) };
+    })
+    .filter((group) => group.ingredients.length > 0);
+}
+
 /** What to have on hand by a session, by aisle in walking order. Not a
  * purchase list: what is already at home isn't subtracted. Spices start
- * collapsed (mostly staples). */
-export default function NeedsList({ needs, day }: { needs: AisleNeeds[]; day: string }) {
-  const total = needs.reduce((n, g) => n + g.cost, 0);
+ * collapsed (mostly staples), unless recipes are picked. */
+export default function NeedsList({
+  needs,
+  day,
+  picked,
+  onShowAll,
+}: {
+  needs: AisleNeeds[];
+  day: string;
+  picked: Set<string>;
+  onShowAll: () => void;
+}) {
+  const shown = narrow(needs, picked);
+  const total = shown.reduce((n, g) => n + g.cost, 0);
+  const filtered = picked.size > 0;
   return (
     <aside className="needs">
       <h3>
         Needed by {day} <span className="muted">${total.toFixed(2)}</span>
       </h3>
-      <p className="muted needs-note">
-        Everything the session's batches use, in packs (hover a line for its pack size and
-        grams). What's already at home isn't subtracted.
-      </p>
-      {needs.length === 0 && <p className="muted">Nothing yet.</p>}
-      {needs.map((group) => (
-        <details key={group.aisle ?? "none"} className="aisle" open={group.aisle !== "spices"}>
+      {filtered ? (
+        <p className="needs-filter">
+          <span className="muted">
+            For {[...picked].join(", ")} (amounts are for the whole session)
+          </span>
+          <button onClick={onShowAll}>show all</button>
+        </p>
+      ) : (
+        <p className="muted needs-note">
+          Everything the session's batches use, in packs (hover a line for its pack size and
+          grams). Click recipes on the left to show only theirs.
+        </p>
+      )}
+      {shown.length === 0 && <p className="muted">Nothing yet.</p>}
+      {shown.map((group) => (
+        <details
+          key={`${group.aisle ?? "none"}:${filtered}`}
+          className="aisle"
+          open={filtered || group.aisle !== "spices"}
+        >
           <summary>
             <strong>{aisleLabel(group.aisle)}</strong>
             <span className="muted">
