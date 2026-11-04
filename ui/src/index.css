@@ -97,14 +97,25 @@ details.cat summary { cursor: pointer; font-weight: 700; font-size: 0.85rem; pad
   text-underline-offset: 3px; }
 .session-item .item-amount { color: var(--text); white-space: nowrap; }
 .session-item .item-meals { color: var(--text-muted); font-size: 0.82rem; }
+.session-group + .session-group { margin-top: 6px; }
+.session-group-title { color: var(--text-muted); font-size: 0.72rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 4px 2px;
+  border-bottom: 1px solid var(--border); }
 /* A session's own page. */
-.session-page { padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+.session-page { padding: 12px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
   align-items: start; }
 @media (max-width: 900px) { .session-page { grid-template-columns: 1fr; } }
-.session-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; overflow-x: auto; }
+.session-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-x: auto; }
 .needs { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-  padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.needs h3 { font-size: 1.1rem; display: flex; justify-content: space-between; gap: 10px; }
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+/* Wide screens: each column scrolls by itself and fits under the header
+   (59px header + 12px page padding + 12px below), so the page itself doesn't
+   scroll; with the admin banner it scrolls a little and the columns stick. */
+@media (min-width: 901px) {
+  .session-main, .needs { position: sticky; top: 8px; max-height: calc(100dvh - 83px);
+    overflow-y: auto; overscroll-behavior: contain; }
+}
+.needs h3 { font-size: 1rem; display: flex; justify-content: space-between; gap: 10px; }
 .needs-note { font-size: 0.8rem; margin: 0; }
 .needs .aisle summary { cursor: pointer; display: flex; gap: 10px; align-items: baseline;
   padding: 6px 0; border-bottom: 1px solid var(--border); color: var(--primary); }
@@ -113,30 +124,64 @@ details.cat summary { cursor: pointer; font-weight: 700; font-size: 0.85rem; pad
 .needs .aisle[open] summary::before { content: "▾"; }
 .needs .aisle summary .muted { font-size: 0.8rem; }
 .needs { container-type: inline-size; }
-table.needs-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; table-layout: fixed; }
+table.needs-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; table-layout: fixed; }
 .needs-table th { text-align: left; color: var(--text-muted); font-size: 0.68rem; font-weight: 500;
   text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 8px 2px 0; }
-.needs-table td { padding: 6px 8px 6px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+.needs-table td { padding: 3px 8px 3px 0; border-bottom: 1px solid var(--border); vertical-align: top;
+  line-height: 1.3; }
 .needs-table .need-qty { width: 4.5em; font-weight: 600; white-space: nowrap;
   font-variant-numeric: tabular-nums; }
 .needs-table .need-size { width: 6.5em; white-space: nowrap; }
 .needs-table .need-cost { width: 4.5em; text-align: right; padding-right: 0; color: var(--text-muted);
   font-variant-numeric: tabular-nums; white-space: nowrap; }
 .need-name a { color: var(--text); text-decoration: underline; text-decoration-color: var(--border); }
-.need-meta { font-size: 0.75rem; }
+.need-meta { font-size: 0.7rem; }
+/* Shopping checklist. */
+.needs-table .need-check { width: 1.6em; padding-right: 4px; }
+.needs-table .need-check input { accent-color: var(--primary); cursor: pointer; }
+.needs-table tr.on-hand td:not(.need-check) { opacity: 0.45; }
+.needs-table .need-always { width: 1.9em; padding-right: 4px; text-align: center; }
+.needs-table th.need-always { color: var(--text-muted); }
+.needs-table tr.on-hand td.need-always { opacity: 1; }
+.need-always .always { background: none; border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text-muted); cursor: pointer; font-size: 0.8rem; line-height: 1.2;
+  padding: 0 3px; }
+.need-always .always:hover { color: var(--text); border-color: var(--text-muted); }
+.need-always .always.on { color: var(--bg); background: var(--primary); border-color: var(--primary); }
+.needs-views { display: flex; gap: 6px; }
+.needs-views button { background: var(--surface-card); color: var(--text); cursor: pointer;
+  border: 1px solid var(--border); border-radius: 6px; padding: 2px 10px; font-size: 0.8rem; }
+.needs-views button.on { border-color: var(--primary); color: var(--primary); }
+table.session-table td.have { white-space: nowrap; }
+table.session-table td.have button { background: var(--surface-card); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px; padding: 0 6px; font-size: 0.72rem;
+  cursor: pointer; }
+table.session-table td.have button.have-done { color: var(--ok, #4ade80); font-weight: 700;
+  font-size: 0.85rem; background: none; border-color: transparent; }
+table.session-table td.have button.have-done:not(:disabled):hover { border-color: var(--border); }
+table.session-table td.have button.have-done:disabled { cursor: default; }
 /* Narrow panel: the pack size moves to the row's hover text. */
 @container (max-width: 520px) { .needs-table .need-size { display: none; } }
-.session-page h2 { font-size: 1.3rem; display: flex; align-items: center; gap: 10px; }
+.session-page h2 { font-size: 1.1rem; display: flex; align-items: center; gap: 10px; }
 .session-page .back { align-self: flex-start; background: var(--surface-card); color: var(--text);
   border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
-.session-totals { display: flex; flex-wrap: wrap; gap: 18px; color: var(--text-muted); }
-.session-totals strong { color: var(--text); font-size: 1.1rem; }
-table.session-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-table.session-table th, table.session-table td { text-align: left; padding: 8px 10px;
-  border-bottom: 1px solid var(--border); }
-table.session-table th { color: var(--primary); font-size: 0.72rem; text-transform: uppercase;
-  letter-spacing: 0.05em; }
-table.session-table td.meals { color: var(--text-muted); }
+.session-totals { display: flex; flex-wrap: wrap; gap: 14px; color: var(--text-muted);
+  font-size: 0.85rem; }
+.session-totals strong { color: var(--text); font-size: 0.95rem; }
+table.session-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+table.session-table th, table.session-table td { text-align: left; padding: 4px 8px;
+  border-bottom: 1px solid var(--border); line-height: 1.3; }
+table.session-table td:not(:first-child):not(.meals) { white-space: nowrap; }
+table.session-table th { color: var(--primary); font-size: 0.68rem; text-transform: uppercase;
+  letter-spacing: 0.05em; position: sticky; top: 0; background: var(--bg); z-index: 1; }
+table.session-table td.meals { color: var(--text-muted); min-width: 8.5em; }
+table.session-table tbody tr { cursor: pointer; }
+table.session-table tbody tr:hover td { background: var(--surface); }
+table.session-table tbody tr.picked td { background: var(--primary-bg, rgba(56, 189, 248, 0.12)); }
+.needs-filter { display: flex; gap: 10px; align-items: baseline; justify-content: space-between;
+  margin: 0; }
+.needs-filter button { background: var(--surface-card); color: var(--text); white-space: nowrap;
+  border: 1px solid var(--border); border-radius: 6px; padding: 2px 10px; cursor: pointer; }
 table.session-table a { color: var(--text); text-decoration: underline;
   text-decoration-color: var(--primary); text-underline-offset: 3px; }
 .session-panel .session-actions button:not(.x) { background: var(--surface-card); color: var(--text);

@@ -26,8 +26,10 @@ from meal_prep.adapters.sessions import (
     save_session,
     session_files,
 )
+from meal_prep.adapters.staples import STAPLES_FILE, load_staples, save_staples
 from meal_prep.dtos.log import DiaryWeekDTO
 from meal_prep.dtos.session import PrepSessionDTO
+from meal_prep.dtos.staples import StaplesDTO
 from meal_prep.services.prep import Change, Diary
 
 T = TypeVar("T")
@@ -81,6 +83,18 @@ class DiaryStore:
         for stale in self._cache.keys() - live:
             self._cache.pop(stale, None)  # reads run in parallel threads
         return Diary(weeks=weeks, sessions=sessions)
+
+    def load_staples(self) -> StaplesDTO:
+        """The ingredients always on hand (``staples.yaml``; none if absent)."""
+        path = self.diary_dir / STAPLES_FILE
+        if not path.exists():
+            return StaplesDTO()
+        return self._cached(path, load_staples)
+
+    def save_staples(self, staples: StaplesDTO) -> None:
+        path = self.diary_dir / STAPLES_FILE
+        self._cache.pop(path, None)
+        save_staples(path, staples)
 
     def apply(self, before: Diary, change: Change) -> None:
         """Write ``change`` made against ``before``.

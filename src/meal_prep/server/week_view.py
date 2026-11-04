@@ -8,11 +8,14 @@ from __future__ import annotations
 
 import datetime
 import uuid
+from collections.abc import Collection, Mapping
 
+from meal_prep.enums import RecipeCategory
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.library import Library
 from meal_prep.models.log import LogEntry
 from meal_prep.models.recipe import Recipe
+from meal_prep.models.session import NeedShare as ModelNeedShare
 from meal_prep.models.session import PrepSession
 from meal_prep.server.api_models import (
     AisleNeeds,
@@ -22,6 +25,7 @@ from meal_prep.server.api_models import (
     DiaryWeek,
     MealRef,
     NeededIngredient,
+    NeedShare,
     Session,
     SessionDetail,
     SessionItem,
@@ -56,7 +60,25 @@ def _ingredient_card_url(ingredient_id: str, library: Library) -> str | None:
     return f"/cards/ingredient/{ingredient.aisle.value}/{ingredient.id}.html"
 
 
-def _needs_out(session: PrepSession, library: Library) -> list[AisleNeeds]:
+def _needs_out(
+    session: PrepSession,
+    library: Library,
+    have: Mapping[str, Collection[str]] | None = None,
+    always: Collection[str] = (),
+) -> list[AisleNeeds]:
+    """``have`` maps recipe ids to the ingredient ids ticked for them."""
+    ticked = have or {}
+
+    def share_out(ing: str, share: ModelNeedShare) -> NeedShare:
+        return NeedShare(
+            recipe=share.recipe_id,
+            title=share.title,
+            packages=share.packages,
+            grams=share.grams,
+            cost=share.cost,
+            have=ing in ticked.get(share.recipe_id, ()),
+        )
+
     return [
         AisleNeeds(
             aisle=None if group.aisle is None else group.aisle.value,
@@ -73,6 +95,11 @@ def _needs_out(session: PrepSession, library: Library) -> list[AisleNeeds]:
                     grams=ing.grams,
                     cost=ing.cost,
                     recipes=list(ing.recipes),
+                    shares=(
+                        shares := [share_out(ing.ingredient_id, s) for s in ing.shares]
+                    ),
+                    have=all(s.have for s in shares),
+                    always=ing.ingredient_id in always,
                 )
                 for ing in group.ingredients
             ],
@@ -110,6 +137,15 @@ def _meals_by_item(diary: prep.Diary) -> _Meals:
     }
 
 
+_CATEGORY_ORDER = {category: i for i, category in enumerate(RecipeCategory)}
+
+
+def _category_rank(recipe: Recipe | None) -> int:
+    """Session items list by category, in ``RecipeCategory`` order (the
+    palette's); items whose recipe is gone come last."""
+    return _CATEGORY_ORDER[recipe.category] if recipe else len(_CATEGORY_ORDER)
+
+
 def _session_out(
     session: PrepSession,
     meals: _Meals,
@@ -127,6 +163,11 @@ def _session_out(
                 recipe=item.recipe_id,
                 title=item.title,
                 card_url=_card_url(library.recipes.get(item.recipe_id)),
+                category=(
+                    recipe.category.value
+                    if (recipe := library.recipes.get(item.recipe_id))
+                    else None
+                ),
                 batches=item.batches,
                 servings=item.servings,
                 portions=item.portions,
@@ -136,7 +177,10 @@ def _session_out(
                 protein_g=item.macros.protein_g,
                 cost=item.cost,
             )
-            for item in session.items
+            for item in sorted(
+                session.items,
+                key=lambda i: _category_rank(library.recipes.get(i.recipe_id)),
+            )
         ],
     )
 
@@ -237,9 +281,14 @@ def week_response(
 
 
 def session_detail(
-    session_id: uuid.UUID, diary: prep.Diary, today: datetime.date, library: Library
+    session_id: uuid.UUID,
+    diary: prep.Diary,
+    today: datetime.date,
+    library: Library,
+    always: Collection[str] = (),
 ) -> SessionDetail:
-    """One session for its own page; ``SessionNotFoundError`` if unknown."""
+    """One session for its own page; ``SessionNotFoundError`` if unknown.
+    ``always`` holds the staples (ingredient ids on hand in every session)."""
     dto = diary.sessions.get(session_id)
     if dto is None:
         raise prep.SessionNotFoundError(f"No session {session_id}")
@@ -262,5 +311,5 @@ def session_detail(
                 item.portions * item.macros.protein_g for item in session.items
             ),
         },
-        needs=_needs_out(session, library),
+        needs=_needs_out(session, library, dto.have, set(always)),
     )

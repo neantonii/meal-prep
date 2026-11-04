@@ -758,3 +758,104 @@
     - from: ml
       to: g
       factor: 0.92
+
+- id: maple-syrup
+  name: Pure Maple Syrup
+  step_name: maple syrup
+  aisle: pantry
+  storage: refrigerated
+  shelf_life_days: 365
+
+  reference:
+    brand: Panache
+    product: Panache Maple Syrup 100% Pure 375 ml
+    price: 11.49
+
+  macros:
+    unit: cup
+    amount: 1/4
+    calories_kcal: 210.0
+    protein_g: 0.0
+    fat_g: 0.0
+    carbs_g: 52.0
+    fiber_g: 0.0
+    sugars_g: 51.0
+    sodium_mg: 7.2
+    potassium_mg: 175.0
+
+  conversions:
+    - from: package
+      to: ml
+      factor: 375
+    - from: ml
+      to: g
+      factor: 1.33
+
+- id: cornstarch
+  name: Corn Starch
+  step_name: cornstarch
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 730
+
+  reference:
+    brand: Compliments
+    product: Compliments Corn Starch 450 g
+    price: 4.29
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 381.0
+    protein_g: 0.3
+    fat_g: 0.1
+    carbs_g: 91.3
+    fiber_g: 0.9
+    saturated_fat_g: 0.0
+    sugars_g: 0.0
+    sodium_mg: 9.0
+    potassium_mg: 3.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 450
+    - from: ml
+      to: g
+      factor: 0.54
+
+- id: whey-protein-isolate
+  name: Unflavored Grass-Fed Whey Protein Isolate
+  step_name: protein powder
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 365
+
+  reference:
+    brand: NAKED
+    product: NAKED Whey Isolate Protein Unflavored 907 g
+    price: 109.99
+
+  macros:
+    unit: g
+    amount: 32
+    calories_kcal: 120.0
+    protein_g: 30.0
+    fat_g: 0.0
+    carbs_g: 0.0
+    fiber_g: 0.0
+    saturated_fat_g: 0.0
+    sugars_g: 0.0
+    sodium_mg: 65.0
+    potassium_mg: 15.0
+
+  custom_units:
+    scoop: [scoop, scoops]
+
+  conversions:
+    - from: package
+      to: g
+      factor: 907
+    - from: scoop
+      to: g
+      factor: 16
