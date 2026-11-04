@@ -243,6 +243,17 @@
       "title": "Date",
       "type": "string"
     },
+    "have": {
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "description": "On hand for this session: recipe id -> ingredient ids whose share for that recipe is at home",
+      "title": "Have",
+      "type": "object"
+    },
     "id": {
       "description": "Session id (UUID); never changes",
       "format": "uuid",

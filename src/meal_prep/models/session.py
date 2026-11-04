@@ -45,6 +45,17 @@ class SessionIngredient:
 
 
 @dataclass(frozen=True, slots=True)
+class NeedShare:
+    """One recipe's part of a needed ingredient (all its batches)."""
+
+    recipe_id: str
+    title: str
+    packages: float | None
+    grams: float
+    cost: float
+
+
+@dataclass(frozen=True, slots=True)
 class NeededIngredient:
     """One ingredient a session needs on hand, summed over its batches.
 
@@ -60,6 +71,7 @@ class NeededIngredient:
     grams: float
     cost: float
     recipes: tuple[str, ...]  # titles of the items that use it
+    shares: tuple[NeedShare, ...]  # each item's part, in item order
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,6 +102,29 @@ class SessionItem:
     def portions(self) -> int:
         """Portions made: batches x servings."""
         return self.batches * self.servings
+
+
+def _shares(
+    found: list[tuple[SessionItem, SessionIngredient]],
+) -> tuple[NeedShare, ...]:
+    """Each item's part of one needed ingredient (lines of one item summed)."""
+    by_item: dict[str, list[tuple[SessionItem, SessionIngredient]]] = {}
+    for item, line in found:
+        by_item.setdefault(item.recipe_id, []).append((item, line))
+    return tuple(
+        NeedShare(
+            recipe_id=recipe_id,
+            title=pairs[0][0].title,
+            packages=(
+                None
+                if any(line.packages is None for _, line in pairs)
+                else sum(item.batches * (line.packages or 0.0) for item, line in pairs)
+            ),
+            grams=sum(item.batches * line.grams for item, line in pairs),
+            cost=sum(item.batches * line.cost for item, line in pairs),
+        )
+        for recipe_id, pairs in by_item.items()
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,6 +166,7 @@ class PrepSession:
                 grams=sum(item.batches * line.grams for item, line in found),
                 cost=sum(item.batches * line.cost for item, line in found),
                 recipes=tuple(dict.fromkeys(item.title for item, _ in found)),
+                shares=_shares(found),
             )
             for (ingredient_id, aisle, package), found in lines.items()
         ]

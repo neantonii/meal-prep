@@ -64,6 +64,7 @@ class SessionItem(BaseModel):
     recipe: str
     title: str
     card_url: str | None
+    category: str | None  # the recipe's category; None once the recipe is gone
     batches: int
     servings: int
     portions: int  # made: batches x servings
@@ -84,6 +85,17 @@ class Session(BaseModel):
     items: list[SessionItem]
 
 
+class NeedShare(BaseModel):
+    """One recipe's part of a needed ingredient, and whether it is ticked."""
+
+    recipe: str
+    title: str
+    packages: float | None
+    grams: float
+    cost: float
+    have: bool
+
+
 class NeededIngredient(BaseModel):
     """One ingredient to have on hand: ``packages`` of ``product`` (a
     fraction is fine); the package fields are ``None`` for lines frozen
@@ -99,6 +111,9 @@ class NeededIngredient(BaseModel):
     grams: float
     cost: float
     recipes: list[str]
+    shares: list[NeedShare]  # each recipe's part
+    have: bool  # every share ticked for this session
+    always: bool  # a staple: on hand in every session
 
 
 class AisleNeeds(BaseModel):
@@ -107,6 +122,25 @@ class AisleNeeds(BaseModel):
     aisle: str | None
     cost: float
     ingredients: list[NeededIngredient]
+
+
+class HaveShare(BaseModel):
+    recipe: str
+    ingredient: str
+
+
+class HaveUpdate(BaseModel):
+    """Tick (or untick) recipe shares of ingredients on a session's shopping
+    checklist."""
+
+    shares: list[HaveShare]
+    have: bool
+
+
+class AlwaysUpdate(BaseModel):
+    """Mark an ingredient as a staple (on hand in every session), or not."""
+
+    always: bool
 
 
 class SessionDetail(BaseModel):

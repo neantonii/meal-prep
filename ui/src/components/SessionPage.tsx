@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { api, dayLabel, mealsLabel, type SessionDetail } from "../api";
+import {
+  api,
+  dayLabel,
+  mealsLabel,
+  type NeededIngredient,
+  type ShareRef,
+  type SessionDetail,
+} from "../api";
 import NeedsList from "./NeedsList";
 
 interface Props {
@@ -20,6 +27,18 @@ function batchLabel(batches: number): string {
 export default function SessionPage({ id, fromWeek, onBack }: Props) {
   const [detail, setDetail] = useState<SessionDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Recipes picked on the left (by title): the needs list shows only theirs.
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  // A click picks only that recipe (again: none); ⌘/Ctrl-click adds or
+  // removes it, to see several recipes' ingredients together.
+  const pick = (title: string, add: boolean) =>
+    setPicked((prev) => {
+      if (!add) return prev.size === 1 && prev.has(title) ? new Set() : new Set([title]);
+      const next = new Set(prev);
+      if (next.has(title)) next.delete(title);
+      else next.add(title);
+      return next;
+    });
 
   useEffect(() => {
     api
@@ -28,14 +47,32 @@ export default function SessionPage({ id, fromWeek, onBack }: Props) {
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
   }, [id]);
 
-  if (error) return <div className="err">{error}</div>;
-  if (!detail) return <div className="session-page muted">loading…</div>;
+  // Checklist edits answer with the refreshed page.
+  const run = (call: Promise<SessionDetail>) =>
+    call.then(setDetail).catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
+  const onHave = (shares: ShareRef[], have: boolean) => run(api.setHave(id, shares, have));
+  const onAlways = (ingredient: string, always: boolean) =>
+    run(api.setAlways(id, ingredient, always));
+
+  if (!detail) {
+    return error ? <div className="err">{error}</div> : <div className="session-page muted">loading…</div>;
+  }
   const { session, totals } = detail;
+  const lines: NeededIngredient[] = detail.needs.flatMap((g) => g.ingredients);
+  // A recipe's own part of the checklist: its share of each ingredient it
+  // uses, on hand when ticked for it or a staple.
+  const sharesOf = (recipe: string) =>
+    lines.flatMap((l) =>
+      l.shares
+        .filter((s) => s.recipe === recipe)
+        .map((s) => ({ ref: { recipe, ingredient: l.ingredient }, have: s.have, always: l.always })),
+    );
   const week = fromWeek ?? detail.week;
 
   return (
     <main className="session-page">
       <div className="session-main">
+        {error && <div className="err">{error}</div>}
         <button className="back" onClick={() => onBack(week)}>
           ← Week {week}
         </button>
@@ -72,16 +109,30 @@ export default function SessionPage({ id, fromWeek, onBack }: Props) {
                 <th>Meals</th>
                 <th>Cost</th>
                 <th>kcal / serving</th>
+                <th title="Ingredients on hand (ticked, or always)">Have</th>
               </tr>
             </thead>
             <tbody>
               {session.items.map((it) => {
                 const spare = it.portions - it.eaten;
+                const own = sharesOf(it.recipe);
+                const missing = own.filter((s) => !s.have && !s.always);
+                const ticked = own.filter((s) => s.have);
                 return (
-                  <tr key={it.recipe}>
+                  <tr
+                    key={it.recipe}
+                    className={picked.has(it.title) ? "picked" : undefined}
+                    title="Click to show only this recipe's ingredients (⌘/Ctrl-click to add more)"
+                    onClick={(e) => pick(it.title, e.metaKey || e.ctrlKey)}
+                  >
                     <td>
                       {it.card_url ? (
-                        <a href={it.card_url} target="_blank" rel="noreferrer">
+                        <a
+                          href={it.card_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           {it.title}
                         </a>
                       ) : (
@@ -96,6 +147,46 @@ export default function SessionPage({ id, fromWeek, onBack }: Props) {
                     <td className="meals">{mealsLabel(it.meals) || "—"}</td>
                     <td>${(it.portions * it.cost).toFixed(2)}</td>
                     <td>{Math.round(it.kcal)}</td>
+                    <td className="have">
+                      {missing.length === 0 ? (
+                        <button
+                          className="have-done"
+                          disabled={ticked.length === 0}
+                          title={
+                            ticked.length === 0
+                              ? "Everything on hand (all staples)"
+                              : "Everything on hand: click to untick this recipe's share"
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onHave(
+                              ticked.map((s) => s.ref),
+                              false,
+                            );
+                          }}
+                        >
+                          ✓
+                        </button>
+                      ) : (
+                        <>
+                          <span className="muted">
+                            {own.length - missing.length}/{own.length}
+                          </span>{" "}
+                          <button
+                            title="Tick this recipe's share of every ingredient as on hand"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onHave(
+                                missing.map((s) => s.ref),
+                                true,
+                              );
+                            }}
+                          >
+                            have all
+                          </button>
+                        </>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -103,7 +194,14 @@ export default function SessionPage({ id, fromWeek, onBack }: Props) {
           </table>
         )}
       </div>
-      <NeedsList needs={detail.needs} day={dayLabel(session.date)} />
+      <NeedsList
+        needs={detail.needs}
+        day={dayLabel(session.date)}
+        picked={picked}
+        onShowAll={() => setPicked(new Set())}
+        onHave={onHave}
+        onAlways={onAlways}
+      />
     </main>
   );
 }

@@ -65,7 +65,10 @@ def save_session(sessions_dir: Path | str, session: PrepSessionDTO) -> Path:
     directory = Path(sessions_dir)
     directory.mkdir(parents=True, exist_ok=True)
     target = _session_path(directory, session.date)
-    return write_yaml_atomic(target, session.model_dump(mode="json", exclude_none=True))
+    data = session.model_dump(mode="json", exclude_none=True)
+    if not data.get("have"):
+        data.pop("have", None)  # files only carry the checklist once used
+    return write_yaml_atomic(target, data)
 
 
 def delete_session(sessions_dir: Path | str, date: datetime.date) -> bool:
