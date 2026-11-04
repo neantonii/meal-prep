@@ -106,16 +106,26 @@ class PrepSessionDTO(BaseModel):
         ..., min_length=1, description="Recipes of the session, one item each"
     )
     # Added for the shopping checklist; missing in older files.
-    have: list[str] = Field(
-        default_factory=list,
-        description="Ingredient ids marked as on hand for this session",
+    have: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="On hand for this session: recipe id -> ingredient ids whose "
+        "share for that recipe is at home",
     )
 
     @field_validator("have")
     @classmethod
-    def validate_have(cls, v: list[str]) -> list[str]:
-        ids = {normalize_slug(i, field="Session 'have' ingredient id") for i in v}
-        return sorted(ids)
+    def validate_have(cls, v: dict[str, list[str]]) -> dict[str, list[str]]:
+        out: dict[str, list[str]] = {}
+        for recipe, ingredients in v.items():
+            ids = {
+                normalize_slug(i, field="Session 'have' ingredient id")
+                for i in ingredients
+            }
+            if ids:
+                out[normalize_slug(recipe, field="Session 'have' recipe id")] = sorted(
+                    ids
+                )
+        return dict(sorted(out.items()))
 
     @field_validator("items")
     @classmethod

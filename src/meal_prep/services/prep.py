@@ -575,20 +575,24 @@ def set_have(
     diary: Diary,
     policy: Policy,
     session_id: uuid.UUID,
-    ingredient_ids: Iterable[str],
+    shares: Iterable[tuple[str, str]],
     have: bool,
 ) -> Change:
-    """Tick (``have``) or untick ingredients on a session's shopping
-    checklist. Allowed in every mode: it records what is at home, not what
-    was made or eaten."""
+    """Tick (``have``) or untick recipe shares of ingredients, as
+    ``(recipe_id, ingredient_id)`` pairs, on a session's shopping checklist.
+    Allowed in every mode: it records what is at home, not what was made or
+    eaten."""
     draft = _Draft(diary, policy, {})
     session = draft.session(session_id)
-    ids = set(session.have)
+    ticked = {(r, i) for r, ings in session.have.items() for i in ings}
     if have:
-        ids.update(ingredient_ids)
+        ticked.update(shares)
     else:
-        ids.difference_update(ingredient_ids)
-    draft.put_session(session.model_copy(update={"have": sorted(ids)}))
+        ticked.difference_update(shares)
+    out: dict[str, list[str]] = {}
+    for recipe, ingredient in ticked:
+        out.setdefault(recipe, []).append(ingredient)
+    draft.put_session(session.model_copy(update={"have": out}))
     return draft.change()
 
 

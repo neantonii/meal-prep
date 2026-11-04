@@ -3,8 +3,8 @@ import {
   api,
   dayLabel,
   mealsLabel,
-  onHand,
   type NeededIngredient,
+  type ShareRef,
   type SessionDetail,
 } from "../api";
 import NeedsList from "./NeedsList";
@@ -47,7 +47,7 @@ export default function SessionPage({ id, fromWeek, onBack }: Props) {
   // Checklist edits answer with the refreshed page.
   const run = (call: Promise<SessionDetail>) =>
     call.then(setDetail).catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
-  const onHave = (ids: string[], have: boolean) => run(api.setHave(id, ids, have));
+  const onHave = (shares: ShareRef[], have: boolean) => run(api.setHave(id, shares, have));
   const onAlways = (ingredient: string, always: boolean) =>
     run(api.setAlways(id, ingredient, always));
 
@@ -56,7 +56,14 @@ export default function SessionPage({ id, fromWeek, onBack }: Props) {
   }
   const { session, totals } = detail;
   const lines: NeededIngredient[] = detail.needs.flatMap((g) => g.ingredients);
-  const linesOf = (title: string) => lines.filter((l) => l.recipes.includes(title));
+  // A recipe's own part of the checklist: its share of each ingredient it
+  // uses, on hand when ticked for it or a staple.
+  const sharesOf = (recipe: string) =>
+    lines.flatMap((l) =>
+      l.shares
+        .filter((s) => s.recipe === recipe)
+        .map((s) => ({ ref: { recipe, ingredient: l.ingredient }, have: s.have, always: l.always })),
+    );
   const week = fromWeek ?? detail.week;
 
   return (
@@ -105,8 +112,9 @@ export default function SessionPage({ id, fromWeek, onBack }: Props) {
             <tbody>
               {session.items.map((it) => {
                 const spare = it.portions - it.eaten;
-                const own = linesOf(it.title);
-                const missing = own.filter((l) => !onHand(l));
+                const own = sharesOf(it.recipe);
+                const missing = own.filter((s) => !s.have && !s.always);
+                const ticked = own.filter((s) => s.have);
                 return (
                   <tr
                     key={it.recipe}
@@ -138,20 +146,35 @@ export default function SessionPage({ id, fromWeek, onBack }: Props) {
                     <td>{Math.round(it.kcal)}</td>
                     <td className="have">
                       {missing.length === 0 ? (
-                        <span className="have-done" title="Everything on hand">
+                        <button
+                          className="have-done"
+                          disabled={ticked.length === 0}
+                          title={
+                            ticked.length === 0
+                              ? "Everything on hand (all staples)"
+                              : "Everything on hand: click to untick this recipe's share"
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onHave(
+                              ticked.map((s) => s.ref),
+                              false,
+                            );
+                          }}
+                        >
                           ✓
-                        </span>
+                        </button>
                       ) : (
                         <>
                           <span className="muted">
                             {own.length - missing.length}/{own.length}
                           </span>{" "}
                           <button
-                            title="Tick every ingredient of this recipe as on hand"
+                            title="Tick this recipe's share of every ingredient as on hand"
                             onClick={(e) => {
                               e.stopPropagation();
                               onHave(
-                                missing.map((l) => l.ingredient),
+                                missing.map((s) => s.ref),
                                 true,
                               );
                             }}

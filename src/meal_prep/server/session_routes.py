@@ -35,8 +35,9 @@ def session_router(editor: Editor) -> APIRouter:
     @router.put("/{session_id}/have")
     def have_set(session_id: uuid.UUID, body: HaveUpdate) -> SessionDetail:
         def op(diary: prep.Diary) -> prep.Change:
+            shares = [(s.recipe, s.ingredient) for s in body.shares]
             return prep.set_have(
-                diary, editor.policy(False), session_id, body.ingredients, body.have
+                diary, editor.policy(False), session_id, shares, body.have
             )
 
         return editor.edit_session(session_id, op)

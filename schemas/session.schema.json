@@ -244,12 +244,15 @@
       "type": "string"
     },
     "have": {
-      "description": "Ingredient ids marked as on hand for this session",
-      "items": {
-        "type": "string"
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
       },
+      "description": "On hand for this session: recipe id -> ingredient ids whose share for that recipe is at home",
       "title": "Have",
-      "type": "array"
+      "type": "object"
     },
     "id": {
       "description": "Session id (UUID); never changes",
