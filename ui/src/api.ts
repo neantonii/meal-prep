@@ -100,16 +100,38 @@ export interface NeededIngredient {
   cost: number;
   /** titles of the recipes that use it */
   recipes: string[];
-  /** ticked as on hand for this session */
+  /** each recipe's part, and whether it is ticked */
+  shares: NeedShare[];
+  /** every share ticked for this session */
   have: boolean;
   /** a staple: on hand in every session */
   always: boolean;
 }
 
 /** The needed ingredients of one aisle; `aisle` null: not recorded. */
-/** On hand: ticked for this session, or a staple. */
+export interface NeedShare {
+  recipe: string;
+  title: string;
+  packages: number | null;
+  grams: number;
+  cost: number;
+  have: boolean;
+}
+
+/** A recipe share of an ingredient: what the checklist ticks. */
+export interface ShareRef {
+  recipe: string;
+  ingredient: string;
+}
+
+/** On hand: every share ticked for this session, or a staple. */
 export function onHand(it: NeededIngredient): boolean {
   return it.have || it.always;
+}
+
+/** The shares of a line still to buy (none for a staple). */
+export function missingShares(it: NeededIngredient): NeedShare[] {
+  return it.always ? [] : it.shares.filter((s) => !s.have);
 }
 
 export interface AisleNeeds {
@@ -190,9 +212,9 @@ export const api = {
     send<DiaryWeek>("DELETE", `/api/sessions/${session}/items/${recipe}?week=${week}`, admin),
   deleteSession: (week: string, session: string, admin: boolean) =>
     send<DiaryWeek>("DELETE", `/api/sessions/${session}?week=${week}`, admin),
-  /** Tick (or untick) ingredients on the session's shopping checklist. */
-  setHave: (session: string, ingredients: string[], have: boolean) =>
-    send<SessionDetail>("PUT", `/api/sessions/${session}/have`, false, { ingredients, have }),
+  /** Tick (or untick) recipe shares on the session's shopping checklist. */
+  setHave: (session: string, shares: ShareRef[], have: boolean) =>
+    send<SessionDetail>("PUT", `/api/sessions/${session}/have`, false, { shares, have }),
   /** Mark an ingredient as always on hand, in every session (or not). */
   setAlways: (session: string, ingredient: string, always: boolean) =>
     send<SessionDetail>("PUT", `/api/sessions/${session}/always/${ingredient}`, false, {

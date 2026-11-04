@@ -189,18 +189,28 @@ is not subtracted (that needs inventory).
 ### Shopping checklist
 
 Go through the list (or recipe by recipe) and tick what is at home; the rest
-is the shopping list.
+is the shopping list. Every tick can be undone the same way it was made.
 
-- **Tick** a line: on hand for this session. Stored on the session
-  (`have`: ingredient ids); a session starts with nothing ticked. Allowed in
-  every mode, since it records what is at home, not what was made or eaten.
-- **∞ (always)**: on hand in every session (oils, spices, sauces). Stored
-  once in `diary/staples.yaml` (`always_have`, `schemas/staples.schema.json`),
-  so it spans sessions; a new ingredient starts without it.
-- Each recipe row shows how many of its ingredients are on hand ("3/5", ✓
-  when all are) and a "have all" button that ticks the rest.
-- **To buy**: only what isn't on hand, in whole packs (a started pack counts
-  as one), with whole-pack costs; "copy as text" puts it on the clipboard.
+- Ticks are per **recipe share**: each line's amount is the sum of the
+  recipes using it, and each recipe's part can be ticked on its own.
+  Stored on the session (`have`: recipe id -> ingredient ids); a session
+  starts with nothing ticked. Allowed in every mode, since it records what
+  is at home, not what was made or eaten.
+- **Ticking a line** means "enough for every recipe that uses it": it ticks
+  (or unticks) all its shares. A line with only some shares ticked shows as
+  partly ticked; hovering a line lists each recipe's share and tick.
+- **A recipe row** shows how many of its own shares are on hand ("3/5", ✓
+  when all are). "have all" ticks only that recipe's shares; clicking the ✓
+  unticks them again. A shared ingredient stays needed for the other
+  recipes.
+- **∞ (always)**: on hand in every session (oils, spices, sauces), all
+  shares included; click it again to turn it off. Stored once in
+  `diary/staples.yaml` (`always_have`, `schemas/staples.schema.json`), so it
+  spans sessions; a new ingredient starts without it.
+- **To buy**: the unticked shares (of the picked recipes, when some are
+  picked), in whole packs (a started pack counts as one) with whole-pack
+  costs; "copy as text" puts it on the clipboard.
+
 - Empty placeholders fill the default days (Sun, Tue, Thu) in that range;
   "+ session" (Admin mode only) adds a placeholder on another day.
 - Older sessions linked from this week's entries (e.g. frozen portions)
@@ -230,7 +240,7 @@ is the shopping list.
   file stays loadable.
 - Multi-file edits write sessions before weeks and delete sessions last, so
   an interrupted edit can leave a spare portion but never break a rule.
-- The shopping checklist adds an optional `have` list to session files
+- The shopping checklist adds an optional `have` map to session files
   (written only once used) and `diary/staples.yaml`; existing files need no
   migration.
 - Maps to two linked tables if the diary moves to SQLite (#125).

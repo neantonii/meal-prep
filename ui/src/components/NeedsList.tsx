@@ -1,5 +1,12 @@
-import { useState } from "react";
-import { onHand, type AisleNeeds, type NeededIngredient } from "../api";
+import { useEffect, useRef, useState } from "react";
+import {
+  missingShares,
+  onHand,
+  type AisleNeeds,
+  type NeededIngredient,
+  type NeedShare,
+  type ShareRef,
+} from "../api";
 
 /** "1.4", "2", or "< 0.1" for a pinch. */
 function packagesLabel(n: number): string {
@@ -23,60 +30,98 @@ function aisleLabel(aisle: string | null): string {
   return aisle ? aisle.charAt(0).toUpperCase() + aisle.slice(1) : "Not recorded";
 }
 
-/** Whole packs to buy (a started pack counts as one); null when the line
- * has no package (frozen before packages were recorded). */
-function packsToBuy(it: NeededIngredient): number | null {
-  return it.packages === null ? null : Math.max(1, Math.ceil(it.packages - 1e-9));
-}
-
-/** What whole packs cost: the line's cost scaled from the packs it uses. */
-function buyCost(it: NeededIngredient): number {
-  const packs = packsToBuy(it);
-  if (packs === null || !it.packages) return it.cost;
-  return (it.cost / it.packages) * packs;
-}
-
 type View = "all" | "buy";
 
+/** What a line still needs bought: the unticked shares (of the picked
+ * recipes, when some are picked), in whole packs. ``packs`` is null when
+ * the line has no package (frozen before packages were recorded). */
+interface ToBuy {
+  shares: NeedShare[];
+  packs: number | null;
+  grams: number;
+  cost: number;
+}
+
+function toBuy(it: NeededIngredient, picked: Set<string>): ToBuy {
+  const shares = missingShares(it).filter((s) => picked.size === 0 || picked.has(s.title));
+  const grams = shares.reduce((n, s) => n + s.grams, 0);
+  const packages = shares.reduce((n, s) => n + (s.packages ?? 0), 0);
+  if (it.packages === null || !it.packages || shares.some((s) => s.packages === null)) {
+    return { shares, packs: null, grams, cost: shares.reduce((n, s) => n + s.cost, 0) };
+  }
+  // A started pack counts as one; its cost scales from what the line uses.
+  const packs = Math.max(1, Math.ceil(packages - 1e-9));
+  return { shares, packs, grams, cost: (it.cost / it.packages) * packs };
+}
+
 /** ``needs`` narrowed to the ingredients of the ``picked`` recipes (by
- * title) and, in the to-buy view, to what isn't on hand; aisle counts and
- * costs recomputed. A shared ingredient keeps its whole-session amount. */
+ * title) and, in the to-buy view, to what still needs buying; aisle counts
+ * and costs recomputed. In the full view a shared ingredient keeps its
+ * whole-session amount. */
 function narrow(needs: AisleNeeds[], picked: Set<string>, view: View): AisleNeeds[] {
   return needs
     .map((group) => {
-      const ingredients = group.ingredients.filter(
-        (it) =>
-          (picked.size === 0 || it.recipes.some((r) => picked.has(r))) &&
-          (view === "all" || !onHand(it)),
+      const ingredients = group.ingredients.filter((it) =>
+        view === "buy"
+          ? toBuy(it, picked).shares.length > 0
+          : picked.size === 0 || it.recipes.some((r) => picked.has(r)),
       );
-      const cost = ingredients.reduce((n, it) => n + (view === "buy" ? buyCost(it) : it.cost), 0);
+      const cost = ingredients.reduce(
+        (n, it) => n + (view === "buy" ? toBuy(it, picked).cost : it.cost),
+        0,
+      );
       return { ...group, ingredients, cost };
     })
     .filter((group) => group.ingredients.length > 0);
 }
 
 /** The to-buy list as plain text, for a note or a message. */
-function asText(groups: AisleNeeds[], day: string): string {
+function asText(groups: AisleNeeds[], picked: Set<string>, day: string): string {
   const lines = [`To buy for ${day}`];
   for (const group of groups) {
     lines.push("", aisleLabel(group.aisle));
     for (const it of group.ingredients) {
-      const packs = packsToBuy(it);
-      const amount = packs === null ? gramsLabel(it.grams) : `${packs} ×`;
+      const buy = toBuy(it, picked);
+      const amount = buy.packs === null ? gramsLabel(buy.grams) : `${buy.packs} ×`;
       lines.push(`- ${amount} ${it.product ?? it.name}`);
     }
   }
   return lines.join("\n");
 }
 
+/** A checkbox that can also show "partly" (some recipes' shares ticked). */
+function Tick(props: {
+  checked: boolean;
+  partly: boolean;
+  disabled: boolean;
+  title: string;
+  onChange: (checked: boolean) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = props.partly;
+  }, [props.partly]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={props.checked}
+      disabled={props.disabled}
+      title={props.title}
+      onChange={(e) => props.onChange(e.target.checked)}
+    />
+  );
+}
+
 interface LineProps {
   it: NeededIngredient;
   view: View;
-  onHave: (ids: string[], have: boolean) => void;
+  picked: Set<string>;
+  onHave: (shares: ShareRef[], have: boolean) => void;
   onAlways: (id: string, always: boolean) => void;
 }
 
-function Line({ it, view, onHave, onAlways }: LineProps) {
+function Line({ it, view, picked, onHave, onAlways }: LineProps) {
   const name = it.card_url ? (
     <a href={it.card_url} target="_blank" rel="noreferrer">
       {it.name}
@@ -88,53 +133,61 @@ function Line({ it, view, onHave, onAlways }: LineProps) {
     it.package_amount !== null && it.package_unit
       ? sizeLabel(it.package_amount, it.package_unit)
       : null;
-  // Hover spells the amount out, for when the product title is unclear or
-  // the size column is hidden on a narrow panel.
+  // Hover spells the amount out, recipe by recipe, with their ticks.
+  const amount = (s: { packages: number | null; grams: number }) =>
+    s.packages !== null ? `${packagesLabel(s.packages)} pack` : gramsLabel(s.grams);
   const hover = [
     it.packages !== null && size ? `${packagesLabel(it.packages)} × ${size} pack` : null,
     `${gramsLabel(it.grams)} used`,
-    `for ${it.recipes.join(", ")}`,
+    ...it.shares.map((s) => `${s.title}: ${amount(s)}${s.have ? " ✓" : ""}`),
   ]
     .filter(Boolean)
-    .join(" · ");
-  const buying = view === "buy";
-  const packs = packsToBuy(it);
-  const qty = buying
-    ? packs === null
-      ? gramsLabel(it.grams)
-      : String(packs)
+    .join("\n");
+  const buy = view === "buy" ? toBuy(it, picked) : null;
+  const qty = buy
+    ? buy.packs === null
+      ? gramsLabel(buy.grams)
+      : String(buy.packs)
     : it.packages !== null
       ? packagesLabel(it.packages)
       : gramsLabel(it.grams);
+  const ticked = it.shares.filter((s) => s.have).length;
+  const refs = it.shares.map((s) => ({ recipe: s.recipe, ingredient: it.ingredient }));
   return (
     <tr className={`need${onHand(it) ? " on-hand" : ""}`} title={hover}>
       <td className="need-check">
-        <input
-          type="checkbox"
+        <Tick
           checked={onHand(it)}
+          partly={!it.always && ticked > 0 && ticked < it.shares.length}
           disabled={it.always}
-          title={it.always ? "Always on hand (untick ∞ to change)" : "I have enough for this session"}
-          onChange={(e) => onHave([it.ingredient], e.target.checked)}
+          title={
+            it.always
+              ? "Always on hand (turn off ∞ to change)"
+              : "I have enough for every recipe that uses it"
+          }
+          onChange={(checked) => onHave(refs, checked)}
         />
       </td>
-      <td className="need-qty">{qty}</td>
-      <td className="need-name">
-        {name}
+      <td className="need-always">
         <button
           className={`always${it.always ? " on" : ""}`}
           title={
             it.always
-              ? "Always on hand, in every session: click to stop"
+              ? "Always on hand, in every session: click to turn off"
               : "Always on hand, in every session (oils, spices, sauces)"
           }
           onClick={() => onAlways(it.ingredient, !it.always)}
         >
           ∞
         </button>
+      </td>
+      <td className="need-qty">{qty}</td>
+      <td className="need-name">
+        {name}
         {it.product && <div className="need-meta muted">{it.product}</div>}
       </td>
       <td className="need-size muted">{size ?? "—"}</td>
-      <td className="need-cost">${(buying ? buyCost(it) : it.cost).toFixed(2)}</td>
+      <td className="need-cost">${(buy ? buy.cost : it.cost).toFixed(2)}</td>
     </tr>
   );
 }
@@ -144,23 +197,24 @@ interface Props {
   day: string;
   picked: Set<string>;
   onShowAll: () => void;
-  onHave: (ids: string[], have: boolean) => void;
+  onHave: (shares: ShareRef[], have: boolean) => void;
   onAlways: (id: string, always: boolean) => void;
 }
 
 /** What to have on hand by a session, by aisle in walking order, with a
- * checklist: tick what is at home (∞: always, in every session). "To buy"
- * keeps only the rest, in whole packs. Spices start collapsed in the full
- * list (mostly staples), unless recipes are picked. */
+ * checklist: tick what is at home (a line: enough for every recipe using
+ * it; ∞: always, in every session). "To buy" keeps the rest, in whole
+ * packs. Spices start collapsed in the full list (mostly staples), unless
+ * recipes are picked. */
 export default function NeedsList({ needs, day, picked, onShowAll, onHave, onAlways }: Props) {
   const [view, setView] = useState<View>("all");
   const [copied, setCopied] = useState(false);
   const shown = narrow(needs, picked, view);
   const total = shown.reduce((n, g) => n + g.cost, 0);
-  const toBuy = narrow(needs, picked, "buy").reduce((n, g) => n + g.ingredients.length, 0);
+  const toBuyCount = narrow(needs, picked, "buy").reduce((n, g) => n + g.ingredients.length, 0);
   const filtered = picked.size > 0;
   const copy = () => {
-    void navigator.clipboard.writeText(asText(shown, day)).then(() => {
+    void navigator.clipboard.writeText(asText(shown, picked, day)).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });
@@ -175,7 +229,7 @@ export default function NeedsList({ needs, day, picked, onShowAll, onHave, onAlw
           All
         </button>
         <button className={view === "buy" ? "on" : ""} onClick={() => setView("buy")}>
-          To buy ({toBuy})
+          To buy ({toBuyCount})
         </button>
         {view === "buy" && shown.length > 0 && (
           <button onClick={copy}>{copied ? "copied" : "copy as text"}</button>
@@ -184,7 +238,8 @@ export default function NeedsList({ needs, day, picked, onShowAll, onHave, onAlw
       {filtered ? (
         <p className="needs-filter">
           <span className="muted">
-            For {[...picked].join(", ")} (amounts are for the whole session)
+            For {[...picked].join(", ")}
+            {view === "all" ? " (amounts are for the whole session)" : " (their shares only)"}
           </span>
           <button onClick={onShowAll}>show all</button>
         </p>
@@ -213,7 +268,10 @@ export default function NeedsList({ needs, day, picked, onShowAll, onHave, onAlw
           <table className="needs-table">
             <thead>
               <tr>
-                <th className="need-check" />
+                <th className="need-check" title="On hand for this session" />
+                <th className="need-always" title="Always on hand, in every session">
+                  ∞
+                </th>
                 <th className="need-qty">Packs</th>
                 <th>Ingredient</th>
                 <th className="need-size">Pack size</th>
@@ -226,6 +284,7 @@ export default function NeedsList({ needs, day, picked, onShowAll, onHave, onAlw
                   key={`${it.ingredient}:${it.product ?? ""}`}
                   it={it}
                   view={view}
+                  picked={picked}
                   onHave={onHave}
                   onAlways={onAlways}
                 />

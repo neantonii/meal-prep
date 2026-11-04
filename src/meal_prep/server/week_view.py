@@ -8,13 +8,14 @@ from __future__ import annotations
 
 import datetime
 import uuid
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
 
 from meal_prep.enums import RecipeCategory
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.library import Library
 from meal_prep.models.log import LogEntry
 from meal_prep.models.recipe import Recipe
+from meal_prep.models.session import NeedShare as ModelNeedShare
 from meal_prep.models.session import PrepSession
 from meal_prep.server.api_models import (
     AisleNeeds,
@@ -24,6 +25,7 @@ from meal_prep.server.api_models import (
     DiaryWeek,
     MealRef,
     NeededIngredient,
+    NeedShare,
     Session,
     SessionDetail,
     SessionItem,
@@ -61,9 +63,22 @@ def _ingredient_card_url(ingredient_id: str, library: Library) -> str | None:
 def _needs_out(
     session: PrepSession,
     library: Library,
-    have: Collection[str] = (),
+    have: Mapping[str, Collection[str]] | None = None,
     always: Collection[str] = (),
 ) -> list[AisleNeeds]:
+    """``have`` maps recipe ids to the ingredient ids ticked for them."""
+    ticked = have or {}
+
+    def share_out(ing: str, share: ModelNeedShare) -> NeedShare:
+        return NeedShare(
+            recipe=share.recipe_id,
+            title=share.title,
+            packages=share.packages,
+            grams=share.grams,
+            cost=share.cost,
+            have=ing in ticked.get(share.recipe_id, ()),
+        )
+
     return [
         AisleNeeds(
             aisle=None if group.aisle is None else group.aisle.value,
@@ -80,7 +95,10 @@ def _needs_out(
                     grams=ing.grams,
                     cost=ing.cost,
                     recipes=list(ing.recipes),
-                    have=ing.ingredient_id in have,
+                    shares=(
+                        shares := [share_out(ing.ingredient_id, s) for s in ing.shares]
+                    ),
+                    have=all(s.have for s in shares),
                     always=ing.ingredient_id in always,
                 )
                 for ing in group.ingredients
@@ -293,5 +311,5 @@ def session_detail(
                 item.portions * item.macros.protein_g for item in session.items
             ),
         },
-        needs=_needs_out(session, library, set(dto.have), set(always)),
+        needs=_needs_out(session, library, dto.have, set(always)),
     )

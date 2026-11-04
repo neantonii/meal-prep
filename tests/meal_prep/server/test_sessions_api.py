@@ -236,26 +236,48 @@ def _need(detail: dict, ingredient: str) -> dict:
     )
 
 
-def test_shopping_checklist_ticks_per_session_and_staples_across(
+def _share(detail: dict, ingredient: str, recipe: str) -> dict:
+    return next(x for x in _need(detail, ingredient)["shares"] if x["recipe"] == recipe)
+
+
+def test_shopping_checklist_ticks_recipe_shares_and_staples_across(
     client: TestClient, tmp_path: Path
 ):
-    _ok(_add(client, "2026-11-02", CHICKEN))  # Sunday's session
+    # Chicken and rice both go into Sunday's session; both use kosher salt.
+    _ok(_add(client, "2026-11-02", CHICKEN))
+    _ok(_add(client, "2026-11-02", RICE))
     _ok(_add(client, "2026-11-04", RICE))  # Tuesday's session
     week = _ok(client.get(f"/api/diary/{W45}"))
     sun, tue = _card(week, "2026-11-01")["id"], _card(week, "2026-11-03")["id"]
     sun_file = tmp_path / "diary" / "sessions" / "2026-11-01.yaml"
     assert "have:" not in sun_file.read_text()  # only once the checklist is used
+    salt = _need(_ok(client.get(f"/api/sessions/{sun}")), "kosher-salt")
+    assert {x["recipe"] for x in salt["shares"]} == {CHICKEN, RICE}
+    assert salt["grams"] == pytest.approx(sum(x["grams"] for x in salt["shares"]))
 
-    # A tick is per session, in any mode (Sunday is Plan here, Log works too).
-    body = {"ingredients": ["boneless-chicken-breast"], "have": True}
-    detail = _ok(client.put(f"/api/sessions/{sun}/have", json=body))
-    assert _need(detail, "boneless-chicken-breast")["have"] is True
-    assert _need(detail, "olive-oil")["have"] is False
-    assert "boneless-chicken-breast" in sun_file.read_text()
-    body["have"] = False
-    detail = _ok(client.put(f"/api/sessions/{sun}/have", json=body))
-    assert _need(detail, "boneless-chicken-breast")["have"] is False
+    # A recipe's tick covers only its share; the line is had once all are.
+    chicken_salt = {"recipe": CHICKEN, "ingredient": "kosher-salt"}
+    put = lambda shares, have: client.put(  # noqa: E731
+        f"/api/sessions/{sun}/have", json={"shares": shares, "have": have}
+    )
+    detail = _ok(put([chicken_salt], True))
+    assert _share(detail, "kosher-salt", CHICKEN)["have"] is True
+    assert _share(detail, "kosher-salt", RICE)["have"] is False
+    assert _need(detail, "kosher-salt")["have"] is False
+    rice_salt = {"recipe": RICE, "ingredient": "kosher-salt"}
+    detail = _ok(put([rice_salt], True))
+    assert _need(detail, "kosher-salt")["have"] is True
+    assert "kosher-salt" in sun_file.read_text()
+    # Unticking is the same call; with nothing ticked the file drops "have".
+    detail = _ok(put([chicken_salt, rice_salt], False))
+    assert _need(detail, "kosher-salt")["have"] is False
     assert "have:" not in sun_file.read_text()
+    # Ticks belong to one session.
+    other = _ok(client.get(f"/api/sessions/{tue}"))
+    _ok(put([rice_salt], True))
+    assert _need(_ok(client.get(f"/api/sessions/{tue}")), "kosher-salt") == _need(
+        other, "kosher-salt"
+    )
 
     # A staple spans sessions, and new ingredients start without it.
     detail = _ok(
@@ -271,5 +293,9 @@ def test_shopping_checklist_ticks_per_session_and_staples_across(
         if i["ingredient"] != "kosher-salt"
     )
     assert "kosher-salt" in (tmp_path / "diary" / "staples.yaml").read_text()
+    detail = _ok(
+        client.put(f"/api/sessions/{sun}/always/kosher-salt", json={"always": False})
+    )
+    assert _need(detail, "kosher-salt")["always"] is False
     bad = client.put(f"/api/sessions/{sun}/always/no-such-thing", json={"always": True})
     assert bad.status_code == 422
