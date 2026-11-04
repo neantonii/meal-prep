@@ -108,10 +108,11 @@ details.cat summary { cursor: pointer; font-weight: 700; font-size: 0.85rem; pad
 .session-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-x: auto; }
 .needs { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
   padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-/* Wide screens: each column scrolls by itself, at most one screen tall; the
-   page scrolls only enough to tuck the header away. */
+/* Wide screens: each column scrolls by itself and fits under the header
+   (59px header + 12px page padding + 12px below), so the page itself doesn't
+   scroll; with the admin banner it scrolls a little and the columns stick. */
 @media (min-width: 901px) {
-  .session-main, .needs { position: sticky; top: 8px; max-height: calc(100dvh - 16px);
+  .session-main, .needs { position: sticky; top: 8px; max-height: calc(100dvh - 83px);
     overflow-y: auto; overscroll-behavior: contain; }
 }
 .needs h3 { font-size: 1rem; display: flex; justify-content: space-between; gap: 10px; }
