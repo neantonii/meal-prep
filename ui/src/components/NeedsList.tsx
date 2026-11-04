@@ -75,49 +75,6 @@ function narrow(needs: AisleNeeds[], picked: Set<string>, view: View): AisleNeed
     .filter((group) => group.ingredients.length > 0);
 }
 
-/** The to-buy list as plain text, for a note or a message. */
-function asText(groups: AisleNeeds[], picked: Set<string>, day: string): string {
-  const lines = [`To buy for ${day}`];
-  for (const group of groups) {
-    lines.push("", aisleLabel(group.aisle));
-    for (const it of group.ingredients) {
-      const buy = toBuy(it, picked);
-      const amount = buy.packs === null ? gramsLabel(buy.grams) : `${buy.packs} ×`;
-      lines.push(`- ${amount} ${it.product ?? it.name}`);
-    }
-  }
-  return lines.join("\n");
-}
-
-/** Put ``text`` on the clipboard; ``true`` when it worked. The clipboard
- * API exists only on HTTPS or localhost, so over plain http (a home-network
- * address) fall back to the older copy command. */
-async function copyText(text: string): Promise<boolean> {
-  try {
-    if (navigator.clipboard) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {
-    // refused (permissions, focus): try the fallback
-  }
-  const area = document.createElement("textarea");
-  area.value = text;
-  area.setAttribute("readonly", "");
-  area.style.position = "fixed";
-  area.style.opacity = "0";
-  document.body.appendChild(area);
-  area.select();
-  let ok = false;
-  try {
-    ok = document.execCommand("copy");
-  } catch {
-    ok = false;
-  }
-  area.remove();
-  return ok;
-}
-
 /** A checkbox that can also show "partly" (some recipes' shares ticked). */
 function Tick(props: {
   checked: boolean;
@@ -237,25 +194,10 @@ interface Props {
  * recipes are picked. */
 export default function NeedsList({ needs, day, picked, onShowAll, onHave, onAlways }: Props) {
   const [view, setView] = useState<View>("all");
-  const [copied, setCopied] = useState(false);
-  // Shown when copying failed: the list, selected, to copy by hand.
-  const [manual, setManual] = useState<string | null>(null);
   const shown = narrow(needs, picked, view);
   const total = shown.reduce((n, g) => n + g.cost, 0);
   const toBuyCount = narrow(needs, picked, "buy").reduce((n, g) => n + g.ingredients.length, 0);
   const filtered = picked.size > 0;
-  const copy = () => {
-    const text = asText(shown, picked, day);
-    void copyText(text).then((ok) => {
-      if (!ok) {
-        setManual(text);
-        return;
-      }
-      setManual(null);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  };
   return (
     <aside className="needs">
       <h3>
@@ -268,25 +210,7 @@ export default function NeedsList({ needs, day, picked, onShowAll, onHave, onAlw
         <button className={view === "buy" ? "on" : ""} onClick={() => setView("buy")}>
           To buy ({toBuyCount})
         </button>
-        {view === "buy" && shown.length > 0 && (
-          <button onClick={copy}>{copied ? "copied" : "copy as text"}</button>
-        )}
       </div>
-      {manual !== null && (
-        <div className="copy-manual">
-          <p className="muted">
-            Couldn't copy automatically here: the list is selected below, copy it with
-            ⌘C / Ctrl+C (or long-press on a phone).
-            <button onClick={() => setManual(null)}>close</button>
-          </p>
-          <textarea
-            readOnly
-            value={manual}
-            rows={Math.min(12, manual.split("\n").length)}
-            ref={(el) => el?.select()}
-          />
-        </div>
-      )}
       {filtered ? (
         <p className="needs-filter">
           <span className="muted">

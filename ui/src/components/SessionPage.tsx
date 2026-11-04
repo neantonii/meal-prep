@@ -29,8 +29,11 @@ export default function SessionPage({ id, fromWeek, onBack }: Props) {
   const [error, setError] = useState<string | null>(null);
   // Recipes picked on the left (by title): the needs list shows only theirs.
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const toggle = (title: string) =>
+  // A click picks only that recipe (again: none); ⌘/Ctrl-click adds or
+  // removes it, to see several recipes' ingredients together.
+  const pick = (title: string, add: boolean) =>
     setPicked((prev) => {
+      if (!add) return prev.size === 1 && prev.has(title) ? new Set() : new Set([title]);
       const next = new Set(prev);
       if (next.has(title)) next.delete(title);
       else next.add(title);
@@ -119,8 +122,8 @@ export default function SessionPage({ id, fromWeek, onBack }: Props) {
                   <tr
                     key={it.recipe}
                     className={picked.has(it.title) ? "picked" : undefined}
-                    title="Click to show only this recipe's ingredients"
-                    onClick={() => toggle(it.title)}
+                    title="Click to show only this recipe's ingredients (⌘/Ctrl-click to add more)"
+                    onClick={(e) => pick(it.title, e.metaKey || e.ctrlKey)}
                   >
                     <td>
                       {it.card_url ? (

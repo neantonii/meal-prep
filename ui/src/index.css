@@ -152,13 +152,6 @@ table.needs-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; 
 .needs-views button { background: var(--surface-card); color: var(--text); cursor: pointer;
   border: 1px solid var(--border); border-radius: 6px; padding: 2px 10px; font-size: 0.8rem; }
 .needs-views button.on { border-color: var(--primary); color: var(--primary); }
-.copy-manual p { display: flex; justify-content: space-between; gap: 10px; margin: 0 0 4px; }
-.copy-manual button { background: var(--surface-card); color: var(--text); cursor: pointer;
-  border: 1px solid var(--border); border-radius: 6px; padding: 0 8px; white-space: nowrap; }
-.copy-manual textarea { width: 100%; background: var(--bg); color: var(--text);
-  border: 1px solid var(--primary); border-radius: 6px; padding: 6px 8px;
-  font: 0.8rem/1.4 var(--font); }
-.needs-views button:last-child:not(:first-child):not(:nth-child(2)) { margin-left: auto; }
 table.session-table td.have { white-space: nowrap; }
 table.session-table td.have button { background: var(--surface-card); color: var(--text);
   border: 1px solid var(--border); border-radius: 6px; padding: 0 6px; font-size: 0.72rem;
