@@ -171,6 +171,6 @@ class HorizonPlan:
 
     sessions: tuple[SessionPlan, ...]
     day_kcal: tuple[tuple[datetime.date, float], ...]  # fixed + planned
-    objective: float = 0.0  # penalty reached
-    bound: float = 0.0  # proven lower bound on the penalty
+    objective: float = 0.0  # penalty reached, in kcal²
+    bound: float = 0.0  # proven lower bound on the penalty, in kcal²
     seconds: float = 0.0  # solve wall time

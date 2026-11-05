@@ -286,7 +286,7 @@ def plan_horizon(
     known_kcal: Mapping[datetime.date, float],
     truncated: Collection[datetime.date] = (),
     time_limit_s: float = 30.0,
-    gap_limit: float = 0.03,
+    gap_kcal2: float = 1000.0,
     max_cuts: int = 40,
 ) -> HorizonPlan:
     """Fill ``slots`` (every meal of whole days, any number of sessions).
@@ -312,23 +312,23 @@ def plan_horizon(
     day_kcal: dict[datetime.date, LinearExpr] = {}
     for day in horizon:
         terms = [
-            _kcal(recipe) * var
+            _kcal_units(recipe) * var
             for slot, planned_meal in planned
             if slot.date == day
             for recipe, var in zip(
                 planned_meal.recipes, planned_meal.is_selected, strict=True
             )
         ]
-        day_kcal[day] = LinearExpr.sum(terms) + round(known_kcal.get(day, 0.0))
+        day_kcal[day] = LinearExpr.sum(terms) + _units(known_kcal.get(day, 0.0))
 
     objective: list[LinearExpr] = []
-    daily = ConvexQuadratic.deviation(goal.target, 1.0)
+    daily = ConvexQuadratic.deviation(_units(goal.target), 1.0)
     for day in horizon:
         term = _add_quadratic(
             model,
             day_kcal[day],
-            goal.lo,
-            goal.hi,
+            _units(goal.lo),
+            _units(goal.hi),
             daily,
             name=f"day_{day}",
             max_cuts=max_cuts,
@@ -336,7 +336,7 @@ def plan_horizon(
         objective.append(term.objective)
     if goal.payback > 0:
         rolling = ConvexQuadratic.deviation(
-            goal.window * goal.target, goal.window_weight
+            goal.window * _units(goal.target), goal.window_weight
         )
         for day in horizon:
             window = [
@@ -345,13 +345,16 @@ def plan_horizon(
             if not all(d in day_kcal or d in known_kcal for d in window):
                 continue  # a day with nothing known: no window
             total = LinearExpr.sum(
-                [day_kcal[d] if d in day_kcal else round(known_kcal[d]) for d in window]
+                [
+                    day_kcal[d] if d in day_kcal else _units(known_kcal[d])
+                    for d in window
+                ]
             )
             term = _add_quadratic(
                 model,
                 total,
-                goal.window * goal.lo,
-                goal.window * goal.hi,
+                goal.window * _units(goal.lo),
+                goal.window * _units(goal.hi),
                 rolling,
                 name=f"window_{day}",
                 max_cuts=max_cuts,
@@ -362,9 +365,11 @@ def plan_horizon(
     solver = cp_model.CpSolver()
     solver.parameters.random_seed = 1
     solver.parameters.max_time_in_seconds = time_limit_s
-    # Kcal sums have countless near-ties; proving the last fraction of a
-    # percent costs far more time than it changes the plan.
-    solver.parameters.relative_gap_limit = gap_limit
+    # Matching kcal sums is a subset-sum search: proving the last few kcal²
+    # costs far more time than it changes the plan. The gap is absolute
+    # (logged days make most of the penalty fixed, so a relative one
+    # misleads); 1000 kcal² is one day about 32 kcal off.
+    solver.parameters.absolute_gap_limit = gap_kcal2 / _KCAL_UNIT**2
     status = solver.solve(model)
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         raise RuntimeError(
@@ -426,7 +431,22 @@ def plan_horizon(
     return HorizonPlan(
         sessions=tuple(sessions),
         day_kcal=kcal_by_day,
-        objective=solver.objective_value,
-        bound=solver.best_objective_bound,
+        objective=solver.objective_value * _KCAL_UNIT**2,
+        bound=solver.best_objective_bound * _KCAL_UNIT**2,
         seconds=solver.wall_time,
     )
+
+
+# The horizon model counts kcal in steps of this many kcal: smaller numbers
+# make matching sums far easier to find, at most 5 kcal off per recipe.
+_KCAL_UNIT = 10
+
+
+def _units(kcal: float) -> int:
+    """``kcal`` in model units (steps of ``_KCAL_UNIT``)."""
+    return round(kcal / _KCAL_UNIT)
+
+
+def _kcal_units(recipe: Recipe) -> int:
+    """Per-serving kcal in model units."""
+    return _units(recipe.per_serving_macros.calories_kcal)
