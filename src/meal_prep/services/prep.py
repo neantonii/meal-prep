@@ -4,8 +4,8 @@
 its session (the session lists its recipe, the entry is on or after the
 session's date, links never exceed an item's portions). Meals belong to prep
 cycles (the preset session days); a cycle's meals lock the day after the
-next session day. A session grows only while open (today or later); a
-closed one gives free portions only. Admin edits locked meals and grows
+next session day. A session follows its meals only while open (today or
+later), growing and shrinking; a closed one gives free portions only. Admin edits locked meals and grows
 closed sessions.
 
 Every edit works on a whole-diary snapshot (all weeks and all sessions,
@@ -223,16 +223,17 @@ class _Draft:
         return Change(weeks=dict(self._weeks_out), sessions=dict(self._sessions_out))
 
     def derive_batches(self) -> None:
-        """In Plan, a session follows its linked meals: each item's batches
-        are the fewest whole batches that cover its meals; an item with no
-        meals left is removed, and a session with no items left is deleted.
-        Once the session's day arrives it stays as it was: a record of what
-        was made. Admin edits are left as they are."""
+        """An open session (today or later) follows its linked meals: each
+        item's batches are the fewest whole batches that cover its meals; an
+        item with no meals left is removed, and a session with no items left
+        is deleted. It shrinks as it grows (both on its own day too), so a
+        mis-drop can be taken back. Once the day has passed it stays as it
+        was: a record of what was made. Admin edits are left as they are."""
         if self.policy.admin:
             return
         counts = link_counts(self.weeks.values())
         for session in list(self.sessions.values()):
-            if self.policy.mode(session.date) is not Mode.PLAN:
+            if not self.policy.session_open(session.date):
                 continue
             items = []
             for item in session.items:
@@ -445,8 +446,12 @@ def move_entry(
     position: int | None = None,
 ) -> Change:
     """Move or reorder one entry (neither place settled), keeping its link
-    while it still holds; a link the move breaks (the entry now precedes its
-    session) is re-linked by the auto-link rule."""
+    while it still holds. It is re-linked by the auto-link rule when the link
+    breaks (the entry now precedes its session) or when the meal follows its
+    cycle into a later one: it was linked to its own cycle's session, that
+    session is still open (nothing made yet to keep), and the new slot
+    belongs to a later cycle. A manual link elsewhere, or a portion of a
+    closed session, stays."""
     draft = _Draft(diary, policy, recipes)
     current = _week_of(draft, week)
     old_date, old_mealtime, entry = entries.find_entry(current, entry_id)
@@ -455,8 +460,15 @@ def move_entry(
     moved = entries.move_entry(current, entry_id, date, mealtime, position)
     draft.put_week(week, moved)
     session = entry.session
+    linked = draft.sessions.get(session) if session is not None else None
     if session is not None and (
-        session not in draft.sessions or draft.sessions[session].date > date
+        linked is None
+        or linked.date > date
+        or (
+            policy.session_open(linked.date)
+            and linked.date == cycle_day(old_date, old_mealtime)
+            and cycle_day(date, mealtime) > linked.date
+        )
     ):
         unlinked = entries.set_entry_session(moved, entry_id, None)
         draft.put_week(week, unlinked)
@@ -536,11 +548,12 @@ def remove_item(
     session."""
     draft = _Draft(diary, policy, {})
     session, item = _session_item(draft, session_id, recipe_id)
-    linked = draft.count(session_id, recipe_id)
-    if linked:
+    meals = linked_meals(draft.weeks.values()).get((session_id, recipe_id), [])
+    if meals:
+        where = ", ".join(f"{day_label(d)} {m.value}" for d, m in meals)
         raise RuleError(
-            f"{item.title} has {linked} linked entr{'y' if linked == 1 else 'ies'}: "
-            "remove or unlink them first"
+            f"{item.title} is still linked from {where}: "
+            "remove or unlink those meals first"
         )
     items = [i for i in session.items if i is not item]
     if items:
