@@ -286,7 +286,8 @@ tr.day.log td:not(.day-cell) { background: rgba(255, 255, 255, 0.015); }
   background: var(--surface); }
 .other-form .item-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .other-form .item-foot .portions button { padding: 2px 7px; font-size: 0.75rem; }
-.other-form .brand-note { font-size: 0.75rem; color: #eab308; }
+.other-form .question { font-size: 0.78rem; color: #eab308; }
+.other-form .item .numbers input[aria-required="true"]:placeholder-shown { border-color: #eab308; }
 .other-form .ai-note { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 0.72rem; color: var(--text-muted); }
 .other-form .add-row { align-self: flex-start; background: none; border: 1px dashed var(--border); border-radius: 6px;
   color: var(--text-muted); padding: 3px 10px; cursor: pointer; font: inherit; font-size: 0.8rem; }

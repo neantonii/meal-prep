@@ -10,11 +10,12 @@ ingredients are unknown; only the numbers (usually guessed) matter.
 
 ## Entries
 
-- A free-form entry is a diary entry **without a recipe**: a title, the
-  numbers known for what was eaten (`cost`, `calories_kcal`, `protein_g`, …;
-  absent = unknown), `portion` (the share of the order eaten, absent = all
-  of it) and `estimate` (present when the numbers are a guess:
-  `source: manual | ai`, optionally a calories range and the assumptions).
+- A free-form entry is a diary entry **without a recipe**: a title and its
+  numbers for **one portion**, as for every entry. Calories, protein, carbs
+  and fat are **required**; cost, fiber and the rest may be absent
+  (unknown), and Gemini can't know a price. `estimate` is present when the
+  numbers are a guess (`source: manual | ai`, optionally a calories range
+  and the assumptions).
 - It is **never linked to a prep session**: food that wasn't prepped. The
   format refuses a free-form entry with a session, and linking one (picker
   or a drop on a session chip) is refused with a message. Moving it never
@@ -22,23 +23,23 @@ ingredients are unknown; only the numbers (usually guessed) matter.
 - Only the settled-meal lock applies (`docs/prep-sessions.md`): a settled
   slot needs Admin, like every other edit.
 - Its numbers stay editable (a corrected guess); recipe entries stay frozen.
-- Format compatibility: `recipe` and the numbers became optional, but the
-  format still requires every number on an entry with a recipe, so every
-  existing week file loads unchanged and no migration is needed.
+- Format compatibility: `recipe` and the numbers became optional in the
+  schema, but the format still requires every number on an entry with a
+  recipe (and the four above on one without), so every existing week file
+  loads unchanged and no migration is needed.
 
 ## Totals
 
-Unknown numbers count as 0. A total that leaves one out reads `≥ 1,100 kcal`;
-one that includes a guess reads `≈ 1,100 kcal` (day cell, week header and
-the rendered week report). Entries show `≈ 390` for a guess and `?` for
-unknown calories.
+A total that includes a guess reads `≈ 1,100 kcal` (day cell, week header and
+the rendered week report); entries show `≈ 390`. Calories and macros are
+never unknown, so they are always complete; a cost total that leaves an
+unknown cost out reads `≥ $20.74`.
 
 ## Repeats ("usuals")
 
 There is no separate store. `GET /api/usuals` scans the diary weeks for
 free-form entries and keeps one per title (case and spacing ignored), with
-its **latest** numbers scaled back to the whole order (numbers ÷ portion),
-most recent first, then most eaten. Correcting an entry therefore corrects
+its **latest** numbers, most recent first, then most eaten. Correcting an entry therefore corrects
 the next repeat. A meal you no longer want suggested sinks down the list;
 pinning or hiding suggestions would need a small `diary/usuals.yaml`
 later.
@@ -59,13 +60,13 @@ screen) opens the takeout form. It adds a whole order at once:
    its row with its latest numbers.
 3. **+ type an item**: a blank row.
 
-Every row is editable: name, kcal, protein, carbs, fat and cost for the
-whole item (blank = unknown), the share eaten (¼ to 2) and "guess" (on for
+Every row is editable: name, kcal, protein, carbs and fat (required; "Add"
+stays off until they are in) and cost (optional), and "guess" (on for
 estimates; untick for numbers from a menu or label). An AI row also shows its
 calories range, the quantity it assumed, where the numbers come from (menu
-values, typical or guess) and what it assumed. "brand?" marks an item whose
-numbers depend on a brand or place nobody named. "Add 4" saves every row as
-its own entry, in order.
+values, typical or guess), what it assumed, and its question when something
+you didn't say changes the numbers. "Add 4" saves every row as its own
+entry, in order.
 
 Clicking a free-form entry's title reopens the form for that entry alone, to
 correct it. Free-form entries have a dashed yellow edge.
@@ -74,21 +75,24 @@ correct it. Free-form entries have a dashed yellow edge.
 
 `POST /api/estimate` (`server/estimate.py`) sends the description to an
 OpenAI-compatible chat completions API, Gemini's by default, with a JSON
-schema for the reply, using only the standard library. Each item comes back
-with:
+schema for the reply, using only the standard library.
 
-- a clean `name` that includes the brand, plus `brand`;
-- `brand_unclear`: no brand was given but the numbers depend on it (fries,
-  burgers, coffee drinks, beer);
+The prompt has one rule instead of special cases: **list every part of the
+meal, including parts the description only implies** (a "meal" implies a
+drink), so you see each one and fix or delete it; and **ask** when something
+you didn't say changes the numbers a lot (which drink, which brand, size,
+raw or cooked weight, oil), while still giving a best estimate. Each item
+comes back with:
+
+- a short `name` with the brand when known, plus `brand` (a brand mentioned
+  once applies to the whole order);
 - `quantity` assumed, `kcal` with `kcal_low`/`kcal_high`, protein, carbs,
   fat, fiber;
-- `source`: `published` (the brand's menu values), `typical` or `guess`;
-- `assumptions`: raw vs cooked weight, oil, drink included or not, which
-  product a vague name means.
-
-A brand mentioned once applies to the whole order. Values are for the
-configured country's menus (Canada). Weights without "raw" or "cooked" are
-taken as raw for meat and fish and cooked for grains, and the reply says so.
+- `source`: `published` (the brand's menu values for the configured
+  country, Canada), `typical` or `guess`;
+- `question`: one short question with what is at stake ("Which drink? A
+  regular soda adds about 200 kcal."), or empty;
+- `assumptions`: only those that change the numbers.
 
 Saved AI items keep `estimate: {source: ai, kcal_low, kcal_high,
 assumptions}` in the week file. Replies are cached in memory by description
@@ -110,8 +114,8 @@ Google use prompts to improve its products; a paid key doesn't.
 ## API
 
 - `POST /api/diary/{week}/others`: `date`, `mealtime`, `position`, and
-  `items`: each a `title`, the whole item's `kcal`, `protein_g`, `carbs_g`,
-  `fat_g`, `fiber_g`, `cost` (`null` = unknown), `portion` (default 1),
+  `items`: each a `title`, `kcal`, `protein_g`, `carbs_g`, `fat_g`
+  (required), `fiber_g` and `cost` (optional, `null` = unknown),
   `estimated`, and for a guess `source` (`manual`/`ai`), `kcal_low`,
   `kcal_high`, `assumptions`.
 - `PUT /api/diary/{week}/others/{entry_id}`: one item's fields; refused for

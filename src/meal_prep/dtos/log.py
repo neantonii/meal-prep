@@ -29,6 +29,9 @@ from meal_prep.dtos._normalize import normalize_slug
 WEEK_ID = re.compile(r"(\d{4})-W(\d{2})")
 
 
+# The numbers a free-form entry must carry: what totals are made of.
+REQUIRED_FREE = ("calories_kcal", "protein_g", "fat_g", "carbs_g")
+
 # Every number an entry carries, in file order.
 NUMBERS = (
     "cost",
@@ -61,7 +64,7 @@ class EntryEstimateDTO(BaseModel):
     )
     assumptions: list[str] = Field(
         default_factory=list,
-        description="What the estimate assumed (portion size, oil, drink...)",
+        description="What the estimate assumed (size, oil, sauce...)",
     )
 
 
@@ -69,10 +72,10 @@ class DiaryEntryDTO(BaseModel):
     """One eaten serving, with the numbers as they were when it was logged.
 
     A recipe entry names its recipe and carries every number. A free-form
-    entry (takeout, eating out) has no recipe: just a title and the numbers
-    known for what was eaten (absent = unknown), how much of the order was
-    eaten, and whether the numbers are an estimate. It is never linked to a
-    prep session.
+    entry (takeout, eating out) has no recipe: a title, calories and the
+    three macros for one portion (the other numbers, cost included, may be
+    absent = unknown), and whether the numbers are an estimate. It is never
+    linked to a prep session.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -121,12 +124,6 @@ class DiaryEntryDTO(BaseModel):
         description="Id of the prep session this serving came from; absent when "
         "not from a session",
     )
-    portion: float | None = Field(
-        default=None,
-        gt=0,
-        description="Free-form entries: the share of the order eaten (0.5 = "
-        "half); the numbers are for that share. Absent = the whole order",
-    )
     estimate: EntryEstimateDTO | None = Field(
         default=None,
         description="Free-form entries: present when the numbers are a guess",
@@ -139,16 +136,17 @@ class DiaryEntryDTO(BaseModel):
 
     @model_validator(mode="after")
     def validate_kind(self) -> DiaryEntryDTO:
-        """A recipe entry carries every number; only a free-form one may
-        leave numbers unknown, record a portion or estimate, and it is never
-        linked to a prep session."""
-        if self.recipe is not None:
-            missing = [name for name in NUMBERS if getattr(self, name) is None]
-            if missing:
-                raise ValueError(f"Recipe entry is missing {', '.join(missing)}")
-            if self.portion is not None or self.estimate is not None:
-                raise ValueError("Only free-form entries have a portion or estimate")
-        elif self.session is not None:
+        """A recipe entry carries every number; a free-form one at least
+        calories and the macros, may record an estimate, and is never linked
+        to a prep session."""
+        required = NUMBERS if self.recipe is not None else REQUIRED_FREE
+        missing = [name for name in required if getattr(self, name) is None]
+        if missing:
+            kind = "Recipe" if self.recipe is not None else "Free-form"
+            raise ValueError(f"{kind} entry is missing {', '.join(missing)}")
+        if self.recipe is not None and self.estimate is not None:
+            raise ValueError("Only free-form entries have an estimate")
+        if self.recipe is None and self.session is not None:
             raise ValueError("A free-form entry is never linked to a prep session")
         return self
 

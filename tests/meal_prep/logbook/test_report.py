@@ -126,7 +126,7 @@ def test_report_badges_entries_linked_to_a_prep_session():
     assert "prep ?" in render_log_week(_week(linked), sessions={})
 
 
-def test_free_form_entries_show_guesses_and_unknowns():
+def test_free_form_guesses_are_marked():
     import datetime
 
     from meal_prep.dtos.log import EntryEstimateDTO
@@ -136,18 +136,14 @@ def test_free_form_entries_show_guesses_and_unknowns():
     from meal_prep.services.logs import prepare_diary_week
 
     fri = datetime.date(2026, 11, 6)
+    macros = {"calories_kcal": 780.0, "protein_g": 40.0, "carbs_g": 80.0, "fat_g": 20.0}
     guess = EntryEstimateDTO(source="manual")
     week, _ = diary.insert_entry(
         None,
         "2026-W45",
         fri,
         Mealtime.LUNCH,
-        diary.free_entry("Pho", {"calories_kcal": 780.0}, estimate=guess),
-    )
-    week, _ = diary.insert_entry(
-        week, "2026-W45", fri, Mealtime.DINNER, diary.free_entry("Cake", {})
+        diary.free_entry("Pho", macros, estimate=guess),
     )
     html = render_log_week(prepare_diary_week(week))
-    assert "≈ 780 kcal" in html  # the guessed entry
-    assert "? kcal" in html  # the unknown one
-    assert "≥ 780 kcal" in html  # the day and week leave the cake out
+    assert html.count("≈ 780 kcal") == 3  # the entry, its day and the week

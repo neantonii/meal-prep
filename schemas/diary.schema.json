@@ -86,7 +86,7 @@
     },
     "DiaryEntryDTO": {
       "additionalProperties": false,
-      "description": "One eaten serving, with the numbers as they were when it was logged.\n\nA recipe entry names its recipe and carries every number. A free-form\nentry (takeout, eating out) has no recipe: just a title and the numbers\nknown for what was eaten (absent = unknown), how much of the order was\neaten, and whether the numbers are an estimate. It is never linked to a\nprep session.",
+      "description": "One eaten serving, with the numbers as they were when it was logged.\n\nA recipe entry names its recipe and carries every number. A free-form\nentry (takeout, eating out) has no recipe: a title, calories and the\nthree macros for one portion (the other numbers, cost included, may be\nabsent = unknown), and whether the numbers are an estimate. It is never\nlinked to a prep session.",
       "properties": {
         "calories_kcal": {
           "anyOf": [
@@ -175,20 +175,6 @@
           "format": "uuid",
           "title": "Id",
           "type": "string"
-        },
-        "portion": {
-          "anyOf": [
-            {
-              "exclusiveMinimum": 0,
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Free-form entries: the share of the order eaten (0.5 = half); the numbers are for that share. Absent = the whole order",
-          "title": "Portion"
         },
         "potassium_mg": {
           "anyOf": [
@@ -306,7 +292,7 @@
       "description": "How a free-form entry's numbers were guessed (absent: they are known,\ne.g. from the menu or label).",
       "properties": {
         "assumptions": {
-          "description": "What the estimate assumed (portion size, oil, drink...)",
+          "description": "What the estimate assumed (size, oil, sauce...)",
           "items": {
             "type": "string"
           },

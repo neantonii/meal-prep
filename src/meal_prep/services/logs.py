@@ -41,7 +41,6 @@ def diary_entry(entry: DiaryEntryDTO) -> LogEntry:
         entry_id=str(entry.id),
         session_id=str(entry.session) if entry.session is not None else None,
         unknown=frozenset(n for n in NUMBERS if getattr(entry, n) is None),
-        portion=entry.portion,
         estimate=None
         if estimate is None
         else EntryEstimate(

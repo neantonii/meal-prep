@@ -45,8 +45,7 @@ class LogEntry:
     """One logged serving: its id, which recipe (``None``: free-form), its
     frozen per-serving title, cost and macros, and the prep session it came
     from (if any). ``unknown`` names the numbers a free-form entry doesn't
-    know (``cost``, ``calories_kcal``...; 0 in ``cost``/``macros``);
-    ``portion`` is the share of the order eaten."""
+    know (``cost``, ``fiber_g``...; 0 in ``cost``/``macros``)."""
 
     entry_id: str
     recipe_id: str | None
@@ -55,7 +54,6 @@ class LogEntry:
     macros: MacrosInfo
     session_id: str | None = None
     unknown: frozenset[str] = frozenset()
-    portion: float | None = None
     estimate: EntryEstimate | None = None
 
     @property

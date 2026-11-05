@@ -33,8 +33,6 @@ export interface DiaryEntry {
   fat_g: number | null;
   fiber_g: number | null;
   cost: number | null;
-  /** free-form: the share of the order eaten (null: all of it) */
-  portion: number | null;
   /** free-form: the numbers are a guess */
   estimated: boolean;
   /** what a guess assumed */
@@ -45,20 +43,21 @@ export interface DiaryEntry {
   kcal_high: number | null;
 }
 
-/** The numbers a free-form entry is typed with, for the whole order. */
+/** The numbers a free-form entry is typed with (one portion). */
 export const FREE_NUMBERS = ["kcal", "protein_g", "carbs_g", "fat_g", "cost"] as const;
 export type FreeNumber = (typeof FREE_NUMBERS)[number];
+/** The ones it must have: what totals are made of (cost may be unknown). */
+export const REQUIRED_NUMBERS: readonly FreeNumber[] = ["kcal", "protein_g", "carbs_g", "fat_g"];
 
-/** A free-form entry as typed: the whole order's numbers (null: unknown),
- * the share eaten, and whether the numbers are a guess. */
+/** A free-form entry as typed, for one portion: calories and macros, cost
+ * if known, and whether the numbers are a guess. */
 export interface FreeForm {
   title: string;
-  kcal: number | null;
-  protein_g: number | null;
-  carbs_g: number | null;
-  fat_g: number | null;
+  kcal: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
   cost: number | null;
-  portion: number;
   estimated: boolean;
   /** how a guess was made: typed in, or by AI (with its range and assumptions) */
   source?: "manual" | "ai";
@@ -71,8 +70,8 @@ export interface FreeForm {
 export interface EstimatedItem {
   name: string;
   brand: string;
-  /** no brand given, but the numbers depend on it */
-  brand_unclear: boolean;
+  /** what unsaid detail changes the numbers, as a question ("" when none) */
+  question: string;
   quantity: string;
   kcal: number;
   kcal_low: number;
@@ -85,8 +84,8 @@ export interface EstimatedItem {
   assumptions: string[];
 }
 
-/** A free-form meal eaten before: its latest whole-order numbers. */
-export interface Usual extends Omit<FreeForm, "portion"> {
+/** A free-form meal eaten before: its latest numbers. */
+export interface Usual extends FreeForm {
   fiber_g: number | null;
   /** ISO date it was last eaten */
   last: string;

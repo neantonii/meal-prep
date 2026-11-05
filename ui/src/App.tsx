@@ -148,18 +148,15 @@ export default function App() {
         : api.addOthers(w, { date, mealtime: meal }, items, admin),
     );
   };
-  /** An entry's numbers back to the whole order, as the form takes them. */
-  const orderOf = (entry: DiaryEntry): FreeForm => {
-    const share = entry.portion ?? 1;
-    const whole = (v: number | null) => (v === null ? null : v / share);
+  /** A free-form entry as the form takes it. */
+  const fieldsOf = (entry: DiaryEntry): FreeForm => {
     return {
       title: entry.title,
-      kcal: whole(entry.kcal),
-      protein_g: whole(entry.protein_g),
-      carbs_g: whole(entry.carbs_g),
-      fat_g: whole(entry.fat_g),
-      cost: whole(entry.cost),
-      portion: share,
+      kcal: entry.kcal ?? 0,
+      protein_g: entry.protein_g ?? 0,
+      carbs_g: entry.carbs_g ?? 0,
+      fat_g: entry.fat_g ?? 0,
+      cost: entry.cost,
       estimated: entry.estimated,
       assumptions: entry.assumptions,
       source: entry.estimate_source ?? "manual",
@@ -330,7 +327,7 @@ export default function App() {
         <OtherForm
           date={other.date}
           meal={other.meal}
-          initial={other.entry ? orderOf(other.entry) : null}
+          initial={other.entry ? fieldsOf(other.entry) : null}
           onSave={handleSaveOther}
           onClose={() => setOther(null)}
         />

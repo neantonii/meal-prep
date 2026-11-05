@@ -45,7 +45,6 @@ def _free_entry(
     return entries.free_entry(
         body.title,
         {field: getattr(body, name) for name, field in _FIELDS.items()},
-        portion=body.portion,
         estimate=EntryEstimateDTO(
             source=body.source,
             kcal_low=body.kcal_low,
@@ -68,7 +67,7 @@ def usuals_router(editor: Editor) -> APIRouter:
         return [
             Usual(
                 title=u.title,
-                **{name: u.order[field] for name, field in _FIELDS.items()},
+                **{name: u.numbers[field] for name, field in _FIELDS.items()},
                 estimated=u.estimate is not None,
                 last=u.last.isoformat(),
                 times=u.times,

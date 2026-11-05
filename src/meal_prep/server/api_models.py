@@ -39,7 +39,6 @@ class DiaryEntry(BaseModel):
     fat_g: float | None
     fiber_g: float | None
     cost: float | None
-    portion: float | None = None  # free-form: share of the order eaten
     estimated: bool = False  # free-form: the numbers are a guess
     assumptions: list[str] = Field(default_factory=list)  # what a guess assumed
     # How a guess was made ("manual" or "ai") and the AI's calories range
@@ -211,18 +210,17 @@ class SessionMove(BaseModel):
 
 
 class FreeFormFields(BaseModel):
-    """A free-form entry's title and the numbers of the whole order
-    (``None``: unknown); ``portion`` is the share eaten, and the entry keeps
-    that share of each number. ``estimated``: the numbers are a guess."""
+    """A free-form entry's title and its numbers for one portion: calories
+    and macros required, fiber and cost optional (``None``: unknown).
+    ``estimated``: the numbers are a guess."""
 
     title: str = Field(..., min_length=1, max_length=200)
-    kcal: float | None = Field(default=None, ge=0)
-    protein_g: float | None = Field(default=None, ge=0)
-    carbs_g: float | None = Field(default=None, ge=0)
-    fat_g: float | None = Field(default=None, ge=0)
+    kcal: float = Field(..., ge=0)
+    protein_g: float = Field(..., ge=0)
+    carbs_g: float = Field(..., ge=0)
+    fat_g: float = Field(..., ge=0)
     fiber_g: float | None = Field(default=None, ge=0)
     cost: float | None = Field(default=None, ge=0)
-    portion: float = Field(default=1.0, gt=0, le=10)
     estimated: bool = False
     # How a guess was made (kept only when ``estimated``): typed in or by AI,
     # with the AI's calories range and assumptions.
@@ -253,7 +251,7 @@ class EstimatedItemOut(BaseModel):
 
     name: str
     brand: str
-    brand_unclear: bool  # no brand given, but the numbers depend on it
+    question: str  # what is unclear and changes the numbers ("" when nothing)
     quantity: str
     kcal: float
     kcal_low: float
@@ -271,8 +269,8 @@ class EstimateOut(BaseModel):
 
 
 class Usual(BaseModel):
-    """A free-form meal eaten before: its latest numbers for the whole order
-    (``None``: unknown), when it was last eaten and how often."""
+    """A free-form meal eaten before: its latest numbers (``None``:
+    unknown), when it was last eaten and how often."""
 
     title: str
     kcal: float | None

@@ -25,8 +25,6 @@ interface Props {
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 // Color classes of the four standard session slots (see sessionColor).
 const STANDARD = new Set(["c0", "c1", "c2", "c3"]);
-// How a share of a takeout order reads next to its title.
-const SHARES: Record<number, string> = { 0.25: "¼", 0.5: "½", 0.75: "¾", 1.5: "1½", 2: "2×" };
 
 /** The week table. Meals are sortable within and across slots; the drop
  * logic itself lives in App's onDragEnd. */
@@ -190,7 +188,6 @@ function EntryRow({
   };
   const free = entry.recipe === null;
   const edge = entry.session ? `linked ${colors[entry.session] ?? ""}` : free ? "other" : "unlinked";
-  const portion = entry.portion !== null && entry.portion !== 1 ? ` (${SHARES[entry.portion] ?? `${entry.portion}×`})` : "";
   const guessed = [entry.estimated ? "A guess" : "", ...entry.assumptions].filter(Boolean).join("; ");
 
   return (
@@ -204,7 +201,7 @@ function EntryRow({
     >
       {free ? (
         settled ? (
-          <span>{entry.title + portion}</span>
+          <span>{entry.title}</span>
         ) : (
           <button
             className="other-title"
@@ -212,7 +209,7 @@ function EntryRow({
             onKeyDown={(e) => e.stopPropagation()}
             onClick={() => onEditOther(entry, date, meal)}
           >
-            {entry.title + portion}
+            {entry.title}
           </button>
         )
       ) : entry.card_url ? (

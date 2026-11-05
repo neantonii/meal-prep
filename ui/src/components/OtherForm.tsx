@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FREE_NUMBERS,
+  REQUIRED_NUMBERS,
   api,
   approx,
   dayLabel,
@@ -28,14 +29,6 @@ const LABELS: Record<FreeNumber, string> = {
   fat_g: "fat",
   cost: "$",
 };
-const PORTIONS: [number, string][] = [
-  [0.25, "¼"],
-  [0.5, "½"],
-  [0.75, "¾"],
-  [1, "1"],
-  [1.5, "1½"],
-  [2, "2"],
-];
 
 /** One item being edited: numbers as typed (blank = unknown), plus what
  * an AI estimate said about it. */
@@ -43,14 +36,13 @@ interface Row {
   key: number;
   title: string;
   nums: Record<FreeNumber, string>;
-  portion: number;
   estimated: boolean;
   source: "manual" | "ai";
   kcal_low: number | null;
   kcal_high: number | null;
   assumptions: string[];
-  /** from the AI: no brand given, but the numbers depend on it */
-  brandUnclear: boolean;
+  /** from the AI: an unsaid detail that changes the numbers */
+  question: string;
   /** from the AI: the amount it assumed, and where its numbers come from */
   quantity: string;
   basis: string;
@@ -59,34 +51,23 @@ interface Row {
 let nextKey = 1;
 const fmt = (v: number | null | undefined) => (v === null || v === undefined ? "" : String(Math.round(v * 10) / 10));
 
-function rowFrom(f: FreeForm): Row {
+function rowFrom(f: FreeForm | null): Row {
   return {
     key: nextKey++,
-    title: f.title,
-    nums: Object.fromEntries(FREE_NUMBERS.map((n) => [n, fmt(f[n])])) as Record<FreeNumber, string>,
-    portion: f.portion,
-    estimated: f.estimated,
-    source: f.source ?? "manual",
-    kcal_low: f.kcal_low ?? null,
-    kcal_high: f.kcal_high ?? null,
-    assumptions: f.assumptions ?? [],
-    brandUnclear: false,
+    title: f?.title ?? "",
+    nums: Object.fromEntries(FREE_NUMBERS.map((n) => [n, fmt(f?.[n])])) as Record<FreeNumber, string>,
+    estimated: f?.estimated ?? true,
+    source: f?.source ?? "manual",
+    kcal_low: f?.kcal_low ?? null,
+    kcal_high: f?.kcal_high ?? null,
+    assumptions: f?.assumptions ?? [],
+    question: "",
     quantity: "",
     basis: "",
   };
 }
 
-const blank = (): Row =>
-  rowFrom({
-    title: "",
-    kcal: null,
-    protein_g: null,
-    carbs_g: null,
-    fat_g: null,
-    cost: null,
-    portion: 1,
-    estimated: true,
-  });
+const blank = (): Row => rowFrom(null);
 
 function rowFromEstimate(item: EstimatedItem): Row {
   return {
@@ -97,14 +78,13 @@ function rowFromEstimate(item: EstimatedItem): Row {
       carbs_g: item.carbs_g,
       fat_g: item.fat_g,
       cost: null,
-      portion: 1,
       estimated: true,
       source: "ai",
       kcal_low: item.kcal_low,
       kcal_high: item.kcal_high,
       assumptions: item.assumptions,
     }),
-    brandUnclear: item.brand_unclear,
+    question: item.question,
     quantity: item.quantity,
     basis: item.source,
   };
@@ -115,16 +95,17 @@ const parse = (v: string): number | null => {
   return t === "" || Number.isNaN(Number(t)) ? null : Number(t);
 };
 const bad = (v: string) => v.trim() !== "" && (parse(v) === null || parse(v)! < 0);
+/** A number the row can't save with: malformed, or a required one left blank. */
+const wrong = (r: Row, n: FreeNumber) => bad(r.nums[n]) || (REQUIRED_NUMBERS.includes(n) && r.nums[n].trim() === "");
 
 function toFields(r: Row): FreeForm {
-  const nums = Object.fromEntries(FREE_NUMBERS.map((n) => [n, parse(r.nums[n])])) as Record<
-    FreeNumber,
-    number | null
-  >;
   return {
     title: r.title.trim(),
-    ...nums,
-    portion: r.portion,
+    kcal: parse(r.nums.kcal) ?? 0,
+    protein_g: parse(r.nums.protein_g) ?? 0,
+    carbs_g: parse(r.nums.carbs_g) ?? 0,
+    fat_g: parse(r.nums.fat_g) ?? 0,
+    cost: parse(r.nums.cost),
     estimated: r.estimated,
     source: r.source,
     kcal_low: r.kcal_low,
@@ -186,14 +167,13 @@ export default function OtherForm({ date, meal, initial, onSave, onClose }: Prop
     }
   };
   const pick = (u: Usual) => {
-    setRows((cur) => [...cur.filter((r) => r.title.trim() !== ""), rowFrom({ ...u, portion: 1 })]);
+    setRows((cur) => [...cur.filter((r) => r.title.trim() !== ""), rowFrom(u)]);
     setSearch("");
   };
 
-  const valid = rows.length > 0 && rows.every((r) => r.title.trim() !== "" && !FREE_NUMBERS.some((n) => bad(r.nums[n])));
-  const total = rows.reduce((sum, r) => sum + (parse(r.nums.kcal) ?? 0) * r.portion, 0);
+  const valid = rows.length > 0 && rows.every((r) => r.title.trim() !== "" && !FREE_NUMBERS.some((n) => wrong(r, n)));
+  const total = rows.reduce((sum, r) => sum + (parse(r.nums.kcal) ?? 0), 0);
   const guessed = rows.some((r) => r.estimated);
-  const unknown = rows.some((r) => parse(r.nums.kcal) === null);
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -281,11 +261,7 @@ export default function OtherForm({ date, meal, initial, onSave, onClose }: Prop
                     </button>
                   )}
                 </div>
-                {r.brandUnclear && (
-                  <div className="brand-note">
-                    brand? Its numbers depend on the brand or place: add it to the description and estimate again.
-                  </div>
-                )}
+                {r.question && <div className="question">{r.question}</div>}
                 <div className="numbers">
                   {FREE_NUMBERS.map((n) => (
                     <label key={n}>
@@ -294,7 +270,8 @@ export default function OtherForm({ date, meal, initial, onSave, onClose }: Prop
                         value={r.nums[n]}
                         aria-label={LABELS[n]}
                         aria-invalid={bad(r.nums[n])}
-                        placeholder="?"
+                        aria-required={REQUIRED_NUMBERS.includes(n)}
+                        placeholder={REQUIRED_NUMBERS.includes(n) ? " " : "?"}
                         onChange={(e) => update(r.key, { nums: { ...r.nums, [n]: e.target.value } })}
                       />
                       <span>{LABELS[n]}</span>
@@ -302,20 +279,6 @@ export default function OtherForm({ date, meal, initial, onSave, onClose }: Prop
                   ))}
                 </div>
                 <div className="item-foot">
-                  <div className="portions" role="radiogroup" aria-label="Share eaten">
-                    {PORTIONS.map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        role="radio"
-                        aria-checked={r.portion === value}
-                        className={r.portion === value ? "on" : ""}
-                        onClick={() => update(r.key, { portion: value })}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
                   <label className="check" title="Untick for numbers from the menu or label">
                     <input
                       type="checkbox"
@@ -349,7 +312,7 @@ export default function OtherForm({ date, meal, initial, onSave, onClose }: Prop
         <div className="actions">
           {rows.length > 0 && (
             <span className="sum">
-              {rows.length} item{rows.length === 1 ? "" : "s"} · {unknown ? "≥ " : guessed ? "≈ " : ""}
+              {rows.length} item{rows.length === 1 ? "" : "s"} · {guessed ? "≈ " : ""}
               {Math.round(total).toLocaleString("en-US")} kcal
             </span>
           )}

@@ -20,7 +20,7 @@ WEEK = "2026-W45"
 ITEM = {
     "name": "McDonald's Small Fries",
     "brand": "McDonald's",
-    "brand_unclear": False,
+    "question": "",
     "quantity": "1 small order",
     "kcal": 230,
     "kcal_low": 210,
@@ -75,7 +75,8 @@ def test_estimates_are_off_without_a_key(tmp_path: Path):
 
 
 def test_an_estimate_splits_the_meal_and_is_cached(tmp_path: Path):
-    fake = FakeEstimator(_reply(ITEM, {**ITEM, "name": "McDonald's McChicken"}))
+    drink = {**ITEM, "name": "Drink", "question": "Which drink? A soda adds 200 kcal"}
+    fake = FakeEstimator(_reply(ITEM, {**ITEM, "name": "McDonald's McChicken"}, drink))
     client = _client(tmp_path, fake)
     assert client.get("/api/estimate").json()["available"]
     text = "mcdonalds meal, mcchicken, small fries"
@@ -83,7 +84,9 @@ def test_an_estimate_splits_the_meal_and_is_cached(tmp_path: Path):
     assert [i["name"] for i in first["items"]] == [
         "McDonald's Small Fries",
         "McDonald's McChicken",
+        "Drink",
     ]
+    assert first["items"][2]["question"].startswith("Which drink?")
     assert first["items"][0]["assumptions"] == ["no drink assumed"]
     # The same words again (spacing and case aside): no second call.
     again = client.post("/api/estimate", json={"text": f"  {text.upper()} "})
@@ -117,13 +120,22 @@ def test_ai_items_are_saved_together_with_their_assumptions(tmp_path: Path):
             "title": "McDonald's Small Fries",
             "kcal": 230,
             "protein_g": 3,
+            "carbs_g": 30,
+            "fat_g": 11,
             "estimated": True,
             "source": "ai",
             "kcal_low": 210,
             "kcal_high": 250,
             "assumptions": ["no drink assumed"],
         },
-        {"title": "McDonald's McChicken", "kcal": 400, "estimated": True},
+        {
+            "title": "McDonald's McChicken",
+            "kcal": 400,
+            "protein_g": 14,
+            "carbs_g": 40,
+            "fat_g": 21,
+            "estimated": True,
+        },
     ]
     body = {"date": "2026-11-06", "mealtime": "lunch", "items": items}
     response = client.post(f"/api/diary/{WEEK}/others", json=body)

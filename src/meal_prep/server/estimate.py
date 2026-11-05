@@ -1,6 +1,7 @@
 """AI estimates for free-form diary entries (#141): a messy description of
 what was eaten -> separate items with clean names, brand, numbers, a
-calories range and the assumptions behind them.
+calories range, the assumptions behind them, and a question where something
+unsaid changes the numbers.
 
 Calls an OpenAI-compatible chat completions API (Gemini's by default) with a
 JSON schema for the reply, using only the standard library. Configured by
@@ -48,7 +49,7 @@ class EstimatedItem(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=120)
     brand: str = Field(default="", max_length=60)
-    brand_unclear: bool = False
+    question: str = Field(default="", max_length=200)
     quantity: str = Field(default="", max_length=60)
     kcal: float = Field(..., ge=0, le=10000)
     kcal_low: float = Field(..., ge=0, le=10000)
@@ -75,7 +76,7 @@ _SCHEMA: dict[str, Any] = {
                 "properties": {
                     "name": {"type": "string"},
                     "brand": {"type": "string"},
-                    "brand_unclear": {"type": "boolean"},
+                    "question": {"type": "string"},
                     "quantity": {"type": "string"},
                     "kcal": {"type": "number"},
                     "kcal_low": {"type": "number"},
@@ -93,7 +94,7 @@ _SCHEMA: dict[str, Any] = {
                 "required": [
                     "name",
                     "brand",
-                    "brand_unclear",
+                    "question",
                     "quantity",
                     "kcal",
                     "kcal_low",
@@ -115,34 +116,33 @@ _SCHEMA: dict[str, Any] = {
 def _prompt(country: str) -> str:
     return f"""You estimate the nutrition of meals someone ate, for a food diary.
 The user describes what they ate, often messily: misspelled, several items in
-one line, sizes left out. Split it into the separate items eaten and estimate
-each one.
+one line, details left out. Split it into items and estimate each one.
+
+List every part of the meal, including parts the description only implies
+(a combo or "meal" implies a drink; "burger and fries" may imply a sauce), so
+the user sees each part and can fix or delete it. Never fold a part into
+another item or leave it out silently.
 
 For every item:
-- name: a clean, specific name that includes the brand when known, e.g.
-  "McDonald's McChicken", "McDonald's Small Fries", "Baked Rainbow Trout".
-  Keep it short; put the size in the name only when it identifies the item
-  (e.g. "Small Fries", "Large Pho with Brisket").
+- name: a short, specific name with the brand when known, e.g. "McDonald's
+  McChicken", "McDonald's Small Fries", "Baked Rainbow Trout", "Drink".
+  A brand or restaurant mentioned once applies to the whole order unless the
+  user says otherwise.
 - brand: the restaurant or product brand, or "" when there is none.
-  A brand or restaurant mentioned once applies to every item of that order,
-  unless the user says otherwise.
-- brand_unclear: true when no brand is known but the numbers depend a lot on
-  it (fries, burgers, coffee drinks, beer, pastries); false for home-style or
-  generic food.
-- quantity: the amount you assumed, e.g. "1 sandwich", "6 pieces", "250 g
-  raw", "1 cup cooked", "355 ml can".
+- quantity: the amount the numbers are for, e.g. "1 sandwich", "6 pieces",
+  "250 g", "1 cup", "355 ml".
 - kcal and macros (grams) for that quantity, with kcal_low/kcal_high a
-  realistic range around kcal. Use the brand's published values for {country}
-  menus when you know them (source "published"); otherwise typical values
-  (source "typical"), or "guess" when the item itself is vague.
-- assumptions: short notes on anything you assumed that changes the numbers:
-  size, raw vs cooked weight, oil or butter, sauce, drink included or not,
-  which product a vague name means. Empty when nothing was assumed.
-  A weight given without "raw" or "cooked" is taken as raw for meat and fish
-  and as cooked for grains and pasta; say which in the assumptions.
-
-A combo or "meal" without a named drink: do not add a drink, but say
-"no drink assumed" in the assumptions of its main item."""
+  realistic range. Use the brand's published values for {country} menus when
+  you know them (source "published"), otherwise typical values ("typical"),
+  or "guess" when the item itself is vague.
+- question: when something the user didn't say changes the numbers a lot
+  (which drink, which brand, the size, raw or cooked weight, a sauce), ask it
+  in one short question that says what is at stake, e.g. "Which drink? A
+  regular soda adds about 200 kcal." Still give your best estimate. "" when
+  nothing important is unclear.
+- assumptions: short notes on assumptions that change the numbers (no oil
+  added, regular not diet). Never restate the name, size or quantity. Usually
+  empty."""
 
 
 @dataclass(frozen=True, slots=True)

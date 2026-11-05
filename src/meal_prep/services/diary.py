@@ -3,8 +3,8 @@
 An entry's numbers are frozen exactly once, when it is added. Removing,
 moving, reordering and (re)linking to a prep session never recompute them,
 so nothing here needs to match old and new entries. A free-form entry
-(takeout, eating out) has no recipe: its numbers are typed in, for the whole
-order, and scaled to the share eaten; it is the only kind whose numbers can
+(takeout, eating out) has no recipe: its numbers are typed in (or
+estimated), one portion as for every entry; it is the only kind whose numbers can
 be edited later (a corrected estimate). Past free-form entries are the
 source of "usuals" (``free_form_history``): repeats need no storage of their
 own. Every operation returns a new, re-validated
@@ -62,28 +62,23 @@ def freeze_entry(recipe: Recipe, session: uuid.UUID | None = None) -> DiaryEntry
 
 def free_entry(
     title: str,
-    order: Mapping[str, float | None],
-    portion: float = 1.0,
+    numbers: Mapping[str, float | None],
     estimate: EntryEstimateDTO | None = None,
     entry_id: uuid.UUID | None = None,
 ) -> DiaryEntryDTO:
-    """A free-form entry: ``order`` holds the whole order's numbers by DTO
-    field name (``None`` or missing: unknown); the entry keeps
-    ``portion`` of each. ``entry_id`` keeps an edited entry's id."""
-    unknown_names = set(order) - set(NUMBERS)
+    """A free-form entry for one portion: ``numbers`` by DTO field name
+    (``None`` or missing: unknown; calories and macros are required).
+    ``entry_id`` keeps an edited entry's id."""
+    unknown_names = set(numbers) - set(NUMBERS)
     if unknown_names:
         raise ValueError(f"Unknown numbers: {', '.join(sorted(unknown_names))}")
-    numbers = {
-        name: None if (value := order.get(name)) is None else value * portion
-        for name in NUMBERS
-    }
+    values = {name: numbers.get(name) for name in NUMBERS}
     return DiaryEntryDTO.model_validate(
         {
             "id": entry_id or uuid.uuid4(),
             "title": " ".join(title.split()),
-            "portion": None if portion == 1 else portion,
             "estimate": estimate,
-            **numbers,
+            **values,
         }
     )
 
@@ -243,12 +238,12 @@ def set_entry_session(
 
 @dataclass(frozen=True, slots=True)
 class Usual:
-    """A free-form meal eaten before: its latest numbers for the whole order
-    (``None``: unknown), whether they were a guess, when it was last eaten
-    and how often."""
+    """A free-form meal eaten before: its latest numbers (``None``:
+    unknown), whether they were a guess, when it was last eaten and how
+    often."""
 
     title: str
-    order: dict[str, float | None]
+    numbers: dict[str, float | None]
     estimate: EntryEstimateDTO | None
     last: datetime.date
     times: int
@@ -260,8 +255,8 @@ def _title_key(title: str) -> str:
 
 def free_form_history(weeks: Iterable[DiaryWeekDTO]) -> list[Usual]:
     """Every free-form meal eaten so far, one per title (case and spacing
-    ignored), with the numbers of its latest entry scaled back to the whole
-    order; most recent first, then most eaten."""
+    ignored), with the numbers of its latest entry; most recent first, then
+    most eaten."""
     found: list[tuple[datetime.date, int, DiaryEntryDTO]] = []
     order = list(Mealtime)
     for week in weeks:
@@ -278,19 +273,15 @@ def free_form_history(weeks: Iterable[DiaryWeekDTO]) -> list[Usual]:
         counts[key] = counts.get(key, 0) + 1
         if key in usuals:
             continue
-        share = entry.portion or 1.0
         usuals[key] = Usual(
             title=entry.title,
-            order={
-                name: None if (v := getattr(entry, name)) is None else v / share
-                for name in NUMBERS
-            },
+            numbers={name: getattr(entry, name) for name in NUMBERS},
             estimate=entry.estimate,
             last=date,
             times=0,
         )
     ranked = [
-        Usual(u.title, u.order, u.estimate, u.last, counts[key])
+        Usual(u.title, u.numbers, u.estimate, u.last, counts[key])
         for key, u in usuals.items()
     ]
     ranked.sort(key=lambda u: (u.last, u.times), reverse=True)
