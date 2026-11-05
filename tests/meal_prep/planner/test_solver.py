@@ -5,16 +5,17 @@ All recipes are hand-built fakes; the cheapest assignment is known exactly.
 
 from __future__ import annotations
 
+import datetime
 import itertools
 
 import pytest
 
-from meal_prep.enums import Aisle, RecipeCategory, StorageType
+from meal_prep.enums import Aisle, Mealtime, RecipeCategory, StorageType
 from meal_prep.models.ingredient import MacrosInfo, Package
 from meal_prep.models.recipe import Recipe, RecipeIngredient
-from meal_prep.planner.plan import WeekPlan
+from meal_prep.planner.plan import KcalGoal, MealSlot, WeekPlan
 from meal_prep.planner.quadratic import ConvexQuadratic
-from meal_prep.planner.solver import plan_week
+from meal_prep.planner.solver import plan_horizon, plan_week
 
 
 def _macros(*, cal: float = 100.0, protein: float = 10.0) -> MacrosInfo:
@@ -230,3 +231,68 @@ def test_daily_kcal_trades_off_against_cost():
     # on each of 7 days, so the shortfall costs 7 x 1000² x w cents.
     assert solve(1e-5) == pytest.approx([1100] * 7)  # 70 cents: stay light
     assert solve(1e-3) == pytest.approx([2100] * 7)  # 7000 cents: go hearty
+
+
+def _day_slots(day: datetime.date) -> list[MealSlot]:
+    return [MealSlot(date=day, mealtime=m, session=day) for m in Mealtime]
+
+
+_THU = datetime.date(2026, 11, 5)
+# 1000- and 100-kcal recipes, at most one of each per slot: any multiple of
+# 100 up to 4400 kcal a day.
+_KCAL_RECIPES = [_recipe("big", cost=0.0, kcal=1000), _recipe("small", cost=0.0)]
+
+
+@pytest.mark.parametrize(
+    ("payback", "expected"),
+    [
+        (0.0, 2100),  # rolling term off: hit the daily target
+        # Yesterday 600 short: today makes up half -> 2400. (Window
+        # 2100 + 1500 + x pays (x - 2700)², the day pays (x - 2100)².)
+        (0.5, 2400),
+    ],
+)
+def test_horizon_day_makes_up_yesterday(payback: float, expected: int):
+    plan = plan_horizon(
+        _KCAL_RECIPES,
+        _day_slots(_THU),
+        goal=KcalGoal(payback=payback),
+        known_kcal={
+            _THU - datetime.timedelta(days=2): 2100,
+            _THU - datetime.timedelta(days=1): 1500,
+        },
+    )
+    assert plan.day_kcal == ((_THU, pytest.approx(expected)),)
+
+
+def test_horizon_counts_known_kcal_on_planned_days():
+    # 1100 already logged today: the slots add the remaining 1000.
+    plan = plan_horizon(
+        _KCAL_RECIPES,
+        _day_slots(_THU),
+        goal=KcalGoal(payback=0.0),
+        known_kcal={_THU: 1100},
+    )
+    assert plan.day_kcal == ((_THU, pytest.approx(2100)),)
+    added = sum(p.meal.macros.calories_kcal for p in plan.sessions[0].picks)
+    assert added == pytest.approx(1000)
+
+
+def test_horizon_splits_sessions_and_flags_truncated():
+    friday = _THU + datetime.timedelta(days=1)
+    slots = [
+        *_day_slots(_THU),
+        *(MealSlot(date=friday, mealtime=m, session=friday) for m in Mealtime),
+    ]
+    plan = plan_horizon(
+        _KCAL_RECIPES,
+        slots,
+        goal=KcalGoal(payback=0.0),
+        known_kcal={},
+        truncated={friday},
+    )
+    assert [(s.session, s.truncated) for s in plan.sessions] == [
+        (_THU, False),
+        (friday, True),
+    ]
+    assert all(p.slot.session == _THU for p in plan.sessions[0].picks)

@@ -103,10 +103,11 @@ class WeekPlan:
 
 @dataclass(frozen=True, slots=True)
 class MealSlot:
-    """One meal to fill: a day and a mealtime."""
+    """One meal to fill: a day, a mealtime and the session that feeds it."""
 
     date: datetime.date
     mealtime: Mealtime
+    session: datetime.date
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,9 +119,43 @@ class SlotPick:
 
 
 @dataclass(frozen=True, slots=True)
-class SessionPlan:
-    """One prep session's cycle solved: a recipe per slot, the batches to cook."""
+class KcalGoal:
+    """Daily kcal: a soft daily target plus a rolling-window target.
 
+    Each day pays ``(kcal - target)²`` (hard limits ``lo``..``hi``); each
+    ``window``-day run pays ``w·(sum - window·target)²``. ``payback`` is the
+    share of one day's miss the next day makes up when it is the only free
+    day in its window: ``w = payback / (1 - payback)``.
+    """
+
+    target: int = 2100
+    lo: int = 0
+    hi: int = 4000
+    window: int = 3
+    payback: float = 0.5
+
+    def __post_init__(self) -> None:
+        if not 0 <= self.payback < 1:
+            raise ValueError(f"payback must be in [0, 1) (got {self.payback}).")
+        if self.window < 1:
+            raise ValueError(f"window must be at least 1 (got {self.window}).")
+
+    @property
+    def window_weight(self) -> float:
+        """Rolling-window weight relative to the daily weight of 1."""
+        return self.payback / (1 - self.payback)
+
+
+@dataclass(frozen=True, slots=True)
+class SessionPlan:
+    """One session's part of a horizon plan: its picks and batches.
+
+    ``truncated``: the horizon ends before the session's cycle does, so it
+    saw only part of its meals (its batches are a rough draft).
+    """
+
+    session: datetime.date
+    truncated: bool
     picks: tuple[SlotPick, ...]
     prep: tuple[PlannedBatch, ...]
 
@@ -128,3 +163,14 @@ class SessionPlan:
     def total_cost(self) -> float:
         """Total session cost at full batch prices (leftovers included)."""
         return sum(batch.cost for batch in self.prep)
+
+
+@dataclass(frozen=True, slots=True)
+class HorizonPlan:
+    """Every session touching the horizon, plus each horizon day's kcal."""
+
+    sessions: tuple[SessionPlan, ...]
+    day_kcal: tuple[tuple[datetime.date, float], ...]  # fixed + planned
+    objective: float = 0.0  # penalty reached
+    bound: float = 0.0  # proven lower bound on the penalty
+    seconds: float = 0.0  # solve wall time

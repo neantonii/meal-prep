@@ -14,7 +14,9 @@ objective through secant cuts (``_add_quadratic``); see
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import datetime
+from collections import Counter
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from itertools import pairwise
 
@@ -26,6 +28,8 @@ from meal_prep.models.recipe import Recipe
 from meal_prep.planner.plan import (
     DAY_NAMES,
     DailyPlannedMeal,
+    HorizonPlan,
+    KcalGoal,
     MealSlot,
     PlannedBatch,
     PlannedMeal,
@@ -274,13 +278,25 @@ def _picked_meal(solver: cp_model.CpSolver, planned_meal: _PlannedMeal) -> Plann
     raise RuntimeError("No meal selected; exactly-one constraint violated.")
 
 
-def plan_session(recipes: Sequence[Recipe], slots: Sequence[MealSlot]) -> SessionPlan:
-    """Solve the cheapest fill of one session's ``slots``.
+def plan_horizon(
+    recipes: Sequence[Recipe],
+    slots: Sequence[MealSlot],
+    *,
+    goal: KcalGoal,
+    known_kcal: Mapping[datetime.date, float],
+    truncated: Collection[datetime.date] = (),
+    time_limit_s: float = 30.0,
+    gap_limit: float = 0.01,
+) -> HorizonPlan:
+    """Fill ``slots`` (every meal of whole days, any number of sessions).
 
-    No rules yet: any recipe may go in any slot, at most once per slot, and
-    a slot may stay empty. Every recipe gets a whole number of batches with
-    ``uses <= batches * servings``; the objective is the total batch cost,
-    so leftovers are charged.
+    No meal rules yet: any recipe in any slot, at most once per slot, slots
+    may stay empty. The objective is kcal only (``goal``): a daily term on
+    every horizon day and a rolling term on every window whose days are all
+    known. ``known_kcal`` holds kcal already eaten or planned outside
+    ``slots``: past days, and horizon days' meals that are not slots.
+    Batches are the fewest whole batches per session and recipe; nothing
+    charges for them yet, so ``truncated`` sessions only get flagged.
     """
     meals = list(recipes)
     model = cp_model.CpModel()
@@ -291,42 +307,63 @@ def plan_session(recipes: Sequence[Recipe], slots: Sequence[MealSlot]) -> Sessio
         )
         planned.append((slot, planned_meal))
 
-    # One batch per slot always covers every pick, so the bound never binds.
-    max_batches = len(planned)
-    batches: dict[str, cp_model.IntVar] = {}
-    for recipe in meals:
-        uses = [
-            var
-            for _, planned_meal in planned
-            for candidate, var in zip(
+    horizon = sorted({slot.date for slot in slots})
+    day_kcal: dict[datetime.date, LinearExpr] = {}
+    for day in horizon:
+        terms = [
+            _kcal(recipe) * var
+            for slot, planned_meal in planned
+            if slot.date == day
+            for recipe, var in zip(
                 planned_meal.recipes, planned_meal.is_selected, strict=True
             )
-            if candidate.id == recipe.id
         ]
-        if not uses:
-            continue
-        batches[recipe.id] = model.new_int_var(0, max_batches, f"batches_{recipe.id}")
-        model.add(sum(uses) <= batches[recipe.id] * round(recipe.servings))
+        day_kcal[day] = LinearExpr.sum(terms) + round(known_kcal.get(day, 0.0))
 
-    by_id = {recipe.id: recipe for recipe in meals}
-    model.minimize(
-        LinearExpr.sum(
-            [
-                round(by_id[recipe_id].total_cost * _CENTS) * var
-                for recipe_id, var in batches.items()
-            ]
+    objective: list[LinearExpr] = []
+    daily = ConvexQuadratic.deviation(goal.target, 1.0)
+    for day in horizon:
+        term = _add_quadratic(
+            model, day_kcal[day], goal.lo, goal.hi, daily, name=f"day_{day}"
         )
-    )
+        objective.append(term.objective)
+    if goal.payback > 0:
+        rolling = ConvexQuadratic.deviation(
+            goal.window * goal.target, goal.window_weight
+        )
+        for day in horizon:
+            window = [
+                day - datetime.timedelta(days=back) for back in range(goal.window)
+            ]
+            if not all(d in day_kcal or d in known_kcal for d in window):
+                continue  # a day with nothing known: no window
+            total = LinearExpr.sum(
+                [day_kcal[d] if d in day_kcal else round(known_kcal[d]) for d in window]
+            )
+            term = _add_quadratic(
+                model,
+                total,
+                goal.window * goal.lo,
+                goal.window * goal.hi,
+                rolling,
+                name=f"window_{day}",
+            )
+            objective.append(term.objective)
+    model.minimize(LinearExpr.sum(objective))
 
     solver = cp_model.CpSolver()
     solver.parameters.random_seed = 1
+    solver.parameters.max_time_in_seconds = time_limit_s
+    # Kcal sums have countless near-ties; proving the last fraction of a
+    # percent costs far more time than it changes the plan.
+    solver.parameters.relative_gap_limit = gap_limit
     status = solver.solve(model)
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         raise RuntimeError(
-            f"Session solve failed (status={solver.status_name(status)})."
+            f"Horizon solve failed (status={solver.status_name(status)})."
         )
 
-    picks = tuple(
+    picks = [
         SlotPick(
             slot=slot,
             meal=PlannedMeal(
@@ -341,23 +378,47 @@ def plan_session(recipes: Sequence[Recipe], slots: Sequence[MealSlot]) -> Sessio
             planned_meal.recipes, planned_meal.is_selected, strict=True
         )
         if solver.boolean_value(var)
-    )
-    prep: list[PlannedBatch] = []
-    for recipe_id in sorted(batches):
-        cooked = solver.value(batches[recipe_id])
-        if cooked == 0:
-            continue
-        recipe = by_id[recipe_id]
-        prep.append(
-            PlannedBatch(
-                recipe_id=recipe_id,
-                title=recipe.title,
-                batches=cooked,
-                servings=round(recipe.servings),
-                portions_used=sum(
-                    1 for pick in picks if pick.meal.recipe_id == recipe_id
-                ),
-                cost=recipe.total_cost * cooked,
+    ]
+    by_id = {recipe.id: recipe for recipe in meals}
+    sessions: list[SessionPlan] = []
+    for session in sorted({slot.session for slot in slots}):
+        session_picks = tuple(p for p in picks if p.slot.session == session)
+        uses = Counter(p.meal.recipe_id for p in session_picks)
+        prep = []
+        for recipe_id in sorted(uses):
+            recipe = by_id[recipe_id]
+            servings = round(recipe.servings)
+            cooked = -(-uses[recipe_id] // servings)
+            prep.append(
+                PlannedBatch(
+                    recipe_id=recipe_id,
+                    title=recipe.title,
+                    batches=cooked,
+                    servings=servings,
+                    portions_used=uses[recipe_id],
+                    cost=recipe.total_cost * cooked,
+                )
+            )
+        sessions.append(
+            SessionPlan(
+                session=session,
+                truncated=session in truncated,
+                picks=session_picks,
+                prep=tuple(prep),
             )
         )
-    return SessionPlan(picks=picks, prep=tuple(prep))
+    kcal_by_day = tuple(
+        (
+            day,
+            known_kcal.get(day, 0.0)
+            + sum(p.meal.macros.calories_kcal for p in picks if p.slot.date == day),
+        )
+        for day in horizon
+    )
+    return HorizonPlan(
+        sessions=tuple(sessions),
+        day_kcal=kcal_by_day,
+        objective=solver.objective_value,
+        bound=solver.best_objective_bound,
+        seconds=solver.wall_time,
+    )
