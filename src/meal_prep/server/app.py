@@ -27,7 +27,7 @@ from meal_prep.library import load_library
 from meal_prep.migrations import migrate
 from meal_prep.server.api_models import CatalogEntry
 from meal_prep.server.cards import cards_router
-from meal_prep.server.diary_routes import diary_router
+from meal_prep.server.diary_routes import diary_router, usuals_router
 from meal_prep.server.editing import Editor
 from meal_prep.server.journal import Journal
 from meal_prep.server.session_routes import session_router
@@ -163,6 +163,7 @@ def create_app(
         }
 
     app.include_router(diary_router(editor))
+    app.include_router(usuals_router(editor))
     app.include_router(session_router(editor))
     app.include_router(cards_router(library))
 

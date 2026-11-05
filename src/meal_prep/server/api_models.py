@@ -24,19 +24,24 @@ class CatalogEntry(BaseModel):
 
 
 class DiaryEntry(BaseModel):
-    """One logged serving, with the numbers frozen when it was logged."""
+    """One logged serving, with the numbers frozen when it was logged.
+    ``recipe`` is ``None`` for a free-form entry (takeout, eating out), whose
+    unknown numbers are ``None``."""
 
     id: str
-    recipe: str
+    recipe: str | None
     title: str
     card_url: str | None  # None when the recipe no longer exists
     session: str | None  # id of the prep session it came from
-    kcal: float
-    protein_g: float
-    carbs_g: float
-    fat_g: float
-    fiber_g: float
-    cost: float
+    kcal: float | None
+    protein_g: float | None
+    carbs_g: float | None
+    fat_g: float | None
+    fiber_g: float | None
+    cost: float | None
+    portion: float | None = None  # free-form: share of the order eaten
+    estimated: bool = False  # free-form: the numbers are a guess
+    assumptions: list[str] = Field(default_factory=list)  # what a guess assumed
 
 
 class DiaryMeal(BaseModel):
@@ -50,6 +55,8 @@ class DiaryDay(BaseModel):
     settled: list[str]  # mealtimes whose prep cycle locked (Admin still edits)
     meals: list[DiaryMeal]
     totals: dict[str, float]
+    unknown: list[str] = Field(default_factory=list)  # totals missing a number
+    estimated: bool = False  # totals include a guess
 
 
 class MealRef(BaseModel):
@@ -161,6 +168,8 @@ class DiaryWeek(BaseModel):
     days: list[DiaryDay]
     sessions: list[Session]
     totals: dict[str, float]
+    unknown: list[str] = Field(default_factory=list)  # totals missing a number
+    estimated: bool = False  # totals include a guess
 
 
 class NewEntry(BaseModel):
@@ -194,3 +203,43 @@ class EntryLink(BaseModel):
 
 class SessionMove(BaseModel):
     date: datetime.date
+
+
+class FreeFormFields(BaseModel):
+    """A free-form entry's title and the numbers of the whole order
+    (``None``: unknown); ``portion`` is the share eaten, and the entry keeps
+    that share of each number. ``estimated``: the numbers are a guess."""
+
+    title: str = Field(..., min_length=1, max_length=200)
+    kcal: float | None = Field(default=None, ge=0)
+    protein_g: float | None = Field(default=None, ge=0)
+    carbs_g: float | None = Field(default=None, ge=0)
+    fat_g: float | None = Field(default=None, ge=0)
+    fiber_g: float | None = Field(default=None, ge=0)
+    cost: float | None = Field(default=None, ge=0)
+    portion: float = Field(default=1.0, gt=0, le=10)
+    estimated: bool = False
+
+
+class NewFreeEntry(FreeFormFields):
+    """A free-form entry to add; ``position`` as for ``NewEntry``."""
+
+    date: datetime.date
+    mealtime: Mealtime
+    position: int | None = Field(default=None, ge=0)
+
+
+class Usual(BaseModel):
+    """A free-form meal eaten before: its latest numbers for the whole order
+    (``None``: unknown), when it was last eaten and how often."""
+
+    title: str
+    kcal: float | None
+    protein_g: float | None
+    carbs_g: float | None
+    fat_g: float | None
+    fiber_g: float | None
+    cost: float | None
+    estimated: bool
+    last: str
+    times: int

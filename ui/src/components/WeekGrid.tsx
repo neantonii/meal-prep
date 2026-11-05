@@ -2,7 +2,7 @@ import { useDndContext, useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { DiaryDay, DiaryEntry, Mealtime, Session } from "../api";
-import { MEALTIMES, dayLabel, sessionColor } from "../api";
+import { MEALTIMES, approx, dayLabel, sessionColor, totalMark } from "../api";
 import { slotId, type DragData, type DropData } from "../dnd";
 
 interface Props {
@@ -16,15 +16,21 @@ interface Props {
   /** Admin edits settled meals too. */
   admin: boolean;
   onRemove: (id: string) => void;
+  /** "+ other" on a slot: add a takeout / eating-out meal there. */
+  onAddOther: (date: string, meal: Mealtime) => void;
+  /** Click on a free-form meal: correct it. */
+  onEditOther: (entry: DiaryEntry, date: string, meal: Mealtime) => void;
 }
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 // Color classes of the four standard session slots (see sessionColor).
 const STANDARD = new Set(["c0", "c1", "c2", "c3"]);
+// How a share of a takeout order reads next to its title.
+const SHARES: Record<number, string> = { 0.25: "¼", 0.5: "½", 0.75: "¾", 1.5: "1½", 2: "2×" };
 
 /** The week table. Meals are sortable within and across slots; the drop
  * logic itself lives in App's onDragEnd. */
-export default function WeekGrid({ days, sessions, colors, monday, admin, onRemove }: Props) {
+export default function WeekGrid({ days, ...rest }: Props) {
   return (
     <table className="grid">
       <thead>
@@ -43,9 +49,21 @@ export default function WeekGrid({ days, sessions, colors, monday, admin, onRemo
               <td className="day-cell">
                 {DAY_NAMES[di] ?? ""} <span className={`mode-tag ${day.mode}`}>{day.mode}</span>
                 <span className="date">{day.date}</span>
-                <span className="day-total">
-                  {Math.round(t["kcal"] ?? 0)} kcal · {Math.round(t["protein_g"] ?? 0)}P ·{" "}
-                  {Math.round(t["carbs_g"] ?? 0)}C · {Math.round(t["fat_g"] ?? 0)}F
+                <span
+                  className="day-total"
+                  title={
+                    day.unknown.length
+                      ? "≥: a meal's number is unknown, so the total leaves it out"
+                      : day.estimated
+                        ? "≈: includes guessed numbers"
+                        : undefined
+                  }
+                >
+                  {totalMark(day.unknown, day.estimated, "kcal")}
+                  {Math.round(t["kcal"] ?? 0)} kcal · {totalMark(day.unknown, day.estimated, "protein_g")}
+                  {Math.round(t["protein_g"] ?? 0)}P · {totalMark(day.unknown, day.estimated, "carbs_g")}
+                  {Math.round(t["carbs_g"] ?? 0)}C · {totalMark(day.unknown, day.estimated, "fat_g")}
+                  {Math.round(t["fat_g"] ?? 0)}F
                 </span>
               </td>
               {MEALTIMES.map((mt) => (
@@ -54,12 +72,8 @@ export default function WeekGrid({ days, sessions, colors, monday, admin, onRemo
                   date={day.date}
                   meal={mt}
                   entries={day.meals.find((m) => m.mealtime === mt)?.entries ?? []}
-                  settled={!admin && day.settled.includes(mt)}
-                  sessions={sessions}
-                  colors={colors}
-                  monday={monday}
-                  admin={admin}
-                  onRemove={onRemove}
+                  settled={!rest.admin && day.settled.includes(mt)}
+                  {...rest}
                 />
               ))}
             </tr>
@@ -100,7 +114,7 @@ function Slot({ date, meal, entries, settled, ...rest }: SlotProps) {
     >
       <SortableContext id={id} items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
         <div className="slot">
-          {entries.length === 0 ? (
+          {entries.length === 0 && settled ? (
             <span className="empty-slot">—</span>
           ) : (
             entries.map((entry, index) => (
@@ -115,6 +129,15 @@ function Slot({ date, meal, entries, settled, ...rest }: SlotProps) {
               />
             ))
           )}
+          {!settled && (
+            <button
+              className="add-other"
+              title="Add a takeout or eating-out meal"
+              onClick={() => rest.onAddOther(date, meal)}
+            >
+              + other
+            </button>
+          )}
         </div>
       </SortableContext>
     </td>
@@ -124,7 +147,18 @@ function Slot({ date, meal, entries, settled, ...rest }: SlotProps) {
 type EntryProps = Omit<SlotProps, "entries"> & { entry: DiaryEntry; index: number };
 
 /** One meal: sortable (drag to reorder or move), with its session edge. */
-function EntryRow({ entry, date, meal, index, sessions, colors, monday, onRemove }: EntryProps) {
+function EntryRow({
+  entry,
+  date,
+  meal,
+  index,
+  settled,
+  sessions,
+  colors,
+  monday,
+  onRemove,
+  onEditOther,
+}: EntryProps) {
   const data = {
     kind: "entry",
     id: entry.id,
@@ -154,18 +188,34 @@ function EntryRow({ entry, date, meal, index, sessions, colors, monday, onRemove
       </span>
     );
   };
-  const edge = entry.session ? `linked ${colors[entry.session] ?? ""}` : "unlinked";
+  const free = entry.recipe === null;
+  const edge = entry.session ? `linked ${colors[entry.session] ?? ""}` : free ? "other" : "unlinked";
+  const portion = entry.portion !== null && entry.portion !== 1 ? ` (${SHARES[entry.portion] ?? `${entry.portion}×`})` : "";
+  const guessed = [entry.estimated ? "A guess" : "", ...entry.assumptions].filter(Boolean).join("; ");
 
   return (
     <div
       ref={setNodeRef}
       className={`entry ${edge}${isDragging ? " dragging" : ""}${incoming ? " incoming" : ""}`}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      title={entry.session ? undefined : "Not from a prep session"}
+      title={free ? "Takeout / eating out" : entry.session ? undefined : "Not from a prep session"}
       {...attributes}
       {...listeners}
     >
-      {entry.card_url ? (
+      {free ? (
+        settled ? (
+          <span>{entry.title + portion}</span>
+        ) : (
+          <button
+            className="other-title"
+            title="Edit this meal"
+            onKeyDown={(e) => e.stopPropagation()}
+            onClick={() => onEditOther(entry, date, meal)}
+          >
+            {entry.title + portion}
+          </button>
+        )
+      ) : entry.card_url ? (
         <a href={entry.card_url} target="_blank" rel="noreferrer">
           {entry.title}
         </a>
@@ -173,7 +223,9 @@ function EntryRow({ entry, date, meal, index, sessions, colors, monday, onRemove
         <span title="This recipe no longer exists">{entry.title}</span>
       )}
       {badge()}
-      <span className="kcal">{Math.round(entry.kcal)}</span>
+      <span className="kcal" title={guessed || (entry.kcal === null ? "Calories unknown" : undefined)}>
+        {approx(entry.kcal, entry.estimated)}
+      </span>
       <button
         className="x"
         title="Remove"

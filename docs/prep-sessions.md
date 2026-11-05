@@ -13,9 +13,8 @@ eaten stay aligned. Per-session ingredient lists build on this later.
 
 - Subtracting counted stock from the ingredient list (inventory, see
   `docs/spikes/inventory.md`); the checklist below only records yes/no.
-- Free-form takeout / eating-out entries (#142) and AI macro estimates (#141).
-  Every diary entry stays a recipe here; "no session" means a recipe entry
-  that is not linked to any session.
+- Free-form takeout / eating-out entries (#142, `docs/free-form-entries.md`)
+  and AI macro estimates (#141). They are never linked to a session.
 - Checks that compare portions made with portions eaten (shortfall, waste,
   fridge life). Only the hard rules below are enforced.
 - The PoC optimizer (`src/meal_prep/planner/`). `Recipe`, `MacrosInfo`,

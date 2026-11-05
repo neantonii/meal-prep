@@ -161,6 +161,11 @@ Diary entries are frozen (#107): each one stores the recipe's title, cost and
 nutrition as they were when it was logged, so past weeks never change when
 recipes, ingredients or prices do.
 
+Takeout and eating out are free-form entries (`docs/free-form-entries.md`):
+a title and the numbers you know or guess, kept in the week file, never
+linked to a session; "+ other" in a meal slot offers the ones you ate
+before.
+
 Prep sessions (`docs/prep-sessions.md`) live next to the weeks, one file per
 session day (`diary/sessions/2026-11-01.yaml`), created on first use; their
 items are frozen the same way. Diary entries link to the session they came

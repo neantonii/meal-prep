@@ -8,31 +8,48 @@ are needed: every entry already carries the numbers frozen when it was logged
 
 from __future__ import annotations
 
-from meal_prep.dtos.log import DiaryEntryDTO, DiaryWeekDTO
+from meal_prep.dtos.log import NUMBERS, DiaryEntryDTO, DiaryWeekDTO
 from meal_prep.enums import Mealtime
 from meal_prep.models.ingredient import MacrosInfo
-from meal_prep.models.log import LogDay, LogEntry, LogWeek
+from meal_prep.models.log import EntryEstimate, LogDay, LogEntry, LogWeek
 
 
 def diary_entry(entry: DiaryEntryDTO) -> LogEntry:
-    """A diary entry: the numbers frozen when it was logged."""
+    """A diary entry: the numbers frozen when it was logged (unknown ones of
+    a free-form entry as 0, named in ``unknown``)."""
+
+    def number(name: str) -> float:
+        value: float | None = getattr(entry, name)
+        return 0.0 if value is None else value
+
+    estimate = entry.estimate
     return LogEntry(
         recipe_id=entry.recipe,
         title=entry.title,
-        cost=entry.cost,
+        cost=number("cost"),
         macros=MacrosInfo(
-            calories_kcal=entry.calories_kcal,
-            protein_g=entry.protein_g,
-            fat_g=entry.fat_g,
-            carbs_g=entry.carbs_g,
-            fiber_g=entry.fiber_g,
-            saturated_fat_g=entry.saturated_fat_g,
-            sugars_g=entry.sugars_g,
-            sodium_mg=entry.sodium_mg,
-            potassium_mg=entry.potassium_mg,
+            calories_kcal=number("calories_kcal"),
+            protein_g=number("protein_g"),
+            fat_g=number("fat_g"),
+            carbs_g=number("carbs_g"),
+            fiber_g=number("fiber_g"),
+            saturated_fat_g=number("saturated_fat_g"),
+            sugars_g=number("sugars_g"),
+            sodium_mg=number("sodium_mg"),
+            potassium_mg=number("potassium_mg"),
         ),
         entry_id=str(entry.id),
         session_id=str(entry.session) if entry.session is not None else None,
+        unknown=frozenset(n for n in NUMBERS if getattr(entry, n) is None),
+        portion=entry.portion,
+        estimate=None
+        if estimate is None
+        else EntryEstimate(
+            source=estimate.source,
+            kcal_low=estimate.kcal_low,
+            kcal_high=estimate.kcal_high,
+            assumptions=tuple(estimate.assumptions),
+        ),
     )
 
 

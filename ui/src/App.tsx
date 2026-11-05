@@ -11,8 +11,21 @@ import {
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, sessionColor, shiftWeek, type CatalogGroup, type DiaryWeek, type Link, type Placement } from "./api";
+import {
+  api,
+  sessionColor,
+  shiftWeek,
+  totalMark,
+  type CatalogGroup,
+  type DiaryEntry,
+  type DiaryWeek,
+  type FreeForm,
+  type Link,
+  type Mealtime,
+  type Placement,
+} from "./api";
 import { collision, droppedBelow, type DragData, type DropData } from "./dnd";
+import OtherForm from "./components/OtherForm";
 import Palette from "./components/Palette";
 import SessionPage from "./components/SessionPage";
 import SessionsBar from "./components/SessionsBar";
@@ -41,6 +54,10 @@ export default function App() {
   // Placeholder sessions added with "+ session", per week; saved once they
   // get a recipe.
   const [extraDates, setExtraDates] = useState<Record<string, string[]>>({});
+  // The takeout form: where it adds, or the entry it edits.
+  const [other, setOther] = useState<{ date: string; meal: Mealtime; entry: DiaryEntry | null } | null>(
+    null,
+  );
   // Entry changes run one at a time, in the order they were made.
   const queue = useRef<Promise<void>>(Promise.resolve());
 
@@ -121,6 +138,31 @@ export default function App() {
   const handleAdd = (recipe: string, where: Placement, session: Link) =>
     change((w) => api.addEntry(w, recipe, where, session, admin));
   const handleRemove = (id: string) => change((w) => api.removeEntry(w, id, admin));
+  const handleSaveOther = (fields: FreeForm) => {
+    if (!other) return;
+    const { date, meal, entry } = other;
+    setOther(null);
+    change((w) =>
+      entry
+        ? api.editOther(w, entry.id, fields, admin)
+        : api.addOther(w, { date, mealtime: meal }, fields, admin),
+    );
+  };
+  /** An entry's numbers back to the whole order, as the form takes them. */
+  const orderOf = (entry: DiaryEntry): FreeForm => {
+    const share = entry.portion ?? 1;
+    const whole = (v: number | null) => (v === null ? null : v / share);
+    return {
+      title: entry.title,
+      kcal: whole(entry.kcal),
+      protein_g: whole(entry.protein_g),
+      carbs_g: whole(entry.carbs_g),
+      fat_g: whole(entry.fat_g),
+      cost: whole(entry.cost),
+      portion: share,
+      estimated: entry.estimated,
+    };
+  };
   const handleMove = (id: string, where: Placement) =>
     change((w) => api.moveEntry(w, id, where, admin));
 
@@ -233,7 +275,9 @@ export default function App() {
             </span>
             <span className="totals">
               {state?.exists
-                ? `${Math.round(totals["kcal"] ?? 0)} kcal · ${Math.round(totals["protein_g"] ?? 0)}g P · $${(totals["cost"] ?? 0).toFixed(2)}`
+                ? `${totalMark(state.unknown, state.estimated, "kcal")}${Math.round(totals["kcal"] ?? 0)} kcal · ` +
+                  `${totalMark(state.unknown, state.estimated, "protein_g")}${Math.round(totals["protein_g"] ?? 0)}g P · ` +
+                  `${totalMark(state.unknown, state.estimated, "cost")}$${(totals["cost"] ?? 0).toFixed(2)}`
                 : state
                   ? "nothing logged yet"
                   : ""}
@@ -271,11 +315,22 @@ export default function App() {
               monday={state.days[0]?.date ?? ""}
               admin={admin}
               onRemove={handleRemove}
+              onAddOther={(date, meal) => setOther({ date, meal, entry: null })}
+              onEditOther={(entry, date, meal) => setOther({ date, meal, entry })}
             />
           )}
         </section>
         <Palette groups={groups} />
       </main>
+      {other && (
+        <OtherForm
+          date={other.date}
+          meal={other.meal}
+          initial={other.entry ? orderOf(other.entry) : null}
+          onSave={handleSaveOther}
+          onClose={() => setOther(null)}
+        />
+      )}
       <DragOverlay dropAnimation={null}>
         {dragging && <div className="drag-preview">{dragging.title}</div>}
       </DragOverlay>

@@ -9,7 +9,10 @@ with no hidden state.
 
 A ``LogEntry`` carries its own title, cost and macros: the numbers frozen when
 the entry was logged (#107), never looked up in current recipes. Its
-``session_id`` names the prep session it came from (``models.session``).
+``session_id`` names the prep session it came from (``models.session``). A
+free-form entry (takeout, eating out) has no recipe; numbers it doesn't know
+count as 0 in every sum and are listed in ``unknown``, so a total can say
+it is incomplete. ``estimated`` marks numbers that are a guess.
 
 Frozen dataclass value objects: no collaborators, no I/O, no mutation.
 Methods are pure functions of the fields alone. All amounts are raw floats
@@ -19,6 +22,7 @@ with no rounding — presentation is the report's concern.
 from __future__ import annotations
 
 import datetime
+from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import reduce
 
@@ -27,16 +31,40 @@ from meal_prep.models.ingredient import MacrosInfo
 
 
 @dataclass(frozen=True, slots=True)
+class EntryEstimate:
+    """How a free-form entry's numbers were guessed."""
+
+    source: str  # "manual" or "ai"
+    kcal_low: float | None = None
+    kcal_high: float | None = None
+    assumptions: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class LogEntry:
-    """One logged serving: its id, which recipe, its frozen per-serving
-    title, cost and macros, and the prep session it came from (if any)."""
+    """One logged serving: its id, which recipe (``None``: free-form), its
+    frozen per-serving title, cost and macros, and the prep session it came
+    from (if any). ``unknown`` names the numbers a free-form entry doesn't
+    know (``cost``, ``calories_kcal``...; 0 in ``cost``/``macros``);
+    ``portion`` is the share of the order eaten."""
 
     entry_id: str
-    recipe_id: str
+    recipe_id: str | None
     title: str
     cost: float
     macros: MacrosInfo
     session_id: str | None = None
+    unknown: frozenset[str] = frozenset()
+    portion: float | None = None
+    estimate: EntryEstimate | None = None
+
+    @property
+    def estimated(self) -> bool:
+        return self.estimate is not None
+
+
+def _unknown(entries: Iterable[LogEntry]) -> frozenset[str]:
+    return frozenset().union(*(entry.unknown for entry in entries))
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,8 +76,18 @@ class LoggedMeal:
 
     @property
     def recipe_ids(self) -> tuple[str, ...]:
-        """Recipe ids in order (duplicates preserved)."""
-        return tuple(entry.recipe_id for entry in self.entries)
+        """Recipe ids in order (duplicates preserved; free-form entries
+        skipped)."""
+        return tuple(e.recipe_id for e in self.entries if e.recipe_id is not None)
+
+    @property
+    def unknown(self) -> frozenset[str]:
+        """Numbers some entry doesn't know: the sums leave them out."""
+        return _unknown(self.entries)
+
+    @property
+    def estimated(self) -> bool:
+        return any(entry.estimated for entry in self.entries)
 
     @property
     def cost(self) -> float:
@@ -89,6 +127,18 @@ class LogDay:
             meal for mealtime in Mealtime if (meal := self.meal(mealtime)) is not None
         )
 
+    def entries(self) -> tuple[LogEntry, ...]:
+        """All entries of the day, mealtime by mealtime."""
+        return tuple(entry for meal in self.meals() for entry in meal.entries)
+
+    @property
+    def unknown(self) -> frozenset[str]:
+        return _unknown(self.entries())
+
+    @property
+    def estimated(self) -> bool:
+        return any(entry.estimated for entry in self.entries())
+
     @property
     def cost(self) -> float:
         """Day cost summed over logged mealtimes."""
@@ -110,6 +160,14 @@ class LogWeek:
 
     week: str
     days: tuple[LogDay, ...]
+
+    @property
+    def unknown(self) -> frozenset[str]:
+        return frozenset().union(*(day.unknown for day in self.days))
+
+    @property
+    def estimated(self) -> bool:
+        return any(day.estimated for day in self.days)
 
     @property
     def total_cost(self) -> float:
