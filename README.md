@@ -171,7 +171,8 @@ switch amends history; see `docs/prep-sessions.md`.
 **Edit journal.** Every diary edit (adding, moving, removing or relinking a
 meal, removing a session item, checklist ticks) appends one JSON line to
 `diary/.journal/<YYYY-MM>.jsonl`: when, the server's "today", Admin or not,
-the request, the outcome (a refusal keeps its message), and what the edit
+the request, the outcome (refused and rejected requests too, malformed ones
+included, with their message), and what the edit
 did: each meal's place and session before and after, and each session item
 whose batches changed (`[before, after]`, `null` = not in the session). It
 records events, not the diary's state. To see how a session got its

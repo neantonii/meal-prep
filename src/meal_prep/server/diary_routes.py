@@ -26,9 +26,8 @@ def diary_router(editor: Editor) -> APIRouter:
 
     @router.post("/{week}/entries")
     def entry_add(week: str, body: NewEntry, admin: bool = False) -> DiaryWeek:
-        recipe = editor.recipe(body.recipe)
-
         def op(diary: prep.Diary) -> prep.Change:
+            recipe = editor.recipe(body.recipe)  # unknown: 422, journaled
             change, entry = prep.add_entry(
                 diary,
                 editor.policy(admin),

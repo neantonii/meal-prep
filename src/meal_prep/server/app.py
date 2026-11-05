@@ -18,6 +18,8 @@ from pathlib import Path
 from typing import Any, cast
 
 from fastapi import FastAPI, Request, Response
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 
 from meal_prep.enums import RecipeCategory
@@ -62,9 +64,27 @@ def create_app(
     # Bring stored diary files up to this release's format (backed up
     # first) before anything is served; a failure stops the server.
     migrate(diary_dir, library)
-    editor = Editor(library, DiaryStore(diary_dir), today, Journal(diary_dir))
+    journal = Journal(diary_dir)
+    editor = Editor(library, DiaryStore(diary_dir), today, journal)
 
     app = FastAPI(title="Meal Prep Diary")
+
+    @app.exception_handler(RequestValidationError)
+    async def journal_invalid_edit(
+        request: Request, exc: RequestValidationError
+    ) -> Response:
+        """An edit request too malformed to reach its route (bad body, bad
+        id) is journaled as well; reads are not."""
+        if request.method != "GET" and request.url.path.startswith("/api/"):
+            journal.record(
+                f"{request.method} {request.url.path}",
+                {"query": dict(request.query_params), "body": exc.body},
+                today=today(),
+                admin=request.query_params.get("admin") == "true",
+                outcome="invalid",
+                message=str(exc.errors()),
+            )
+        return await request_validation_exception_handler(request, exc)
 
     @app.middleware("http")
     async def access_log(request: Request, call_next: Any) -> Response:
