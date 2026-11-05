@@ -22,8 +22,10 @@ from dataclasses import dataclass
 
 # Bisection steps on rho: plenty to land on the budget edge.
 _BISECTION_STEPS = 60
-# lo, hi, the centre and its two neighbours survive any rho, so a budget
-# below 4 cuts cannot always be met.
+# Sparse placement always keeps lo, hi, the centre and its two neighbours
+# (the geometric steps start at distance 1), so it needs a budget of at
+# least 4 cuts. An artifact of the construction; intervals that fit the
+# budget skip it.
 _MIN_CUTS = 4
 
 
@@ -73,10 +75,10 @@ def square_breakpoints(
     """
     if lo > hi:
         raise ValueError(f"Empty interval [{lo}, {hi}].")
-    if max_cuts < _MIN_CUTS:
-        raise ValueError(f"max_cuts must be at least {_MIN_CUTS} (got {max_cuts}).")
     if hi - lo <= max_cuts:
         return tuple(range(lo, hi + 1))
+    if max_cuts < _MIN_CUTS:
+        raise ValueError(f"max_cuts must be at least {_MIN_CUTS} (got {max_cuts}).")
     centre = min(max(round(focus), lo), hi)
     # Any rho above the interval width leaves only lo, hi, centre, centre±1.
     feasible = float(hi - lo + 1)

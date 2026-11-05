@@ -31,6 +31,21 @@ def test_rejects_non_convex(c: float):
         ConvexQuadratic(c=c)
 
 
+@pytest.mark.parametrize(
+    ("lo", "hi", "max_cuts", "expected"),
+    [(1, 1, 1, (1,)), (1, 2, 1, (1, 2)), (1, 4, 3, (1, 2, 3, 4))],
+)
+def test_tiny_interval_fits_any_budget(
+    lo: int, hi: int, max_cuts: int, expected: tuple[int, ...]
+):
+    assert square_breakpoints(lo, hi, focus=1.5, max_cuts=max_cuts) == expected
+
+
+def test_sparse_placement_needs_four_cuts():
+    with pytest.raises(ValueError, match="at least 4"):
+        square_breakpoints(0, 10, focus=5.0, max_cuts=3)
+
+
 def test_small_interval_cuts_every_integer():
     assert square_breakpoints(3, 10, focus=5.0) == tuple(range(3, 11))
 
@@ -93,6 +108,16 @@ def test_minimum_lands_on_the_vertex():
     assert solver.solve(model) == cp_model.OPTIMAL
     assert solver.value(x) == 2137
     assert solver.objective_value == pytest.approx(0.0, abs=1e-6)
+
+
+def test_single_point_interval_pins_the_square():
+    model = cp_model.CpModel()
+    x = model.new_int_var(-100, 100, "x")
+    term = _add_quadratic(model, x, 7, 7, ConvexQuadratic(c=1.0), name="k")
+    model.minimize(term.objective)
+    solver = cp_model.CpSolver()
+    assert solver.solve(model) == cp_model.OPTIMAL
+    assert solver.value(term.t) == 49
 
 
 def test_bounds_are_enforced():
