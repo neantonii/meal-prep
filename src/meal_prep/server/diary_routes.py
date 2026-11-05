@@ -50,7 +50,13 @@ def diary_router(editor: Editor) -> APIRouter:
             )
             return change
 
-        return editor.edit(week, op)
+        return editor.edit(
+            week,
+            op,
+            action="entry.add",
+            params=body.model_dump(mode="json"),
+            admin=admin,
+        )
 
     @router.delete("/{week}/entries/{entry_id}")
     def entry_remove(week: str, entry_id: uuid.UUID, admin: bool = False) -> DiaryWeek:
@@ -59,7 +65,9 @@ def diary_router(editor: Editor) -> APIRouter:
             logger.info("removed entry %s from %s", entry_id, week)
             return change
 
-        return editor.edit(week, op)
+        return editor.edit(
+            week, op, action="entry.remove", params={"entry": entry_id}, admin=admin
+        )
 
     @router.patch("/{week}/entries/{entry_id}")
     def entry_move(
@@ -81,7 +89,8 @@ def diary_router(editor: Editor) -> APIRouter:
             )
             return change
 
-        return editor.edit(week, op)
+        params = {"entry": entry_id, **body.model_dump(mode="json")}
+        return editor.edit(week, op, action="entry.move", params=params, admin=admin)
 
     @router.put("/{week}/entries/{entry_id}/session")
     def entry_link(
@@ -104,6 +113,7 @@ def diary_router(editor: Editor) -> APIRouter:
             )
             return change
 
-        return editor.edit(week, op)
+        params = {"entry": entry_id, **body.model_dump(mode="json")}
+        return editor.edit(week, op, action="entry.link", params=params, admin=admin)
 
     return router
