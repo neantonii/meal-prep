@@ -77,17 +77,20 @@ def test_planning_auto_creates_the_sunday_session_shared_by_two_weeks(
     assert last["sessions"][-1]["items"][0]["eaten"] == 1
 
 
-def test_log_days_take_unlinked_entries_only_unless_admin(client: TestClient):
-    week = _ok(_add(client, "2026-11-02"))
+def test_past_drops_auto_link_and_settled_meals_need_admin(client: TestClient):
+    week = _ok(_add(client, "2026-11-02"))  # creates Sunday's session
     sun = _card(week, "2026-11-01")["id"]
+    # Friday (yesterday, Thursday's cycle) is still open; nothing to link.
     logged = _ok(_add(client, "2026-10-30", week=W44))
     assert _entries(logged)[0]["session"] is None
-    refused = _add(client, "2026-10-30", week=W44, session=sun)
-    assert refused.status_code == 409
-    assert "Log mode" in refused.json()["detail"]
-    # Admin still refuses a session later than the entry.
+    # A session later than the entry is refused, Admin or not.
     later = _add(client, "2026-10-30", week=W44, session=sun, admin=True)
     assert later.status_code == 409
+    # Mon 26 Oct (Sunday's cycle) locked on Wed 28: Admin only.
+    settled = _add(client, "2026-10-26", week=W44)
+    assert settled.status_code == 409
+    assert "settled" in settled.json()["detail"]
+    assert _add(client, "2026-10-26", week=W44, admin=True).status_code == 200
 
 
 def test_session_items_follow_meals_and_guard_links(client: TestClient):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import logging
 from pathlib import Path
 
@@ -12,6 +13,8 @@ from meal_prep.server.app import create_app
 from meal_prep.server.logging import LOGGER_NAME, configure_logging
 
 REPO = Path(__file__).resolve().parents[3]
+# Entries are added in week 2026-W43 (from Mon 19 Oct): none of it settled.
+TODAY = datetime.date(2026, 10, 19)
 
 
 def test_configure_logging_writes_file(tmp_path: Path) -> None:
@@ -32,7 +35,9 @@ def test_configure_logging_idempotent(tmp_path: Path) -> None:
 
 
 def test_requests_are_logged(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
-    app = create_app(REPO / "data", REPO / "recipes", tmp_path / "diary")
+    app = create_app(
+        REPO / "data", REPO / "recipes", tmp_path / "diary", today=lambda: TODAY
+    )
     client = TestClient(app)
     with caplog.at_level(logging.INFO, logger=LOGGER_NAME):
         client.get("/api/health")
@@ -44,7 +49,9 @@ def test_requests_are_logged(tmp_path: Path, caplog: pytest.LogCaptureFixture) -
 def test_entry_changes_are_logged(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
-    app = create_app(REPO / "data", REPO / "recipes", tmp_path / "diary")
+    app = create_app(
+        REPO / "data", REPO / "recipes", tmp_path / "diary", today=lambda: TODAY
+    )
     client = TestClient(app)
     body = {
         "date": "2026-10-19",

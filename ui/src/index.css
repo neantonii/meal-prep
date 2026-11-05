@@ -218,3 +218,6 @@ tr.day.log td:not(.day-cell) { background: rgba(255, 255, 255, 0.015); }
 .drag-preview { background: var(--surface-card); border: 1px solid var(--primary); border-radius: 6px;
   padding: 4px 10px; font-size: 0.82rem; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
   cursor: grabbing; white-space: nowrap; width: max-content; }
+/* A settled slot: its prep cycle ended; edits need Admin. */
+.slot-cell.settled { opacity: 0.55; }
+.slot-cell.settled .x { visibility: hidden; }

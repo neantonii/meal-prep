@@ -198,7 +198,7 @@ export default function App() {
           {version && <span className="version">{version}</span>}
           <button
             className={admin ? "admin-on" : ""}
-            title="Admin mode: amend history, including sessions that already happened"
+            title="Admin mode: amend history: edit settled meals, grow sessions that already happened"
             onClick={() => setAdmin((a) => !a)}
           >
             {admin ? "Admin on" : "Admin"}
@@ -207,7 +207,7 @@ export default function App() {
       </header>
       {admin && (
         <div className="admin-banner">
-          Admin mode: you are amending history. Meals can be linked to sessions that already happened; a session grows to fit the meals linked to it.
+          Admin mode: you are amending history. Settled meals can be changed, and sessions that already happened grow to fit the meals linked to them.
         </div>
       )}
       {error && <div className="err">{error}</div>}
@@ -269,6 +269,7 @@ export default function App() {
               sessions={state.sessions}
               colors={colors}
               monday={state.days[0]?.date ?? ""}
+              admin={admin}
               onRemove={handleRemove}
             />
           )}
