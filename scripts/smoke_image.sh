@@ -44,8 +44,13 @@ echo "health";  curl -fs "$base/api/health" >/dev/null
 echo "version: $(curl -fs "$base/api/version")"
 echo "ui";      curl -fs "$base/" | grep -q '<div id="root">'
 echo "catalog"; curl -fs "$base/api/catalog" >/dev/null
-echo "diary";   curl -fs -X POST -H 'Content-Type: application/json' \
-  -d '{"date":"2026-10-26","mealtime":"breakfast","recipe":"flat-white"}' \
-  "$base/api/diary/2026-W44/entries" >/dev/null
-test -f "$work/diary/2026-W44.yaml"
+# Log today's breakfast in the server's current week: today's meals are never
+# settled, so the check doesn't go stale as the calendar moves on.
+week="$(curl -fs "$base/api/week/current" | jq -r .week)"
+today="$(curl -fs "$base/api/diary/$week" | jq -r .today)"
+echo "diary ($today, $week)"
+curl -fs -X POST -H 'Content-Type: application/json' \
+  -d "{\"date\":\"$today\",\"mealtime\":\"breakfast\",\"recipe\":\"flat-white\"}" \
+  "$base/api/diary/$week/entries" >/dev/null
+test -f "$work/diary/$week.yaml"
 echo "smoke test passed"
