@@ -126,8 +126,14 @@ the user sees each part and can fix or delete it. Never fold a part into
 another item or leave it out silently.
 
 For every item:
-- name: a short, specific name with the brand when known, e.g. "McDonald's
-  McChicken", "McDonald's Small Fries", "Baked Rainbow Trout", "Drink".
+- name: a short, specific name with the brand when known, and with the size
+  or count whenever it changes the numbers, so a different size reads as a
+  different item, e.g. "McDonald's McChicken", "McDonald's Small Fries",
+  "McDonald's 6 Chicken McNuggets", "250 g Baked Rainbow Trout", "Drink".
+  Use what the user said: their count and size, and no ingredients or
+  variants they didn't mention. If something they said looks wrong (a size
+  the menu doesn't have), keep it in the name and estimate it, and ask in
+  the question.
   A brand or restaurant mentioned once applies to the whole order unless the
   user says otherwise.
 - brand: the restaurant or product brand, or "" when there is none.
