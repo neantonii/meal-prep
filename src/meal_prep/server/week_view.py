@@ -35,6 +35,21 @@ from meal_prep.services import prep
 from meal_prep.services.logs import prepare_diary_week
 from meal_prep.services.sessions import prepare_session
 
+# API number name -> model field name, for the numbers the page shows.
+SHOWN = {
+    "kcal": "calories_kcal",
+    "protein_g": "protein_g",
+    "carbs_g": "carbs_g",
+    "fat_g": "fat_g",
+    "fiber_g": "fiber_g",
+    "cost": "cost",
+}
+
+
+def _unknown_out(unknown: frozenset[str]) -> list[str]:
+    """The shown numbers that ``unknown`` (model field names) leaves out."""
+    return [name for name, field in SHOWN.items() if field in unknown]
+
 
 def _totals(cost: float, macros: MacrosInfo) -> dict[str, float]:
     return {
@@ -109,18 +124,27 @@ def _needs_out(
 
 
 def _entry_out(entry: LogEntry, library: Library) -> DiaryEntry:
+    known = _totals(entry.cost, entry.macros)
+    for name in _unknown_out(entry.unknown):
+        known.pop(name)
+    recipe = None if entry.recipe_id is None else library.recipes.get(entry.recipe_id)
     return DiaryEntry(
         id=entry.entry_id,
         recipe=entry.recipe_id,
         title=entry.title,
-        card_url=_card_url(library.recipes.get(entry.recipe_id)),
+        card_url=_card_url(recipe),
         session=entry.session_id,
-        kcal=entry.macros.calories_kcal,
-        protein_g=entry.macros.protein_g,
-        carbs_g=entry.macros.carbs_g,
-        fat_g=entry.macros.fat_g,
-        fiber_g=entry.macros.fiber_g,
-        cost=entry.cost,
+        kcal=known.get("kcal"),
+        protein_g=known.get("protein_g"),
+        carbs_g=known.get("carbs_g"),
+        fat_g=known.get("fat_g"),
+        fiber_g=known.get("fiber_g"),
+        cost=known.get("cost"),
+        estimated=entry.estimated,
+        assumptions=[] if entry.estimate is None else list(entry.estimate.assumptions),
+        estimate_source=None if entry.estimate is None else entry.estimate.source,
+        kcal_low=None if entry.estimate is None else entry.estimate.kcal_low,
+        kcal_high=None if entry.estimate is None else entry.estimate.kcal_high,
     )
 
 
@@ -223,6 +247,8 @@ def week_response(
                     for meal in day.meals()
                 ],
                 totals=_totals(day.cost, day.macros),
+                unknown=_unknown_out(day.unknown),
+                estimated=day.estimated,
             )
         )
     totals = (
@@ -280,6 +306,8 @@ def week_response(
         days=days,
         sessions=[card for _, card in cards],
         totals=totals,
+        unknown=[] if logged is None else _unknown_out(logged.unknown),
+        estimated=logged is not None and logged.estimated,
     )
 
 

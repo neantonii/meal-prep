@@ -245,6 +245,14 @@ def _kcal(value: float) -> str:
     return f"{value:,.0f} kcal"
 
 
+def _approx(estimated: bool, unknown: frozenset[str]) -> str:
+    """``≈ `` before a total that includes guesses, ``≥ `` before one that
+    leaves unknown calories out."""
+    if "calories_kcal" in unknown:
+        return "≥ "
+    return "≈ " if estimated else ""
+
+
 def _session_badge(entry: LogEntry, sessions: Mapping[str, PrepSession] | None) -> str:
     """``prep Sun 1 Nov`` for a linked entry when sessions are known."""
     if sessions is None or entry.session_id is None:
@@ -265,13 +273,21 @@ def _entry_cell(
     sessions: Mapping[str, PrepSession] | None = None,
 ) -> str:
     """One entry title plus its per-serving calories line."""
-    recipe = recipes.get(entry.recipe_id) if recipes is not None else None
+    recipe = (
+        recipes.get(entry.recipe_id)
+        if recipes is not None and entry.recipe_id is not None
+        else None
+    )
     if cards_root is None or recipe is None:
         title = html.escape(entry.title)
     else:
         href = (cards_root / recipe.category.value / f"{recipe.id}.html").as_posix()
         title = f'<a href="{html.escape(href)}">{html.escape(entry.title)}</a>'
-    meta = _kcal(entry.macros.calories_kcal)
+    meta = (
+        "? kcal"
+        if "calories_kcal" in entry.unknown
+        else ("≈ " if entry.estimated else "") + _kcal(entry.macros.calories_kcal)
+    )
     return (
         f'<div class="meal-recipe">{title}</div>\n'
         f'<div class="meal-meta">{html.escape(meta)}'
@@ -321,6 +337,7 @@ def render_log_week(
             f'    <td class="day-cell">{html.escape(day.date.strftime("%a"))}'
             f'<span class="date">{html.escape(day.date.isoformat())}</span>'
             f'<span class="day-total">${day.cost:.2f} · '
+            f"{_approx(day.estimated, day.unknown)}"
             f"{_kcal(macros.calories_kcal)}<br><br>"
             f"{macros.protein_g:,.0f}g protein<br>"
             f"{macros.carbs_g:,.0f}g carbs<br>"
@@ -353,7 +370,7 @@ def render_log_week(
             <div class="stats-grid">
                 <div class="stat-box">
                     <div class="stat-label">Week Calories</div>
-                    <div class="stat-val primary">{_kcal(total.calories_kcal)}</div>
+                    <div class="stat-val primary">{_approx(week.estimated, week.unknown)}{_kcal(total.calories_kcal)}</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-label">Week Protein</div>

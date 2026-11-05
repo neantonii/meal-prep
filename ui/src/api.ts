@@ -16,21 +16,80 @@ export interface CatalogGroup {
   recipes: CatalogEntry[];
 }
 
-/** One logged serving, with the numbers frozen when it was logged. */
+/** One logged serving, with the numbers frozen when it was logged.
+ * `recipe` is null for a free-form entry (takeout, eating out), whose
+ * unknown numbers are null. */
 export interface DiaryEntry {
   id: string;
-  recipe: string;
+  recipe: string | null;
   title: string;
   /** null when the recipe no longer exists */
   card_url: string | null;
   /** id of the prep session it came from */
   session: string | null;
+  kcal: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
+  fiber_g: number | null;
+  cost: number | null;
+  /** free-form: the numbers are a guess */
+  estimated: boolean;
+  /** what a guess assumed */
+  assumptions: string[];
+  /** how a guess was made, and the AI's calories range for the whole order */
+  estimate_source: "manual" | "ai" | null;
+  kcal_low: number | null;
+  kcal_high: number | null;
+}
+
+/** The numbers a free-form entry is typed with (one portion). */
+export const FREE_NUMBERS = ["kcal", "protein_g", "carbs_g", "fat_g", "cost"] as const;
+export type FreeNumber = (typeof FREE_NUMBERS)[number];
+/** The ones it must have: what totals are made of (cost may be unknown). */
+export const REQUIRED_NUMBERS: readonly FreeNumber[] = ["kcal", "protein_g", "carbs_g", "fat_g"];
+
+/** A free-form entry as typed, for one portion: calories and macros, cost
+ * if known, and whether the numbers are a guess. */
+export interface FreeForm {
+  title: string;
   kcal: number;
   protein_g: number;
   carbs_g: number;
   fat_g: number;
+  cost: number | null;
+  estimated: boolean;
+  /** how a guess was made: typed in, or by AI (with its range and assumptions) */
+  source?: "manual" | "ai";
+  kcal_low?: number | null;
+  kcal_high?: number | null;
+  assumptions?: string[];
+}
+
+/** One item of an AI estimate. */
+export interface EstimatedItem {
+  name: string;
+  brand: string;
+  /** what unsaid detail changes the numbers, as a question ("" when none) */
+  question: string;
+  quantity: string;
+  kcal: number;
+  kcal_low: number;
+  kcal_high: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
   fiber_g: number;
-  cost: number;
+  source: "published" | "typical" | "guess";
+  assumptions: string[];
+}
+
+/** A free-form meal eaten before: its latest numbers. */
+export interface Usual extends FreeForm {
+  fiber_g: number | null;
+  /** ISO date it was last eaten */
+  last: string;
+  times: number;
 }
 
 export interface DiaryMeal {
@@ -48,6 +107,10 @@ export interface DiaryDay {
   settled: Mealtime[];
   meals: DiaryMeal[];
   totals: Record<string, number>;
+  /** totals that leave out a meal's unknown number ("kcal", ...) */
+  unknown: string[];
+  /** totals include a guess */
+  estimated: boolean;
 }
 
 /** A diary meal: its day and mealtime. */
@@ -159,6 +222,8 @@ export interface DiaryWeek {
   days: DiaryDay[];
   sessions: Session[];
   totals: Record<string, number>;
+  unknown: string[];
+  estimated: boolean;
 }
 
 /** How a new entry links to a session: an id, none, or auto (palette drop). */
@@ -199,6 +264,17 @@ export const api = {
   session: (id: string) => request<SessionDetail>(`/api/sessions/${id}`),
   addEntry: (week: string, recipe: string, where: Placement, session: Link, admin: boolean) =>
     send<DiaryWeek>("POST", `/api/diary/${week}/entries`, admin, { ...where, recipe, session }),
+  /** Add free-form items (a whole takeout order) to one slot. */
+  addOthers: (week: string, where: Placement, items: FreeForm[], admin: boolean) =>
+    send<DiaryWeek>("POST", `/api/diary/${week}/others`, admin, { ...where, items }),
+  editOther: (week: string, id: string, fields: FreeForm, admin: boolean) =>
+    send<DiaryWeek>("PUT", `/api/diary/${week}/others/${id}`, admin, fields),
+  usuals: () => request<Usual[]>("/api/usuals"),
+  /** Whether AI estimates are on (the host has an API key). */
+  estimateStatus: () => request<{ available: boolean; model: string | null }>("/api/estimate"),
+  /** Split a messy description into items with estimated numbers. */
+  estimate: (text: string) =>
+    send<{ items: EstimatedItem[] }>("POST", "/api/estimate", false, { text }),
   removeEntry: (week: string, id: string, admin: boolean) =>
     send<DiaryWeek>("DELETE", `/api/diary/${week}/entries/${id}`, admin),
   moveEntry: (week: string, id: string, where: Placement, admin: boolean) =>
@@ -263,4 +339,17 @@ export function shiftWeek(week: string, delta: number): string {
   w1monday.setUTCDate(w1monday.getUTCDate() - jan4dow);
   const num = Math.round((monday.getTime() - w1monday.getTime()) / 604800000) + 1;
   return `${isoYear}-W${String(num).padStart(2, "0")}`;
+}
+
+/** "≈ 1,008" for a guess, "? " when unknown: how a number reads. */
+export function approx(value: number | null, estimated: boolean, unit = ""): string {
+  if (value === null) return `?${unit}`;
+  return `${estimated ? "≈ " : ""}${Math.round(value).toLocaleString("en-US")}${unit}`;
+}
+
+/** The prefix of a total: "≥ " when it leaves out an unknown number,
+ * "≈ " when it includes a guess. */
+export function totalMark(unknown: string[], estimated: boolean, name: string): string {
+  if (unknown.includes(name)) return "≥ ";
+  return estimated ? "≈ " : "";
 }

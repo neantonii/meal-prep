@@ -18,6 +18,7 @@ import datetime
 import itertools
 import re
 import uuid
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -28,38 +29,131 @@ from meal_prep.dtos._normalize import normalize_slug
 WEEK_ID = re.compile(r"(\d{4})-W(\d{2})")
 
 
+# The numbers a free-form entry must carry: what totals are made of.
+REQUIRED_FREE = ("calories_kcal", "protein_g", "fat_g", "carbs_g")
+
+# Every number an entry carries, in file order.
+NUMBERS = (
+    "cost",
+    "calories_kcal",
+    "protein_g",
+    "fat_g",
+    "carbs_g",
+    "fiber_g",
+    "saturated_fat_g",
+    "sugars_g",
+    "sodium_mg",
+    "potassium_mg",
+)
+
+
+class EntryEstimateDTO(BaseModel):
+    """How a free-form entry's numbers were guessed (absent: they are known,
+    e.g. from the menu or label)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    source: Literal["manual", "ai"] = Field(
+        ..., description="Typed in by hand, or estimated by AI"
+    )
+    kcal_low: float | None = Field(
+        default=None, ge=0, description="Low end of the calories range, if given"
+    )
+    kcal_high: float | None = Field(
+        default=None, ge=0, description="High end of the calories range, if given"
+    )
+    assumptions: list[str] = Field(
+        default_factory=list,
+        description="What the estimate assumed (size, oil, sauce...)",
+    )
+
+
 class DiaryEntryDTO(BaseModel):
-    """One eaten serving, with the numbers as they were when it was logged."""
+    """One eaten serving, with the numbers as they were when it was logged.
+
+    A recipe entry names its recipe and carries every number. A free-form
+    entry (takeout, eating out) has no recipe: a title, calories and the
+    three macros for one portion (the other numbers, cost included, may be
+    absent = unknown), and whether the numbers are an estimate. It is never
+    linked to a prep session.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     id: uuid.UUID = Field(..., description="Entry id (UUID); never changes")
-    recipe: str = Field(..., description="Id of the recipe that was eaten")
+    recipe: str | None = Field(
+        default=None,
+        description="Id of the recipe that was eaten; absent for a free-form "
+        "entry (takeout, eating out)",
+    )
     title: str = Field(
         ..., min_length=1, description="Recipe title when the entry was logged"
     )
-    cost: float = Field(
-        ..., ge=0, description="Cost of one serving when logged, in CAD"
+    cost: float | None = Field(
+        default=None, ge=0, description="Cost of one serving when logged, in CAD"
     )
-    calories_kcal: float = Field(..., ge=0, description="Per serving, when logged")
-    protein_g: float = Field(..., ge=0, description="Per serving, when logged")
-    fat_g: float = Field(..., ge=0, description="Per serving, when logged")
-    carbs_g: float = Field(..., ge=0, description="Per serving, when logged")
-    fiber_g: float = Field(..., ge=0, description="Per serving, when logged")
-    saturated_fat_g: float = Field(..., ge=0, description="Per serving, when logged")
-    sugars_g: float = Field(..., ge=0, description="Per serving, when logged")
-    sodium_mg: float = Field(..., ge=0, description="Per serving, when logged")
-    potassium_mg: float = Field(..., ge=0, description="Per serving, when logged")
+    calories_kcal: float | None = Field(
+        default=None, ge=0, description="Per serving, when logged"
+    )
+    protein_g: float | None = Field(
+        default=None, ge=0, description="Per serving, when logged"
+    )
+    fat_g: float | None = Field(
+        default=None, ge=0, description="Per serving, when logged"
+    )
+    carbs_g: float | None = Field(
+        default=None, ge=0, description="Per serving, when logged"
+    )
+    fiber_g: float | None = Field(
+        default=None, ge=0, description="Per serving, when logged"
+    )
+    saturated_fat_g: float | None = Field(
+        default=None, ge=0, description="Per serving, when logged"
+    )
+    sugars_g: float | None = Field(
+        default=None, ge=0, description="Per serving, when logged"
+    )
+    sodium_mg: float | None = Field(
+        default=None, ge=0, description="Per serving, when logged"
+    )
+    potassium_mg: float | None = Field(
+        default=None, ge=0, description="Per serving, when logged"
+    )
     session: uuid.UUID | None = Field(
         default=None,
         description="Id of the prep session this serving came from; absent when "
         "not from a session",
     )
+    estimate: EntryEstimateDTO | None = Field(
+        default=None,
+        description="Free-form entries: present when the numbers are a guess",
+    )
 
     @field_validator("recipe")
     @classmethod
-    def validate_recipe_id(cls, v: str) -> str:
-        return normalize_slug(v, field="Logged recipe id")
+    def validate_recipe_id(cls, v: str | None) -> str | None:
+        return None if v is None else normalize_slug(v, field="Logged recipe id")
+
+    @model_validator(mode="after")
+    def validate_kind(self) -> DiaryEntryDTO:
+        """A recipe entry carries every number; a free-form one at least
+        calories and the macros, may record an estimate, and is never linked
+        to a prep session."""
+        required = NUMBERS if self.recipe is not None else REQUIRED_FREE
+        missing = [name for name in required if getattr(self, name) is None]
+        if missing:
+            kind = "Recipe" if self.recipe is not None else "Free-form"
+            raise ValueError(f"{kind} entry is missing {', '.join(missing)}")
+        if self.recipe is not None and self.estimate is not None:
+            raise ValueError("Only free-form entries have an estimate")
+        if self.recipe is None and self.session is not None:
+            raise ValueError("A free-form entry is never linked to a prep session")
+        return self
+
+    @property
+    def free_form(self) -> bool:
+        """Takeout or eating out: no recipe."""
+        return self.recipe is None
 
 
 class DiaryDayDTO(BaseModel):
