@@ -39,9 +39,10 @@ eaten stay aligned. Per-session ingredient lists build on this later.
   weeks**: a Sunday session typically feeds that Sunday's dinner and the start
   of the next week.
 - At most one session per day. A session exists because meals are linked
-  to it: linking a meal creates it (or adds the recipe as an item), and in
-  Plan an item whose last meal goes is removed, a session with no items
-  left deleted. Once its day arrives a session stays as it was (a record).
+  to it: linking a meal creates it (or adds the recipe as an item), and
+  while it is open (its day or later) an item whose last meal goes is
+  removed, a session with no items left deleted. Once its day has passed a
+  session stays as it was (a record).
 - Every session has a permanent id (UUID). Moving it to another day keeps the
   id, so entries linked to it are untouched.
 
@@ -49,10 +50,12 @@ eaten stay aligned. Per-session ingredient lists build on this later.
 
 - A recipe and `batches` (how many times it is made as written; a whole
   number).
-- **Batches are derived, not typed.** In Plan they follow the linked meals:
-  the fewest whole batches that cover them; every edit recalculates them,
-  up or down. Once the session's day arrives they stay as they were, a record
-  of what was made. Nobody types them, Admin included: a session grows by
+- **Batches are derived, not typed.** While the session is open (its day or
+  later) they follow the linked meals: the fewest whole batches that cover
+  them; every edit recalculates them, up or down, on the session's own day
+  too (it grows that day, so it must shrink back, or a mis-drop could never
+  be undone). Once the day has passed they stay as they were, a record of
+  what was made. Nobody types them, Admin included: a session grows by
   linking meals to it.
 - Portions = batches × servings. Both are whole numbers, so portions are
   exact; a recipe with fractional servings can't be added to a session.
@@ -99,7 +102,7 @@ edits are allowed (#165):
   settled meal (add, remove, move, link) needs Admin; the week page shows
   settled slots muted.
 - **Open and closed sessions.** A session dated today or later is open: it
-  grows to fit the meals linked to it, and shrinks back while planned. An
+  grows to fit the meals linked to it, and shrinks back as they go. An
   earlier session is closed: it is the record of what was cooked, so it only
   gives free portions and never grows.
 
@@ -116,7 +119,7 @@ closed sessions by hand. Nothing else differs, auto-link included.
 | Add a recipe (palette drop) | auto-linked (below) |
 | Add on a session card | linked to that session (manual link) |
 | Remove | ✅; an open session shrinks to fit, a closed one keeps the portion (spare) |
-| Move / reorder | ✅; a link the move breaks is re-linked by auto-link |
+| Move / reorder | ✅; re-linked by auto-link when the move breaks the link, or carries a meal into a later cycle while its own cycle's session is still open (below) |
 | Link / unlink / change session | ✅ to any session on or before the meal's day (manual link) |
 
 **A link only says where a portion went.** A manual link to an **open**
@@ -124,6 +127,12 @@ session adds the recipe or raises its batches as needed (see "Session item");
 a **closed** session only gives a free portion, so a link to a full one, or
 to one without the recipe, is refused ("full", "has no …"). Unlinking is
 always allowed: the portion becomes spare.
+
+**A moved meal follows its cycle** while nothing has been made for it: if
+it was linked to its own cycle's session, that session is still open, and
+the new slot belongs to a later cycle, auto-link re-links it there (the old
+session shrinks). A manual link to another cycle's session, and a portion
+of a closed session (already made), keep their link while it holds.
 
 **Auto-link** runs on every drop, on any day, the same in Admin: it looks at
 the session on the meal's cycle day, and links

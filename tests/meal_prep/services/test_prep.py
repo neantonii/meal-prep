@@ -255,7 +255,9 @@ def test_todays_meals_can_move_to_and_from_todays_session():
     # Today's dinner (Log) joins today's session, which grows to fit: the
     # session picker and a drop on the session chip alike.
     today = _session(TODAY, (RICE, 1))
-    diary, dinner = _add(_with(today), TODAY, link=None, meal=Mealtime.DINNER)
+    # A rice meal keeps today's session: an open session follows its meals.
+    diary, _ = _add(_with(today), TODAY, RICE, link=today.id, meal=Mealtime.DINNER)
+    diary, dinner = _add(diary, TODAY, link=None, meal=Mealtime.DINNER)
     change = prep.set_entry_session(
         diary, PLAN, RECIPES, LAST_WEEK, dinner.id, today.id
     )
@@ -330,11 +332,24 @@ def test_plan_batches_follow_the_meals_both_ways():
     assert sun.id not in diary.sessions
 
 
-def test_log_batches_stay_as_made_when_meals_go():
-    past = _session(TODAY, (EGG, 3))
+def test_closed_batches_stay_as_made_when_meals_go():
+    past = _session(YESTERDAY, (EGG, 3))
     diary, first = _add(_with(past), TODAY, EGG, link=past.id, policy=ADMIN)
     diary = _apply(diary, prep.remove_entry(diary, PLAN, LAST_WEEK, first.id))
     assert diary.sessions[past.id].items[0].batches == 3
+
+
+def test_todays_session_shrinks_back_as_it_grew():
+    # On its own day a session still grows to fit (the prep happens during
+    # the day), so it shrinks back too: a mis-drop can be taken back.
+    today = _session(TODAY, (EGG, 1))
+    diary, first = _add(_with(today), TODAY, EGG, link=today.id, meal=Mealtime.DINNER)
+    diary, extra = _add(diary, TODAY, EGG, link=today.id, meal=Mealtime.SNACKS)
+    assert diary.sessions[today.id].items[0].batches == 2
+    diary = _apply(diary, prep.remove_entry(diary, PLAN, LAST_WEEK, extra.id))
+    assert diary.sessions[today.id].items[0].batches == 1
+    diary = _apply(diary, prep.remove_entry(diary, PLAN, LAST_WEEK, first.id))
+    assert today.id not in diary.sessions
 
 
 def test_moving_before_the_session_relinks_in_plan():
@@ -354,7 +369,7 @@ def test_items_with_links_stay_and_the_last_item_deletes_the_session():
     # A Log session keeps meal-less items (a record of what was made).
     past = _session(TODAY, (CHICKEN, 1), (RICE, 1))
     diary, _ = _add(_with(past), TODAY, link=past.id, policy=ADMIN)
-    with pytest.raises(RuleError, match="linked"):
+    with pytest.raises(RuleError, match="linked from Sat 31 Oct lunch"):
         prep.remove_item(diary, PLAN, past.id, "chicken")
     with pytest.raises(RuleError, match="linked"):
         prep.delete_session(diary, PLAN, past.id)
@@ -522,6 +537,33 @@ def test_a_full_closed_session_refuses_a_manual_link():
     diary, other = _add(diary, YESTERDAY, EGG, link=None)
     with pytest.raises(RuleError, match="full"):
         prep.set_entry_session(diary, PLAN, RECIPES, LAST_WEEK, other.id, thu.id)
+
+
+def test_a_meal_moved_into_a_later_cycle_follows_it_while_open():
+    # Wednesday's lunch, linked to its own (open) Tuesday session, moves to
+    # Thursday's dinner: Thursday's cycle takes it, and Tuesday's session,
+    # left without meals, goes.
+    diary, entry = _add(EMPTY, WED)
+    tue = diary.sessions[entry.session]  # type: ignore[index]
+    assert tue.date == TUE
+    change = prep.move_entry(diary, PLAN, RECIPES, WEEK, entry.id, THU, Mealtime.DINNER)
+    diary = _apply(diary, change)
+    assert diary.sessions[_entry(diary, entry.id).session].date == THU  # type: ignore[index]
+    assert tue.id not in diary.sessions
+    # A manual link to another cycle's session stays put...
+    sun = _session(SUN, (CHICKEN, 1))
+    diary, manual = _add(_with(sun), WED, link=sun.id)
+    change = prep.move_entry(
+        diary, PLAN, RECIPES, WEEK, manual.id, THU, Mealtime.DINNER
+    )
+    assert _entry(_apply(diary, change), manual.id).session == sun.id
+    # ...and so does a portion of a closed session (food already made).
+    last_thu = _session(LAST_THU, (CHICKEN, 1))
+    diary, made = _add(_with(last_thu), YESTERDAY, link=last_thu.id)
+    change = prep.move_entry(
+        diary, PLAN, RECIPES, LAST_WEEK, made.id, TODAY, Mealtime.DINNER
+    )
+    assert _entry(_apply(diary, change), made.id, LAST_WEEK).session == last_thu.id
 
 
 def test_moving_keeps_a_link_that_holds_and_relinks_one_that_breaks():
