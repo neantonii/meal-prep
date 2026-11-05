@@ -16,7 +16,7 @@ import datetime
 from dataclasses import dataclass
 from functools import reduce
 
-from meal_prep.enums import Mealtime
+from meal_prep.enums import Mealtime, RecipeCategory
 from meal_prep.models.ingredient import MacrosInfo
 
 DAY_NAMES = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
@@ -116,6 +116,34 @@ class SlotPick:
 
     slot: MealSlot
     meal: PlannedMeal
+
+
+@dataclass(frozen=True, slots=True)
+class Role:
+    """One part of a meal: exactly one recipe from these categories or ids."""
+
+    name: str
+    categories: frozenset[RecipeCategory] = frozenset()
+    recipe_ids: frozenset[str] = frozenset()
+
+    def accepts(self, recipe_id: str, category: RecipeCategory) -> bool:
+        """Whether a recipe can fill this role."""
+        return recipe_id in self.recipe_ids or category in self.categories
+
+
+@dataclass(frozen=True, slots=True)
+class MealTemplate:
+    """What a slot must hold.
+
+    ``roles``: each filled by exactly one recipe (roles must not share a
+    recipe). ``presets``: alternatively, exactly one of these fixed recipe
+    sets, eaten whole. ``extras``: any number of further recipes allowed
+    (the escape hatch). Nothing else may go in the slot.
+    """
+
+    roles: tuple[Role, ...] = ()
+    presets: tuple[frozenset[str], ...] = ()
+    extras: Role | None = None
 
 
 @dataclass(frozen=True, slots=True)

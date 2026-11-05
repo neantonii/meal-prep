@@ -23,7 +23,7 @@ from itertools import pairwise
 from ortools.sat.python import cp_model
 from ortools.sat.python.cp_model import LinearExpr
 
-from meal_prep.enums import RecipeCategory
+from meal_prep.enums import Mealtime, RecipeCategory
 from meal_prep.models.recipe import Recipe
 from meal_prep.planner.plan import (
     DAY_NAMES,
@@ -31,8 +31,10 @@ from meal_prep.planner.plan import (
     HorizonPlan,
     KcalGoal,
     MealSlot,
+    MealTemplate,
     PlannedBatch,
     PlannedMeal,
+    Role,
     SessionPlan,
     SlotPick,
     WeekPlan,
@@ -282,9 +284,10 @@ def plan_horizon(
     recipes: Sequence[Recipe],
     slots: Sequence[MealSlot],
     *,
-    goal: KcalGoal,
+    goal: KcalGoal | None,
     known_kcal: Mapping[datetime.date, float],
     truncated: Collection[datetime.date] = (),
+    templates: Mapping[Mealtime, MealTemplate] | None = None,
     time_limit_s: float = 30.0,
     gap_kcal2: float = 1000.0,
     max_cuts: int = 40,
@@ -303,9 +306,13 @@ def plan_horizon(
     model = cp_model.CpModel()
     planned: list[tuple[MealSlot, _PlannedMeal]] = []
     for slot in slots:
-        planned_meal = _new_planned_meal(
-            model, slot.date.isoformat(), slot.mealtime.value, meals
-        )
+        template = None if templates is None else templates.get(slot.mealtime)
+        if template is None:
+            planned_meal = _new_planned_meal(
+                model, slot.date.isoformat(), slot.mealtime.value, meals
+            )
+        else:
+            planned_meal = _templated_meal(model, slot, meals, template)
         planned.append((slot, planned_meal))
 
     horizon = sorted({slot.date for slot in slots})
@@ -322,44 +329,8 @@ def plan_horizon(
         day_kcal[day] = LinearExpr.sum(terms) + _units(known_kcal.get(day, 0.0))
 
     objective: list[LinearExpr] = []
-    daily = ConvexQuadratic.deviation(_units(goal.target), 1.0)
-    for day in horizon:
-        term = _add_quadratic(
-            model,
-            day_kcal[day],
-            _units(goal.lo),
-            _units(goal.hi),
-            daily,
-            name=f"day_{day}",
-            max_cuts=max_cuts,
-        )
-        objective.append(term.objective)
-    if goal.payback > 0:
-        rolling = ConvexQuadratic.deviation(
-            goal.window * _units(goal.target), goal.window_weight
-        )
-        for day in horizon:
-            window = [
-                day - datetime.timedelta(days=back) for back in range(goal.window)
-            ]
-            if not all(d in day_kcal or d in known_kcal for d in window):
-                continue  # a day with nothing known: no window
-            total = LinearExpr.sum(
-                [
-                    day_kcal[d] if d in day_kcal else _units(known_kcal[d])
-                    for d in window
-                ]
-            )
-            term = _add_quadratic(
-                model,
-                total,
-                goal.window * _units(goal.lo),
-                goal.window * _units(goal.hi),
-                rolling,
-                name=f"window_{day}",
-                max_cuts=max_cuts,
-            )
-            objective.append(term.objective)
+    if goal is not None:
+        _add_kcal_terms(model, objective, goal, horizon, day_kcal, known_kcal, max_cuts)
     model.minimize(LinearExpr.sum(objective))
 
     solver = cp_model.CpSolver()
@@ -450,3 +421,106 @@ def _units(kcal: float) -> int:
 def _kcal_units(recipe: Recipe) -> int:
     """Per-serving kcal in model units."""
     return _units(recipe.per_serving_macros.calories_kcal)
+
+
+def _add_kcal_terms(
+    model: cp_model.CpModel,
+    objective: list[LinearExpr],
+    goal: KcalGoal,
+    horizon: list[datetime.date],
+    day_kcal: Mapping[datetime.date, LinearExpr],
+    known_kcal: Mapping[datetime.date, float],
+    max_cuts: int,
+) -> None:
+    """Daily and rolling-window kcal terms (in model units) into ``objective``."""
+    daily = ConvexQuadratic.deviation(_units(goal.target), 1.0)
+    for day in horizon:
+        term = _add_quadratic(
+            model,
+            day_kcal[day],
+            _units(goal.lo),
+            _units(goal.hi),
+            daily,
+            name=f"day_{day}",
+            max_cuts=max_cuts,
+        )
+        objective.append(term.objective)
+    if goal.payback > 0:
+        rolling = ConvexQuadratic.deviation(
+            goal.window * _units(goal.target), goal.window_weight
+        )
+        for day in horizon:
+            window = [
+                day - datetime.timedelta(days=back) for back in range(goal.window)
+            ]
+            if not all(d in day_kcal or d in known_kcal for d in window):
+                continue  # a day with nothing known: no window
+            total = LinearExpr.sum(
+                [
+                    day_kcal[d] if d in day_kcal else _units(known_kcal[d])
+                    for d in window
+                ]
+            )
+            term = _add_quadratic(
+                model,
+                total,
+                goal.window * _units(goal.lo),
+                goal.window * _units(goal.hi),
+                rolling,
+                name=f"window_{day}",
+                max_cuts=max_cuts,
+            )
+            objective.append(term.objective)
+
+
+def _templated_meal(
+    model: cp_model.CpModel, slot: MealSlot, meals: list[Recipe], template: MealTemplate
+) -> _PlannedMeal:
+    """A slot restricted to ``template``: its candidates and their rules."""
+    tag = f"{slot.date.isoformat()}_{slot.mealtime.value}"
+    preset_ids = set().union(*template.presets) if template.presets else set()
+    role_of: dict[str, Role] = {}
+    for recipe in meals:
+        roles = [r for r in template.roles if r.accepts(recipe.id, recipe.category)]
+        if len(roles) > 1:
+            raise ValueError(f"{recipe.id} fits several roles: {roles}")
+        if roles:
+            role_of[recipe.id] = roles[0]
+    candidates = [
+        recipe
+        for recipe in meals
+        if recipe.id in role_of
+        or recipe.id in preset_ids
+        or (
+            template.extras is not None
+            and template.extras.accepts(recipe.id, recipe.category)
+        )
+    ]
+    is_selected = [model.new_bool_var(f"x_{tag}_{r.id}") for r in candidates]
+    var_of = {r.id: v for r, v in zip(candidates, is_selected, strict=True)}
+    for role in template.roles:
+        members = [var_of[rid] for rid, r in role_of.items() if r is role]
+        if not members:
+            raise ValueError(f"No recipe can fill role '{role.name}' at {tag}.")
+        model.add_exactly_one(members)
+    if template.presets:
+        missing = preset_ids - var_of.keys()
+        if missing:
+            raise ValueError(f"Unknown preset recipes: {sorted(missing)}")
+        chosen = [
+            model.new_bool_var(f"preset_{tag}_{k}")
+            for k in range(len(template.presets))
+        ]
+        model.add_exactly_one(chosen)
+        for recipe_id in preset_ids:
+            model.add(
+                var_of[recipe_id]
+                == LinearExpr.sum(
+                    [
+                        c
+                        for c, p in zip(chosen, template.presets, strict=True)
+                        if recipe_id in p
+                    ]
+                )
+            )
+    return _PlannedMeal(recipes=candidates, is_selected=is_selected)

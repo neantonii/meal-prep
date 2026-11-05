@@ -20,16 +20,57 @@ import datetime
 from collections.abc import Mapping
 from pathlib import Path
 
-from meal_prep.enums import Mealtime
+from meal_prep.enums import Mealtime, RecipeCategory
 from meal_prep.library import load_library
 from meal_prep.models.recipe import Recipe
-from meal_prep.planner.plan import KcalGoal, MealSlot, SessionPlan
+from meal_prep.planner.plan import KcalGoal, MealSlot, MealTemplate, Role, SessionPlan
 from meal_prep.planner.solver import plan_horizon
 from meal_prep.server.store import DiaryStore
 from meal_prep.server.weeks import current_week
 from meal_prep.services import prep
 
 PLANNED_MEALTIMES = tuple(Mealtime)
+
+_PROTEIN = Role("protein", categories=frozenset({RecipeCategory.MODULAR_PROTEIN}))
+_CARB = Role("carb", categories=frozenset({RecipeCategory.MODULAR_CARB}))
+
+# The standard meal pattern (strictest form: every slot follows it).
+TEMPLATES: dict[Mealtime, MealTemplate] = {
+    Mealtime.BREAKFAST: MealTemplate(
+        presets=(
+            frozenset(
+                {
+                    "blueberry-peanut-butter-overnight-oats",
+                    "boiled-eggs-with-mayo",
+                    "flat-white",
+                }
+            ),
+            frozenset({"fried-eggs-ham-toast", "homemade-latte"}),
+        )
+    ),
+    Mealtime.LUNCH: MealTemplate(
+        roles=(
+            _PROTEIN,
+            _CARB,
+            Role("veg", categories=frozenset({RecipeCategory.MODULAR_COOKED_VEG})),
+        )
+    ),
+    Mealtime.DINNER: MealTemplate(
+        roles=(
+            _PROTEIN,
+            _CARB,
+            Role("salad", categories=frozenset({RecipeCategory.FRESH_SALAD_VEG})),
+        )
+    ),
+    Mealtime.SNACKS: MealTemplate(
+        roles=(
+            Role("apple", recipe_ids=frozenset({"honeycrisp-apple"})),
+            Role("cottage cheese", recipe_ids=frozenset({"cottage-cheese-snack-bowl"})),
+        ),
+        # Escape hatch: other snacks may join.
+        extras=Role("snack", categories=frozenset({RecipeCategory.SNACKS})),
+    ),
+}
 
 
 def week_of(date: datetime.date) -> str:
@@ -138,6 +179,12 @@ def main() -> None:
     parser.add_argument("--days", type=int, default=7, help="Horizon length")
     parser.add_argument("--payback", type=float, default=0.5)
     parser.add_argument(
+        "--kcal", action="store_true", help="Add the kcal terms (default: none)"
+    )
+    parser.add_argument(
+        "--free", action="store_true", help="No meal templates (any recipe anywhere)"
+    )
+    parser.add_argument(
         "--today",
         type=datetime.date.fromisoformat,
         default=datetime.date.today(),
@@ -164,9 +211,10 @@ def main() -> None:
     plan = plan_horizon(
         list(library.recipes.values()),
         slots,
-        goal=goal,
+        goal=goal if args.kcal else None,
         known_kcal=known,
         truncated=truncated,
+        templates=None if args.free else TEMPLATES,
     )
     write_plan(store, policy, library.recipes, plan.sessions[0])
 

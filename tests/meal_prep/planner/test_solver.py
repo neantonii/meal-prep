@@ -13,7 +13,7 @@ import pytest
 from meal_prep.enums import Aisle, Mealtime, RecipeCategory, StorageType
 from meal_prep.models.ingredient import MacrosInfo, Package
 from meal_prep.models.recipe import Recipe, RecipeIngredient
-from meal_prep.planner.plan import KcalGoal, MealSlot, WeekPlan
+from meal_prep.planner.plan import KcalGoal, MealSlot, MealTemplate, Role, WeekPlan
 from meal_prep.planner.quadratic import ConvexQuadratic
 from meal_prep.planner.solver import plan_horizon, plan_week
 
@@ -296,3 +296,62 @@ def test_horizon_splits_sessions_and_flags_truncated():
         (friday, True),
     ]
     assert all(p.slot.session == _THU for p in plan.sessions[0].picks)
+
+
+_PROT = Role("protein", categories=frozenset({RecipeCategory.MODULAR_PROTEIN}))
+_CARB = Role("carb", categories=frozenset({RecipeCategory.MODULAR_CARB}))
+_TEMPLATES = {
+    Mealtime.BREAKFAST: MealTemplate(
+        presets=(frozenset({"oats", "coffee"}), frozenset({"eggs"}))
+    ),
+    Mealtime.LUNCH: MealTemplate(roles=(_PROT, _CARB)),
+    Mealtime.DINNER: MealTemplate(roles=(_PROT, _CARB)),
+    Mealtime.SNACKS: MealTemplate(
+        roles=(Role("apple", recipe_ids=frozenset({"apple"})),),
+        extras=Role("snack", categories=frozenset({RecipeCategory.SNACKS})),
+    ),
+}
+_TEMPLATE_RECIPES = [
+    _recipe(rid, cost=0.0, category=cat)
+    for rid, cat in [
+        ("oats", RecipeCategory.BREAKFAST),
+        ("coffee", RecipeCategory.BREAKFAST),
+        ("eggs", RecipeCategory.BREAKFAST),
+        ("chicken", RecipeCategory.MODULAR_PROTEIN),
+        ("tofu", RecipeCategory.MODULAR_PROTEIN),
+        ("rice", RecipeCategory.MODULAR_CARB),
+        ("apple", RecipeCategory.SNACKS),
+        ("shake", RecipeCategory.SNACKS),
+        ("salad", RecipeCategory.FRESH_SALAD_VEG),
+    ]
+]
+
+
+@pytest.mark.parametrize("payback", [None, 0.5])
+def test_templates_shape_every_slot(payback: float | None):
+    plan = plan_horizon(
+        _TEMPLATE_RECIPES,
+        _day_slots(_THU),
+        goal=None if payback is None else KcalGoal(payback=payback),
+        known_kcal={},
+        templates=_TEMPLATES,
+    )
+    by_meal: dict[Mealtime, set[str]] = {m: set() for m in Mealtime}
+    for pick in plan.sessions[0].picks:
+        by_meal[pick.slot.mealtime].add(pick.meal.recipe_id)
+    assert by_meal[Mealtime.BREAKFAST] in ({"oats", "coffee"}, {"eggs"})
+    for mealtime in (Mealtime.LUNCH, Mealtime.DINNER):
+        assert len(by_meal[mealtime]) == 2
+        assert "rice" in by_meal[mealtime]
+        assert by_meal[mealtime] & {"chicken", "tofu"}
+    assert "apple" in by_meal[Mealtime.SNACKS]
+    assert by_meal[Mealtime.SNACKS] <= {"apple", "shake"}
+    assert "salad" not in set().union(*by_meal.values())  # fits no template
+
+
+def test_template_role_without_candidates_is_rejected():
+    no_carb = [r for r in _TEMPLATE_RECIPES if r.id != "rice"]
+    with pytest.raises(ValueError, match="role 'carb'"):
+        plan_horizon(
+            no_carb, _day_slots(_THU), goal=None, known_kcal={}, templates=_TEMPLATES
+        )
