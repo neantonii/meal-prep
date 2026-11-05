@@ -286,7 +286,8 @@ def plan_horizon(
     known_kcal: Mapping[datetime.date, float],
     truncated: Collection[datetime.date] = (),
     time_limit_s: float = 30.0,
-    gap_limit: float = 0.01,
+    gap_limit: float = 0.03,
+    max_cuts: int = 40,
 ) -> HorizonPlan:
     """Fill ``slots`` (every meal of whole days, any number of sessions).
 
@@ -324,7 +325,13 @@ def plan_horizon(
     daily = ConvexQuadratic.deviation(goal.target, 1.0)
     for day in horizon:
         term = _add_quadratic(
-            model, day_kcal[day], goal.lo, goal.hi, daily, name=f"day_{day}"
+            model,
+            day_kcal[day],
+            goal.lo,
+            goal.hi,
+            daily,
+            name=f"day_{day}",
+            max_cuts=max_cuts,
         )
         objective.append(term.objective)
     if goal.payback > 0:
@@ -347,6 +354,7 @@ def plan_horizon(
                 goal.window * goal.hi,
                 rolling,
                 name=f"window_{day}",
+                max_cuts=max_cuts,
             )
             objective.append(term.objective)
     model.minimize(LinearExpr.sum(objective))
