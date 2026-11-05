@@ -81,7 +81,8 @@ The prompt has one rule instead of special cases: **list every part of the
 meal, including parts the description only implies** (a "meal" implies a
 drink), so you see each one and fix or delete it; and **ask** when something
 you didn't say changes the numbers a lot (which drink, which brand, size,
-raw or cooked weight, oil), while still giving a best estimate. Each item
+oil), while still giving a best estimate. Everything is taken as eaten as
+served, so a weight is always the served (cooked) weight. Each item
 comes back with:
 
 - a short `name` with the brand when known, plus `brand` (a brand mentioned

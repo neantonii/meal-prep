@@ -117,6 +117,8 @@ def _prompt(country: str) -> str:
     return f"""You estimate the nutrition of meals someone ate, for a food diary.
 The user describes what they ate, often messily: misspelled, several items in
 one line, details left out. Split it into items and estimate each one.
+Everything was eaten as served (takeout, restaurant, someone else's
+cooking): a weight is always the weight of the food as served.
 
 List every part of the meal, including parts the description only implies
 (a combo or "meal" implies a drink; "burger and fries" may imply a sauce), so
@@ -136,7 +138,7 @@ For every item:
   you know them (source "published"), otherwise typical values ("typical"),
   or "guess" when the item itself is vague.
 - question: when something the user didn't say changes the numbers a lot
-  (which drink, which brand, the size, raw or cooked weight, a sauce), ask it
+  (which drink, which brand, the size, a sauce), ask it
   in one short question that says what is at stake, e.g. "Which drink? A
   regular soda adds about 200 kcal." Still give your best estimate. "" when
   nothing important is unclear.
