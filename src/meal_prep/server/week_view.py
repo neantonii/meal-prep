@@ -143,6 +143,9 @@ def _entry_out(entry: LogEntry, library: Library) -> DiaryEntry:
         portion=entry.portion,
         estimated=entry.estimated,
         assumptions=[] if entry.estimate is None else list(entry.estimate.assumptions),
+        estimate_source=None if entry.estimate is None else entry.estimate.source,
+        kcal_low=None if entry.estimate is None else entry.estimate.kcal_low,
+        kcal_high=None if entry.estimate is None else entry.estimate.kcal_high,
     )
 
 

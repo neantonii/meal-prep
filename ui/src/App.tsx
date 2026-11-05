@@ -138,14 +138,14 @@ export default function App() {
   const handleAdd = (recipe: string, where: Placement, session: Link) =>
     change((w) => api.addEntry(w, recipe, where, session, admin));
   const handleRemove = (id: string) => change((w) => api.removeEntry(w, id, admin));
-  const handleSaveOther = (fields: FreeForm) => {
-    if (!other) return;
+  const handleSaveOther = (items: FreeForm[]) => {
+    if (!other || items.length === 0) return;
     const { date, meal, entry } = other;
     setOther(null);
     change((w) =>
       entry
-        ? api.editOther(w, entry.id, fields, admin)
-        : api.addOther(w, { date, mealtime: meal }, fields, admin),
+        ? api.editOther(w, entry.id, items[0], admin)
+        : api.addOthers(w, { date, mealtime: meal }, items, admin),
     );
   };
   /** An entry's numbers back to the whole order, as the form takes them. */
@@ -161,6 +161,10 @@ export default function App() {
       cost: whole(entry.cost),
       portion: share,
       estimated: entry.estimated,
+      assumptions: entry.assumptions,
+      source: entry.estimate_source ?? "manual",
+      kcal_low: entry.kcal_low,
+      kcal_high: entry.kcal_high,
     };
   };
   const handleMove = (id: string, where: Placement) =>

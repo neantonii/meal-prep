@@ -42,6 +42,11 @@ class DiaryEntry(BaseModel):
     portion: float | None = None  # free-form: share of the order eaten
     estimated: bool = False  # free-form: the numbers are a guess
     assumptions: list[str] = Field(default_factory=list)  # what a guess assumed
+    # How a guess was made ("manual" or "ai") and the AI's calories range
+    # for the whole order; kept when the entry is edited.
+    estimate_source: str | None = None
+    kcal_low: float | None = None
+    kcal_high: float | None = None
 
 
 class DiaryMeal(BaseModel):
@@ -219,14 +224,50 @@ class FreeFormFields(BaseModel):
     cost: float | None = Field(default=None, ge=0)
     portion: float = Field(default=1.0, gt=0, le=10)
     estimated: bool = False
+    # How a guess was made (kept only when ``estimated``): typed in or by AI,
+    # with the AI's calories range and assumptions.
+    source: Literal["manual", "ai"] = "manual"
+    kcal_low: float | None = Field(default=None, ge=0)
+    kcal_high: float | None = Field(default=None, ge=0)
+    assumptions: list[str] = Field(default_factory=list, max_length=12)
 
 
-class NewFreeEntry(FreeFormFields):
-    """A free-form entry to add; ``position`` as for ``NewEntry``."""
+class NewFreeEntries(BaseModel):
+    """Free-form entries to add to one slot, in order, from ``position``
+    (``None`` appends): a whole takeout order at once."""
 
     date: datetime.date
     mealtime: Mealtime
     position: int | None = Field(default=None, ge=0)
+    items: list[FreeFormFields] = Field(..., min_length=1, max_length=20)
+
+
+class EstimateRequest(BaseModel):
+    """What was eaten, as typed (messy is fine)."""
+
+    text: str = Field(..., min_length=1, max_length=1000)
+
+
+class EstimatedItemOut(BaseModel):
+    """One item of an AI estimate (``meal_prep.server.estimate``)."""
+
+    name: str
+    brand: str
+    brand_unclear: bool  # no brand given, but the numbers depend on it
+    quantity: str
+    kcal: float
+    kcal_low: float
+    kcal_high: float
+    protein_g: float
+    carbs_g: float
+    fat_g: float
+    fiber_g: float
+    source: str  # "published", "typical" or "guess"
+    assumptions: list[str]
+
+
+class EstimateOut(BaseModel):
+    items: list[EstimatedItemOut]
 
 
 class Usual(BaseModel):

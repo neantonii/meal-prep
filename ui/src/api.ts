@@ -39,6 +39,10 @@ export interface DiaryEntry {
   estimated: boolean;
   /** what a guess assumed */
   assumptions: string[];
+  /** how a guess was made, and the AI's calories range for the whole order */
+  estimate_source: "manual" | "ai" | null;
+  kcal_low: number | null;
+  kcal_high: number | null;
 }
 
 /** The numbers a free-form entry is typed with, for the whole order. */
@@ -56,6 +60,29 @@ export interface FreeForm {
   cost: number | null;
   portion: number;
   estimated: boolean;
+  /** how a guess was made: typed in, or by AI (with its range and assumptions) */
+  source?: "manual" | "ai";
+  kcal_low?: number | null;
+  kcal_high?: number | null;
+  assumptions?: string[];
+}
+
+/** One item of an AI estimate. */
+export interface EstimatedItem {
+  name: string;
+  brand: string;
+  /** no brand given, but the numbers depend on it */
+  brand_unclear: boolean;
+  quantity: string;
+  kcal: number;
+  kcal_low: number;
+  kcal_high: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  fiber_g: number;
+  source: "published" | "typical" | "guess";
+  assumptions: string[];
 }
 
 /** A free-form meal eaten before: its latest whole-order numbers. */
@@ -238,11 +265,17 @@ export const api = {
   session: (id: string) => request<SessionDetail>(`/api/sessions/${id}`),
   addEntry: (week: string, recipe: string, where: Placement, session: Link, admin: boolean) =>
     send<DiaryWeek>("POST", `/api/diary/${week}/entries`, admin, { ...where, recipe, session }),
-  addOther: (week: string, where: Placement, fields: FreeForm, admin: boolean) =>
-    send<DiaryWeek>("POST", `/api/diary/${week}/others`, admin, { ...where, ...fields }),
+  /** Add free-form items (a whole takeout order) to one slot. */
+  addOthers: (week: string, where: Placement, items: FreeForm[], admin: boolean) =>
+    send<DiaryWeek>("POST", `/api/diary/${week}/others`, admin, { ...where, items }),
   editOther: (week: string, id: string, fields: FreeForm, admin: boolean) =>
     send<DiaryWeek>("PUT", `/api/diary/${week}/others/${id}`, admin, fields),
   usuals: () => request<Usual[]>("/api/usuals"),
+  /** Whether AI estimates are on (the host has an API key). */
+  estimateStatus: () => request<{ available: boolean; model: string | null }>("/api/estimate"),
+  /** Split a messy description into items with estimated numbers. */
+  estimate: (text: string) =>
+    send<{ items: EstimatedItem[] }>("POST", "/api/estimate", false, { text }),
   removeEntry: (week: string, id: string, admin: boolean) =>
     send<DiaryWeek>("DELETE", `/api/diary/${week}/entries/${id}`, admin),
   moveEntry: (week: string, id: string, where: Placement, admin: boolean) =>

@@ -31,7 +31,7 @@ def _ok(response) -> dict:
 
 
 def _add(client: TestClient, date: str = "2026-11-06", **fields) -> dict:
-    body = {"date": date, "mealtime": "lunch", **ORDER, **fields}
+    body = {"date": date, "mealtime": "lunch", "items": [{**ORDER, **fields}]}
     return _ok(client.post(f"/api/diary/{WEEK}/others", json=body))
 
 

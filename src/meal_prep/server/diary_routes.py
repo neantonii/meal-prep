@@ -18,7 +18,7 @@ from meal_prep.server.api_models import (
     EntryPlacement,
     FreeFormFields,
     NewEntry,
-    NewFreeEntry,
+    NewFreeEntries,
     Usual,
 )
 from meal_prep.server.editing import Editor
@@ -46,7 +46,14 @@ def _free_entry(
         body.title,
         {field: getattr(body, name) for name, field in _FIELDS.items()},
         portion=body.portion,
-        estimate=EntryEstimateDTO(source="manual") if body.estimated else None,
+        estimate=EntryEstimateDTO(
+            source=body.source,
+            kcal_low=body.kcal_low,
+            kcal_high=body.kcal_high,
+            assumptions=body.assumptions,
+        )
+        if body.estimated
+        else None,
         entry_id=entry_id,
     )
 
@@ -114,17 +121,22 @@ def diary_router(editor: Editor) -> APIRouter:
         )
 
     @router.post("/{week}/others")
-    def other_add(week: str, body: NewFreeEntry, admin: bool = False) -> DiaryWeek:
+    def other_add(week: str, body: NewFreeEntries, admin: bool = False) -> DiaryWeek:
         def op(diary: prep.Diary) -> prep.Change:
-            entry = _free_entry(body)
-            logger.info("added %r to %s %s", entry.title, body.date, body.mealtime)
-            return prep.add_free_entry(
+            added = [_free_entry(item) for item in body.items]
+            logger.info(
+                "added %s to %s %s",
+                ", ".join(repr(e.title) for e in added),
+                body.date,
+                body.mealtime.value,
+            )
+            return prep.add_free_entries(
                 diary,
                 editor.policy(admin),
                 week,
                 body.date,
                 body.mealtime,
-                entry,
+                added,
                 body.position,
             )
 

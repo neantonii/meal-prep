@@ -20,7 +20,7 @@ import datetime
 import math
 import uuid
 from collections import Counter
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Literal
@@ -423,25 +423,28 @@ def add_entry(
     return draft.change(), entry
 
 
-def add_free_entry(
+def add_free_entries(
     diary: Diary,
     policy: Policy,
     week: str,
     date: datetime.date,
     mealtime: Mealtime,
-    entry: DiaryEntryDTO,
+    added: Sequence[DiaryEntryDTO],
     position: int | None = None,
 ) -> Change:
-    """Add a free-form entry (``diary.free_entry``): never linked to a
-    session, so only the settled-meal lock applies."""
-    if entry.recipe is not None or entry.session is not None:
+    """Add free-form entries (``diary.free_entry``) to one slot, in order
+    from ``position`` (``None`` appends): a whole order at once. They are
+    never linked to a session, so only the settled-meal lock applies."""
+    if any(e.recipe is not None or e.session is not None for e in added):
         raise ValueError("Not a free-form entry")
     _check_open(policy, date, mealtime)
     draft = _Draft(diary, policy, {})
-    dto, _ = entries.insert_entry(
-        draft.week(week), week, date, mealtime, entry, position
-    )
-    draft.put_week(week, dto)
+    dto = draft.week(week)
+    for offset, entry in enumerate(added):
+        at = None if position is None else position + offset
+        dto, _ = entries.insert_entry(dto, week, date, mealtime, entry, at)
+    if dto is not None:
+        draft.put_week(week, dto)
     return draft.change()
 
 

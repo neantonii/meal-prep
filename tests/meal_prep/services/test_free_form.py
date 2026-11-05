@@ -74,7 +74,9 @@ def test_totals_leave_unknowns_out_and_say_so():
 
 def test_free_form_entries_never_link_to_a_session():
     entry = diary.free_entry("Pho", MEAL)
-    change = prep.add_free_entry(Diary({}, {}), PLAN, WEEK, FRI, Mealtime.LUNCH, entry)
+    change = prep.add_free_entries(
+        Diary({}, {}), PLAN, WEEK, FRI, Mealtime.LUNCH, [entry]
+    )
     assert change.sessions == {}  # no session created, unlike a recipe drop
     state = Diary(weeks={WEEK: change.weeks[WEEK]}, sessions={})  # type: ignore[dict-item]
     with pytest.raises(RuleError, match="never linked"):
@@ -100,7 +102,7 @@ def test_only_free_form_numbers_can_be_edited_and_settled_meals_are_locked():
     with pytest.raises(RuleError, match="settled"):
         prep.edit_free_entry(state, later, WEEK, fixed)
     with pytest.raises(RuleError, match="settled"):
-        prep.add_free_entry(state, later, WEEK, FRI, Mealtime.DINNER, fixed)
+        prep.add_free_entries(state, later, WEEK, FRI, Mealtime.DINNER, [fixed])
 
 
 def test_history_offers_each_meal_once_with_its_latest_whole_order():

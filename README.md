@@ -163,7 +163,9 @@ recipes, ingredients or prices do.
 
 Takeout and eating out are free-form entries (`docs/free-form-entries.md`):
 a title and the numbers you know or guess, kept in the week file, never
-linked to a session; "+ other" in a meal slot offers the ones you ate
+linked to a session. "+ other" in a meal slot adds a whole order at once:
+describe it and Gemini splits and estimates it (optional: set
+`GEMINI_API_KEY` in a `.env` next to `compose.yml`), or pick meals you ate
 before.
 
 Prep sessions (`docs/prep-sessions.md`) live next to the weeks, one file per

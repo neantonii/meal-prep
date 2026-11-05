@@ -1,6 +1,6 @@
 # Free-form diary entries (takeout, eating out)
 
-Status: first version implemented (#142). AI estimates are next (#141).
+Status: implemented (#142, #141).
 
 ## Goal
 
@@ -49,27 +49,77 @@ Fries`), so a repeat brings back just that item, not the whole order.
 ## UI
 
 "+ other" in each open meal slot (it shows on hover; always on a touch
-screen) opens the form: a title with suggestions from your history as you
-type, the whole order's kcal, protein, carbs, fat and cost (blank =
-unknown), the share eaten (¼ to 2) and "a guess" (on by default; untick for
-numbers from a menu or label). Clicking a free-form entry's title reopens
-the form to correct it. Free-form entries have a dashed yellow edge.
+screen) opens the takeout form. It adds a whole order at once:
+
+1. **Describe it**, messy is fine ("mcdonalds meal, mcchicken, small fries,
+   6 nuggets + sweet and sour"), and press Estimate (or Ctrl/⌘+Enter). Each
+   item comes back as its own row (below). Estimating again replaces those
+   rows.
+2. **Add a meal you had before**: type to search your history; a pick adds
+   its row with its latest numbers.
+3. **+ type an item**: a blank row.
+
+Every row is editable: name, kcal, protein, carbs, fat and cost for the
+whole item (blank = unknown), the share eaten (¼ to 2) and "guess" (on for
+estimates; untick for numbers from a menu or label). An AI row also shows its
+calories range, the quantity it assumed, where the numbers come from (menu
+values, typical or guess) and what it assumed. "brand?" marks an item whose
+numbers depend on a brand or place nobody named. "Add 4" saves every row as
+its own entry, in order.
+
+Clicking a free-form entry's title reopens the form for that entry alone, to
+correct it. Free-form entries have a dashed yellow edge.
+
+## AI estimates (#141)
+
+`POST /api/estimate` (`server/estimate.py`) sends the description to an
+OpenAI-compatible chat completions API, Gemini's by default, with a JSON
+schema for the reply, using only the standard library. Each item comes back
+with:
+
+- a clean `name` that includes the brand, plus `brand`;
+- `brand_unclear`: no brand was given but the numbers depend on it (fries,
+  burgers, coffee drinks, beer);
+- `quantity` assumed, `kcal` with `kcal_low`/`kcal_high`, protein, carbs,
+  fat, fiber;
+- `source`: `published` (the brand's menu values), `typical` or `guess`;
+- `assumptions`: raw vs cooked weight, oil, drink included or not, which
+  product a vague name means.
+
+A brand mentioned once applies to the whole order. Values are for the
+configured country's menus (Canada). Weights without "raw" or "cooked" are
+taken as raw for meat and fish and cooked for grains, and the reply says so.
+
+Saved AI items keep `estimate: {source: ai, kcal_low, kcal_high,
+assumptions}` in the week file. Replies are cached in memory by description
+(case and spacing ignored), so asking twice costs one call. A failed or
+malformed reply shows a message and nothing is filled in.
+
+Configuration (the host's environment; see `compose.example.yml`):
+
+| Variable | Default | |
+|---|---|---|
+| `GEMINI_API_KEY` (or `MEAL_PREP_ESTIMATE_KEY`) | none | without it estimates are off and the button hidden |
+| `MEAL_PREP_ESTIMATE_MODEL` | `gemini-3.5-flash-lite` | any model the endpoint serves |
+| `MEAL_PREP_ESTIMATE_URL` | Gemini's OpenAI-compatible endpoint | any OpenAI-compatible chat completions URL |
+| `MEAL_PREP_ESTIMATE_COUNTRY` | `Canada` | whose menus to assume |
+
+Descriptions leave the host for the provider. A free-tier Gemini key lets
+Google use prompts to improve its products; a paid key doesn't.
 
 ## API
 
-- `POST /api/diary/{week}/others`: `date`, `mealtime`, `position`, `title`,
-  `kcal`, `protein_g`, `carbs_g`, `fat_g`, `fiber_g`, `cost` (the whole order;
-  `null` = unknown), `portion` (default 1), `estimated`.
-- `PUT /api/diary/{week}/others/{entry_id}`: the same fields without the
-  placement; refused for recipe entries.
+- `POST /api/diary/{week}/others`: `date`, `mealtime`, `position`, and
+  `items`: each a `title`, the whole item's `kcal`, `protein_g`, `carbs_g`,
+  `fat_g`, `fiber_g`, `cost` (`null` = unknown), `portion` (default 1),
+  `estimated`, and for a guess `source` (`manual`/`ai`), `kcal_low`,
+  `kcal_high`, `assumptions`.
+- `PUT /api/diary/{week}/others/{entry_id}`: one item's fields; refused for
+  recipe entries.
 - `GET /api/usuals`: the repeats, as above.
+- `GET /api/estimate`: whether estimates are on, and the model.
+- `POST /api/estimate`: `{text}` -> `{items}` (503 when off, 502 when the
+  service fails).
 
-Both edits are journaled (`other.add`, `other.edit`).
-
-## Next: AI estimates (#141)
-
-Gemini (a lite model, key in the host's environment) turns a messy
-description into separate items, each with a clean name, brand, numbers,
-source (published, typical or guess), assumptions and a calories range. A
-brand mentioned once applies to the whole order. Without one, items are
-generic and flagged where the brand matters. Values are for Canadian menus.
+Adds and edits are journaled (`other.add`, `other.edit`); estimates are
+logged.

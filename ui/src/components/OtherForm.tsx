@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FREE_NUMBERS, api, approx, dayLabel, type FreeForm, type FreeNumber, type Usual } from "../api";
+import {
+  FREE_NUMBERS,
+  api,
+  approx,
+  dayLabel,
+  type EstimatedItem,
+  type FreeForm,
+  type FreeNumber,
+  type Usual,
+} from "../api";
 
 interface Props {
   /** Where it goes, for the heading ("Fri 6 Nov lunch"). */
@@ -7,16 +16,17 @@ interface Props {
   meal: string;
   /** Editing an entry: its current fields; adding: null. */
   initial: FreeForm | null;
-  onSave: (fields: FreeForm) => void;
+  /** Adding: every item, in order; editing: the one entry. */
+  onSave: (items: FreeForm[]) => void;
   onClose: () => void;
 }
 
 const LABELS: Record<FreeNumber, string> = {
   kcal: "kcal",
-  protein_g: "protein g",
-  carbs_g: "carbs g",
-  fat_g: "fat g",
-  cost: "cost $",
+  protein_g: "protein",
+  carbs_g: "carbs",
+  fat_g: "fat",
+  cost: "$",
 };
 const PORTIONS: [number, string][] = [
   [0.25, "¼"],
@@ -26,39 +36,126 @@ const PORTIONS: [number, string][] = [
   [1.5, "1½"],
   [2, "2"],
 ];
-const EMPTY: FreeForm = {
-  title: "",
-  kcal: null,
-  protein_g: null,
-  carbs_g: null,
-  fat_g: null,
-  cost: null,
-  portion: 1,
-  estimated: true,
+
+/** One item being edited: numbers as typed (blank = unknown), plus what
+ * an AI estimate said about it. */
+interface Row {
+  key: number;
+  title: string;
+  nums: Record<FreeNumber, string>;
+  portion: number;
+  estimated: boolean;
+  source: "manual" | "ai";
+  kcal_low: number | null;
+  kcal_high: number | null;
+  assumptions: string[];
+  /** from the AI: no brand given, but the numbers depend on it */
+  brandUnclear: boolean;
+  /** from the AI: the amount it assumed, and where its numbers come from */
+  quantity: string;
+  basis: string;
+}
+
+let nextKey = 1;
+const fmt = (v: number | null | undefined) => (v === null || v === undefined ? "" : String(Math.round(v * 10) / 10));
+
+function rowFrom(f: FreeForm): Row {
+  return {
+    key: nextKey++,
+    title: f.title,
+    nums: Object.fromEntries(FREE_NUMBERS.map((n) => [n, fmt(f[n])])) as Record<FreeNumber, string>,
+    portion: f.portion,
+    estimated: f.estimated,
+    source: f.source ?? "manual",
+    kcal_low: f.kcal_low ?? null,
+    kcal_high: f.kcal_high ?? null,
+    assumptions: f.assumptions ?? [],
+    brandUnclear: false,
+    quantity: "",
+    basis: "",
+  };
+}
+
+const blank = (): Row =>
+  rowFrom({
+    title: "",
+    kcal: null,
+    protein_g: null,
+    carbs_g: null,
+    fat_g: null,
+    cost: null,
+    portion: 1,
+    estimated: true,
+  });
+
+function rowFromEstimate(item: EstimatedItem): Row {
+  return {
+    ...rowFrom({
+      title: item.name,
+      kcal: item.kcal,
+      protein_g: item.protein_g,
+      carbs_g: item.carbs_g,
+      fat_g: item.fat_g,
+      cost: null,
+      portion: 1,
+      estimated: true,
+      source: "ai",
+      kcal_low: item.kcal_low,
+      kcal_high: item.kcal_high,
+      assumptions: item.assumptions,
+    }),
+    brandUnclear: item.brand_unclear,
+    quantity: item.quantity,
+    basis: item.source,
+  };
+}
+
+const parse = (v: string): number | null => {
+  const t = v.trim();
+  return t === "" || Number.isNaN(Number(t)) ? null : Number(t);
 };
+const bad = (v: string) => v.trim() !== "" && (parse(v) === null || parse(v)! < 0);
 
-type Draft = Omit<FreeForm, FreeNumber> & Record<FreeNumber, string>;
+function toFields(r: Row): FreeForm {
+  const nums = Object.fromEntries(FREE_NUMBERS.map((n) => [n, parse(r.nums[n])])) as Record<
+    FreeNumber,
+    number | null
+  >;
+  return {
+    title: r.title.trim(),
+    ...nums,
+    portion: r.portion,
+    estimated: r.estimated,
+    source: r.source,
+    kcal_low: r.kcal_low,
+    kcal_high: r.kcal_high,
+    assumptions: r.assumptions,
+  };
+}
 
-const toDraft = (f: FreeForm): Draft => ({
-  ...f,
-  ...(Object.fromEntries(
-    FREE_NUMBERS.map((n) => [n, f[n] === null ? "" : String(Math.round(f[n] * 100) / 100)]),
-  ) as Record<FreeNumber, string>),
-});
-
-/** A takeout or eating-out meal: a title and the whole order's numbers
- * (blank = unknown), the share eaten and whether the numbers are a guess.
- * Typing a title offers meals eaten before; picking one copies its numbers. */
+/** Takeout or eating out. Adding: describe the meal (messy is fine) and let
+ * the AI split and estimate it, pick meals eaten before, or type items in;
+ * every row is editable and they are saved together. Editing: one entry. */
 export default function OtherForm({ date, meal, initial, onSave, onClose }: Props) {
-  const [draft, setDraft] = useState<Draft>(toDraft(initial ?? EMPTY));
+  const editing = initial !== null;
+  const [rows, setRows] = useState<Row[]>(editing ? [rowFrom(initial)] : []);
+  const [text, setText] = useState("");
+  const [search, setSearch] = useState("");
   const [usuals, setUsuals] = useState<Usual[]>([]);
-  const [suggest, setSuggest] = useState(initial === null);
-  const titleRef = useRef<HTMLInputElement>(null);
+  const [ai, setAi] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const firstRef = useRef<HTMLTextAreaElement & HTMLInputElement>(null);
 
   useEffect(() => {
-    titleRef.current?.focus();
+    firstRef.current?.focus();
+    if (editing) return;
     api.usuals().then(setUsuals).catch(() => setUsuals([]));
-  }, []);
+    api
+      .estimateStatus()
+      .then((s) => setAi(s.available))
+      .catch(() => setAi(false));
+  }, [editing]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -66,26 +163,37 @@ export default function OtherForm({ date, meal, initial, onSave, onClose }: Prop
   }, [onClose]);
 
   const matches = useMemo(() => {
-    const q = draft.title.trim().toLowerCase();
+    const q = search.trim().toLowerCase();
+    if (q === "") return [];
     return usuals.filter((u) => u.title.toLowerCase().includes(q)).slice(0, 8);
-  }, [usuals, draft.title]);
+  }, [usuals, search]);
 
-  const number = (n: FreeNumber): number | null => {
-    const v = draft[n].trim();
-    return v === "" || Number.isNaN(Number(v)) ? null : Number(v);
+  const update = (key: number, change: Partial<Row>) =>
+    setRows((cur) => cur.map((r) => (r.key === key ? { ...r, ...change } : r)));
+
+  const estimate = async () => {
+    if (text.trim() === "" || busy) return;
+    setBusy(true);
+    setProblem(null);
+    try {
+      const { items } = await api.estimate(text);
+      // A new estimate replaces the previous one; picked and typed rows stay.
+      setRows((cur) => [...cur.filter((r) => r.source !== "ai" && r.title.trim() !== ""), ...items.map(rowFromEstimate)]);
+    } catch (e) {
+      setProblem(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
   };
-  const fields = (): FreeForm => ({
-    ...draft,
-    title: draft.title.trim(),
-    ...(Object.fromEntries(FREE_NUMBERS.map((n) => [n, number(n)])) as Record<FreeNumber, number | null>),
-  });
   const pick = (u: Usual) => {
-    setDraft(toDraft({ ...u, portion: draft.portion }));
-    setSuggest(false);
+    setRows((cur) => [...cur.filter((r) => r.title.trim() !== ""), rowFrom({ ...u, portion: 1 })]);
+    setSearch("");
   };
-  const invalid = FREE_NUMBERS.some((n) => draft[n].trim() !== "" && (number(n) === null || number(n)! < 0));
-  const canSave = draft.title.trim() !== "" && !invalid;
-  const kcal = number("kcal");
+
+  const valid = rows.length > 0 && rows.every((r) => r.title.trim() !== "" && !FREE_NUMBERS.some((n) => bad(r.nums[n])));
+  const total = rows.reduce((sum, r) => sum + (parse(r.nums.kcal) ?? 0) * r.portion, 0);
+  const guessed = rows.some((r) => r.estimated);
+  const unknown = rows.some((r) => parse(r.nums.kcal) === null);
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -93,89 +201,163 @@ export default function OtherForm({ date, meal, initial, onSave, onClose }: Prop
         className="modal other-form"
         onSubmit={(e) => {
           e.preventDefault();
-          if (canSave) onSave(fields());
+          if (valid) onSave(rows.map(toFields));
         }}
       >
         <h2>
-          {initial ? "Edit" : "Add"} takeout · {dayLabel(date)} {meal}
+          {editing ? "Edit" : "Add"} takeout · {dayLabel(date)} {meal}
         </h2>
-        <label className="field">
-          <span>What</span>
-          <input
-            ref={titleRef}
-            value={draft.title}
-            placeholder="McChicken meal, small fries, 6 nuggets"
-            maxLength={200}
-            onChange={(e) => {
-              setDraft({ ...draft, title: e.target.value });
-              setSuggest(true);
-            }}
-          />
-        </label>
-        {suggest && matches.length > 0 && (
-          <ul className="usuals" aria-label="Eaten before">
-            {matches.map((u) => (
-              <li key={u.title}>
-                <button type="button" onClick={() => pick(u)}>
-                  <span className="usual-title">{u.title}</span>
-                  <span className="usual-meta">
-                    {approx(u.kcal, u.estimated, " kcal")} · {approx(u.protein_g, false, " P")}
-                    {u.cost !== null && ` · $${u.cost.toFixed(2)}`} · {dayLabel(u.last)}
-                    {u.times > 1 && ` · ${u.times}×`}
-                  </span>
-                </button>
+        {!editing && ai && (
+          <div className="describe">
+            <textarea
+              ref={firstRef}
+              rows={2}
+              value={text}
+              maxLength={1000}
+              placeholder="What did you eat? e.g. mcdonalds meal, mcchicken, small fries, 6 nuggets + sweet and sour"
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  void estimate();
+                }
+              }}
+            />
+            <button type="button" className="primary" disabled={busy || text.trim() === ""} onClick={() => void estimate()}>
+              {busy ? "Estimating…" : rows.some((r) => r.source === "ai") ? "Estimate again" : "Estimate"}
+            </button>
+          </div>
+        )}
+        {problem && <div className="problem">{problem}</div>}
+        {!editing && (
+          <div className="past">
+            <input
+              ref={ai ? undefined : firstRef}
+              value={search}
+              placeholder="Add a meal you had before…"
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {matches.length > 0 && (
+              <ul className="usuals" aria-label="Eaten before">
+                {matches.map((u) => (
+                  <li key={u.title}>
+                    <button type="button" onClick={() => pick(u)}>
+                      <span className="usual-title">{u.title}</span>
+                      <span className="usual-meta">
+                        {approx(u.kcal, u.estimated, " kcal")} · {approx(u.protein_g, false, " P")}
+                        {u.cost !== null && ` · $${u.cost.toFixed(2)}`} · {dayLabel(u.last)}
+                        {u.times > 1 && ` · ${u.times}×`}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {rows.length > 0 && (
+          <ol className="items">
+            {rows.map((r, i) => (
+              <li key={r.key} className="item">
+                <div className="item-head">
+                  <input
+                    ref={editing && i === 0 ? firstRef : undefined}
+                    className="item-title"
+                    value={r.title}
+                    placeholder="Name, with the brand"
+                    maxLength={200}
+                    aria-label="Name"
+                    onChange={(e) => update(r.key, { title: e.target.value })}
+                  />
+                  {!editing && (
+                    <button
+                      type="button"
+                      className="x"
+                      title="Remove this item"
+                      onClick={() => setRows((cur) => cur.filter((x) => x.key !== r.key))}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                {r.brandUnclear && (
+                  <div className="brand-note">
+                    brand? Its numbers depend on the brand or place: add it to the description and estimate again.
+                  </div>
+                )}
+                <div className="numbers">
+                  {FREE_NUMBERS.map((n) => (
+                    <label key={n}>
+                      <input
+                        inputMode="decimal"
+                        value={r.nums[n]}
+                        aria-label={LABELS[n]}
+                        aria-invalid={bad(r.nums[n])}
+                        placeholder="?"
+                        onChange={(e) => update(r.key, { nums: { ...r.nums, [n]: e.target.value } })}
+                      />
+                      <span>{LABELS[n]}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="item-foot">
+                  <div className="portions" role="radiogroup" aria-label="Share eaten">
+                    {PORTIONS.map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        role="radio"
+                        aria-checked={r.portion === value}
+                        className={r.portion === value ? "on" : ""}
+                        onClick={() => update(r.key, { portion: value })}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="check" title="Untick for numbers from the menu or label">
+                    <input
+                      type="checkbox"
+                      checked={r.estimated}
+                      onChange={(e) => update(r.key, { estimated: e.target.checked })}
+                    />
+                    guess
+                  </label>
+                </div>
+                {(r.source === "ai" || r.assumptions.length > 0) && (
+                  <div className="ai-note">
+                    {r.kcal_low !== null && r.kcal_high !== null && (
+                      <span>
+                        {Math.round(r.kcal_low)}–{Math.round(r.kcal_high)} kcal
+                      </span>
+                    )}
+                    {r.quantity && <span>{r.quantity}</span>}
+                    {r.basis && <span>{r.basis === "published" ? "menu values" : r.basis}</span>}
+                    {r.assumptions.length > 0 && <span>assumed: {r.assumptions.join("; ")}</span>}
+                  </div>
+                )}
               </li>
             ))}
-          </ul>
+          </ol>
         )}
-        <fieldset className="numbers">
-          <legend>The whole order (blank = unknown)</legend>
-          {FREE_NUMBERS.map((n) => (
-            <label key={n} className="field">
-              <span>{LABELS[n]}</span>
-              <input
-                inputMode="decimal"
-                value={draft[n]}
-                aria-invalid={draft[n].trim() !== "" && (number(n) === null || number(n)! < 0)}
-                onChange={(e) => setDraft({ ...draft, [n]: e.target.value })}
-              />
-            </label>
-          ))}
-        </fieldset>
-        <div className="row">
-          <span>Ate</span>
-          <div className="portions" role="radiogroup" aria-label="Share of the order eaten">
-            {PORTIONS.map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={draft.portion === value}
-                className={draft.portion === value ? "on" : ""}
-                onClick={() => setDraft({ ...draft, portion: value })}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          {draft.portion !== 1 && kcal !== null && (
-            <span className="hint">= {Math.round(kcal * draft.portion)} kcal</span>
-          )}
-        </div>
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={draft.estimated}
-            onChange={(e) => setDraft({ ...draft, estimated: e.target.checked })}
-          />
-          A guess (shown with ≈); untick for numbers from the menu or label
-        </label>
+        {!editing && (
+          <button type="button" className="add-row" onClick={() => setRows((cur) => [...cur, blank()])}>
+            + type an item
+          </button>
+        )}
         <div className="actions">
+          {rows.length > 0 && (
+            <span className="sum">
+              {rows.length} item{rows.length === 1 ? "" : "s"} · {unknown ? "≥ " : guessed ? "≈ " : ""}
+              {Math.round(total).toLocaleString("en-US")} kcal
+            </span>
+          )}
           <button type="button" onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className="primary" disabled={!canSave}>
-            {initial ? "Save" : "Add"}
+          <button type="submit" className="primary" disabled={!valid}>
+            {editing ? "Save" : `Add${rows.length > 1 ? ` ${rows.length}` : ""}`}
           </button>
         </div>
       </form>

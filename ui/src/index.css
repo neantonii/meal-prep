@@ -262,3 +262,34 @@ tr.day.log td:not(.day-cell) { background: rgba(255, 255, 255, 0.015); }
 .other-form .check { display: flex; gap: 8px; align-items: center; font-size: 0.8rem; color: var(--text-muted); }
 .other-form .check input { accent-color: var(--primary); }
 .other-form .actions { display: flex; justify-content: flex-end; gap: 8px; }
+/* The bulk takeout form: describe -> items. */
+.other-form { max-width: 560px; }
+.other-form textarea { width: 100%; box-sizing: border-box; background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 0.9rem; resize: vertical; }
+.other-form .describe { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+.other-form button.primary { background: var(--primary); color: #06202e; border: none; border-radius: 8px;
+  padding: 6px 14px; font-weight: 700; cursor: pointer; font: inherit; font-weight: 700; }
+.other-form button.primary:disabled { opacity: 0.4; cursor: default; }
+.other-form .problem { color: var(--danger); font-size: 0.82rem; }
+.other-form .past { display: flex; flex-direction: column; gap: 6px; }
+.other-form .past .usuals { margin: 0; }
+.other-form .items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px;
+  max-height: 46vh; overflow-y: auto; }
+.other-form .item { border: 1px solid var(--border); border-left: 4px dashed #eab308; border-radius: 8px;
+  padding: 8px; display: flex; flex-direction: column; gap: 6px; background: var(--bg); }
+.other-form .item-head { display: flex; gap: 6px; align-items: center; }
+.other-form .item-title { flex: 1; font-weight: 600; }
+.other-form .item .x { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1rem; }
+.other-form .item .x:hover { color: var(--danger); }
+.other-form .item .numbers label { display: flex; flex-direction: column; gap: 2px; font-size: 0.68rem; color: var(--text-muted); }
+.other-form .item .numbers input { width: 100%; box-sizing: border-box; padding: 4px 6px; font-size: 0.85rem;
+  background: var(--surface); }
+.other-form .item-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.other-form .item-foot .portions button { padding: 2px 7px; font-size: 0.75rem; }
+.other-form .brand-note { font-size: 0.75rem; color: #eab308; }
+.other-form .ai-note { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 0.72rem; color: var(--text-muted); }
+.other-form .add-row { align-self: flex-start; background: none; border: 1px dashed var(--border); border-radius: 6px;
+  color: var(--text-muted); padding: 3px 10px; cursor: pointer; font: inherit; font-size: 0.8rem; }
+.other-form .add-row:hover { color: var(--primary); border-color: var(--primary); }
+.other-form .actions { align-items: center; }
+.other-form .actions .sum { margin-right: auto; font-size: 0.82rem; color: var(--text-muted); }
