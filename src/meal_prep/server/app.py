@@ -27,6 +27,7 @@ from meal_prep.server.api_models import CatalogEntry
 from meal_prep.server.cards import cards_router
 from meal_prep.server.diary_routes import diary_router
 from meal_prep.server.editing import Editor
+from meal_prep.server.journal import Journal
 from meal_prep.server.session_routes import session_router
 from meal_prep.server.store import DiaryStore
 from meal_prep.server.weeks import current_week
@@ -61,7 +62,7 @@ def create_app(
     # Bring stored diary files up to this release's format (backed up
     # first) before anything is served; a failure stops the server.
     migrate(diary_dir, library)
-    editor = Editor(library, DiaryStore(diary_dir), today)
+    editor = Editor(library, DiaryStore(diary_dir), today, Journal(diary_dir))
 
     app = FastAPI(title="Meal Prep Diary")
 

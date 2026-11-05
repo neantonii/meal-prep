@@ -40,7 +40,9 @@ def session_router(editor: Editor) -> APIRouter:
                 diary, editor.policy(False), session_id, shares, body.have
             )
 
-        return editor.edit_session(session_id, op)
+        return editor.edit_session(
+            session_id, op, action="session.have", params=body.model_dump(mode="json")
+        )
 
     @router.put("/{session_id}/always/{ingredient_id}")
     def always_set(
@@ -66,7 +68,8 @@ def session_router(editor: Editor) -> APIRouter:
             logger.info("removed %s from session %s", recipe_id, session_id)
             return change
 
-        return editor.edit(week, op)
+        params = {"session": session_id, "recipe": recipe_id}
+        return editor.edit(week, op, action="item.remove", params=params, admin=admin)
 
     @router.patch("/{session_id}")
     def session_move(
@@ -79,7 +82,8 @@ def session_router(editor: Editor) -> APIRouter:
             logger.info("moved session %s to %s", session_id, body.date)
             return change
 
-        return editor.edit(week, op)
+        params = {"session": session_id, **body.model_dump(mode="json")}
+        return editor.edit(week, op, action="session.move", params=params, admin=admin)
 
     @router.delete("/{session_id}")
     def session_delete(
@@ -90,6 +94,9 @@ def session_router(editor: Editor) -> APIRouter:
             logger.info("deleted session %s", session_id)
             return change
 
-        return editor.edit(week, op)
+        params = {"session": session_id}
+        return editor.edit(
+            week, op, action="session.delete", params=params, admin=admin
+        )
 
     return router
