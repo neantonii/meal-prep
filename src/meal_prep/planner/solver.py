@@ -26,8 +26,11 @@ from meal_prep.models.recipe import Recipe
 from meal_prep.planner.plan import (
     DAY_NAMES,
     DailyPlannedMeal,
+    MealSlot,
     PlannedBatch,
     PlannedMeal,
+    SessionPlan,
+    SlotPick,
     WeekPlan,
 )
 from meal_prep.planner.quadratic import ConvexQuadratic, square_breakpoints
@@ -269,3 +272,92 @@ def _picked_meal(solver: cp_model.CpSolver, planned_meal: _PlannedMeal) -> Plann
                 macros=recipe.per_serving_macros,
             )
     raise RuntimeError("No meal selected; exactly-one constraint violated.")
+
+
+def plan_session(recipes: Sequence[Recipe], slots: Sequence[MealSlot]) -> SessionPlan:
+    """Solve the cheapest fill of one session's ``slots``.
+
+    No rules yet: any recipe may go in any slot, at most once per slot, and
+    a slot may stay empty. Every recipe gets a whole number of batches with
+    ``uses <= batches * servings``; the objective is the total batch cost,
+    so leftovers are charged.
+    """
+    meals = list(recipes)
+    model = cp_model.CpModel()
+    planned: list[tuple[MealSlot, _PlannedMeal]] = []
+    for slot in slots:
+        planned_meal = _new_planned_meal(
+            model, slot.date.isoformat(), slot.mealtime.value, meals
+        )
+        planned.append((slot, planned_meal))
+
+    # One batch per slot always covers every pick, so the bound never binds.
+    max_batches = len(planned)
+    batches: dict[str, cp_model.IntVar] = {}
+    for recipe in meals:
+        uses = [
+            var
+            for _, planned_meal in planned
+            for candidate, var in zip(
+                planned_meal.recipes, planned_meal.is_selected, strict=True
+            )
+            if candidate.id == recipe.id
+        ]
+        if not uses:
+            continue
+        batches[recipe.id] = model.new_int_var(0, max_batches, f"batches_{recipe.id}")
+        model.add(sum(uses) <= batches[recipe.id] * round(recipe.servings))
+
+    by_id = {recipe.id: recipe for recipe in meals}
+    model.minimize(
+        LinearExpr.sum(
+            [
+                round(by_id[recipe_id].total_cost * _CENTS) * var
+                for recipe_id, var in batches.items()
+            ]
+        )
+    )
+
+    solver = cp_model.CpSolver()
+    solver.parameters.random_seed = 1
+    status = solver.solve(model)
+    if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        raise RuntimeError(
+            f"Session solve failed (status={solver.status_name(status)})."
+        )
+
+    picks = tuple(
+        SlotPick(
+            slot=slot,
+            meal=PlannedMeal(
+                recipe_id=recipe.id,
+                title=recipe.title,
+                cost=recipe.cost_per_portion,
+                macros=recipe.per_serving_macros,
+            ),
+        )
+        for slot, planned_meal in planned
+        for recipe, var in zip(
+            planned_meal.recipes, planned_meal.is_selected, strict=True
+        )
+        if solver.boolean_value(var)
+    )
+    prep: list[PlannedBatch] = []
+    for recipe_id in sorted(batches):
+        cooked = solver.value(batches[recipe_id])
+        if cooked == 0:
+            continue
+        recipe = by_id[recipe_id]
+        prep.append(
+            PlannedBatch(
+                recipe_id=recipe_id,
+                title=recipe.title,
+                batches=cooked,
+                servings=round(recipe.servings),
+                portions_used=sum(
+                    1 for pick in picks if pick.meal.recipe_id == recipe_id
+                ),
+                cost=recipe.total_cost * cooked,
+            )
+        )
+    return SessionPlan(picks=picks, prep=tuple(prep))

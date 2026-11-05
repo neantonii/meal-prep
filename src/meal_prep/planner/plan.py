@@ -12,9 +12,11 @@ are raw floats with no rounding — presentation is the report's concern.
 
 from __future__ import annotations
 
+import datetime
 from dataclasses import dataclass
 from functools import reduce
 
+from meal_prep.enums import Mealtime
 from meal_prep.models.ingredient import MacrosInfo
 
 DAY_NAMES = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
@@ -97,3 +99,32 @@ class WeekPlan:
             (day.macros for day in self.days),
             MacrosInfo.zero(),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class MealSlot:
+    """One meal to fill: a day and a mealtime."""
+
+    date: datetime.date
+    mealtime: Mealtime
+
+
+@dataclass(frozen=True, slots=True)
+class SlotPick:
+    """One recipe placed in a slot (a slot may hold several)."""
+
+    slot: MealSlot
+    meal: PlannedMeal
+
+
+@dataclass(frozen=True, slots=True)
+class SessionPlan:
+    """One prep session's cycle solved: a recipe per slot, the batches to cook."""
+
+    picks: tuple[SlotPick, ...]
+    prep: tuple[PlannedBatch, ...]
+
+    @property
+    def total_cost(self) -> float:
+        """Total session cost at full batch prices (leftovers included)."""
+        return sum(batch.cost for batch in self.prep)
