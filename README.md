@@ -164,8 +164,9 @@ recipes, ingredients or prices do.
 Prep sessions (`docs/prep-sessions.md`) live next to the weeks, one file per
 session day (`diary/sessions/2026-11-01.yaml`), created on first use; their
 items are frozen the same way. Diary entries link to the session they came
-from. Days after today are planned (auto-fill on), today and earlier are
-logged, and the header's Admin switch amends history.
+from (auto-linked on every drop). Meals settle once their prep cycle ends
+(the day after the next Sun/Tue/Thu session day), and the header's Admin
+switch amends history; see `docs/prep-sessions.md`.
 
 The UI is at `http://127.0.0.1:8080` on the host; the port is bound to
 loopback because the server has no auth (put a reverse proxy in front before

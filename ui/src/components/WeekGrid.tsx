@@ -13,6 +13,8 @@ interface Props {
   colors: Record<string, string>;
   /** Monday of the page's week (for the standard session slots). */
   monday: string;
+  /** Admin edits settled meals too. */
+  admin: boolean;
   onRemove: (id: string) => void;
 }
 
@@ -22,7 +24,7 @@ const STANDARD = new Set(["c0", "c1", "c2", "c3"]);
 
 /** The week table. Meals are sortable within and across slots; the drop
  * logic itself lives in App's onDragEnd. */
-export default function WeekGrid({ days, sessions, colors, monday, onRemove }: Props) {
+export default function WeekGrid({ days, sessions, colors, monday, admin, onRemove }: Props) {
   return (
     <table className="grid">
       <thead>
@@ -52,9 +54,11 @@ export default function WeekGrid({ days, sessions, colors, monday, onRemove }: P
                   date={day.date}
                   meal={mt}
                   entries={day.meals.find((m) => m.mealtime === mt)?.entries ?? []}
+                  settled={!admin && day.settled.includes(mt)}
                   sessions={sessions}
                   colors={colors}
                   monday={monday}
+                  admin={admin}
                   onRemove={onRemove}
                 />
               ))}
@@ -70,10 +74,12 @@ type SlotProps = Omit<Props, "days"> & {
   date: string;
   meal: Mealtime;
   entries: DiaryEntry[];
+  /** its prep cycle locked: shown muted, edits refused (Admin aside) */
+  settled: boolean;
 };
 
 /** One table cell: a drop target holding a sortable list of meals. */
-function Slot({ date, meal, entries, ...rest }: SlotProps) {
+function Slot({ date, meal, entries, settled, ...rest }: SlotProps) {
   const id = slotId(date, meal);
   const { setNodeRef } = useDroppable({ id, data: { kind: "slot", date, meal } satisfies DropData });
   const { active, over } = useDndContext();
@@ -87,14 +93,26 @@ function Slot({ date, meal, entries, ...rest }: SlotProps) {
     target.date === date &&
     target.meal === meal;
   return (
-    <td ref={setNodeRef} className={`slot-cell${hovered ? " dragover" : ""}`}>
+    <td
+      ref={setNodeRef}
+      className={`slot-cell${hovered ? " dragover" : ""}${settled ? " settled" : ""}`}
+      title={settled ? "Settled: its prep cycle ended (Admin can still change it)" : undefined}
+    >
       <SortableContext id={id} items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
         <div className="slot">
           {entries.length === 0 ? (
             <span className="empty-slot">—</span>
           ) : (
             entries.map((entry, index) => (
-              <EntryRow key={entry.id} entry={entry} date={date} meal={meal} index={index} {...rest} />
+              <EntryRow
+                key={entry.id}
+                entry={entry}
+                date={date}
+                meal={meal}
+                index={index}
+                settled={settled}
+                {...rest}
+              />
             ))
           )}
         </div>

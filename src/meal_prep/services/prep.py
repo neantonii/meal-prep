@@ -2,9 +2,11 @@
 
 ``docs/prep-sessions.md`` is the spec. A linked diary entry must align with
 its session (the session lists its recipe, the entry is on or after the
-session's date, links never exceed an item's portions). Which edits are
-allowed, and whether they auto-fill sessions, depends on the editing mode:
-Plan (after today), Log (today and earlier) or Admin (explicit switch).
+session's date, links never exceed an item's portions). Meals belong to prep
+cycles (the preset session days); a cycle's meals lock the day after the
+next session day. A session grows only while open (today or later); a
+closed one gives free portions only. Admin edits locked meals and grows
+closed sessions.
 
 Every edit works on a whole-diary snapshot (all weeks and all sessions,
 since links span weeks) and returns a ``Change``: the week and session
@@ -32,8 +34,9 @@ from meal_prep.services.sessions import freeze_item, whole_servings
 
 # Default prep days, as ``date.weekday()``: Sunday, Tuesday, Thursday.
 DEFAULT_SESSION_WEEKDAYS = frozenset({6, 1, 3})
-# Auto-link looks this many days back, not counting the entry's own day.
-AUTO_LINK_DAYS = 7
+# Meals eaten in the evening, after that day's prep: a session day's own
+# dinner and snacks belong to its cycle; breakfast and lunch to the one before.
+EVENING = frozenset({Mealtime.DINNER, Mealtime.SNACKS})
 
 type Link = uuid.UUID | Literal["auto"] | None
 
@@ -65,14 +68,17 @@ class Policy:
             return Mode.ADMIN
         return Mode.LOG if any(day <= self.today for day in days) else Mode.PLAN
 
-    def ahead(self, day: datetime.date) -> bool:
-        """``day`` is after today (a Plan day), whether or not Admin is on."""
-        return day > self.today
-
     def session_open(self, day: datetime.date) -> bool:
         """A session on ``day`` can still take new meals and grow: from today
         on (the prep happens during the session's day), or any day in Admin."""
         return self.admin or day >= self.today
+
+    def locked(self, date: datetime.date, mealtime: Mealtime) -> bool:
+        """A meal is settled once its prep cycle locks: the day after the
+        next session day. Today's meals never lock; Admin edits any."""
+        if self.admin or date >= self.today:
+            return False
+        return self.today > next_session_day(cycle_day(date, mealtime))
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,6 +118,23 @@ def default_session_dates(
         if (day := start + datetime.timedelta(days=offset)).weekday()
         in DEFAULT_SESSION_WEEKDAYS
     )
+
+
+def cycle_day(date: datetime.date, mealtime: Mealtime) -> datetime.date:
+    """The session day a meal belongs to: the latest preset day (Sun, Tue,
+    Thu) on or before ``date``; ``date`` itself only for dinner and snacks."""
+    day = date if mealtime in EVENING else date - datetime.timedelta(days=1)
+    while day.weekday() not in DEFAULT_SESSION_WEEKDAYS:
+        day -= datetime.timedelta(days=1)
+    return day
+
+
+def next_session_day(day: datetime.date) -> datetime.date:
+    """The first preset session day after ``day``."""
+    day += datetime.timedelta(days=1)
+    while day.weekday() not in DEFAULT_SESSION_WEEKDAYS:
+        day += datetime.timedelta(days=1)
+    return day
 
 
 def linked_meals(
@@ -318,38 +341,18 @@ class _Draft:
     def auto_link(
         self, recipe_id: str, date: datetime.date, mealtime: Mealtime
     ) -> uuid.UUID | None:
-        """The session a palette drop on ``date`` links to (Plan auto-link).
-
-        A meal belongs to the latest prep day before it (its supply cycle):
-        among the ``AUTO_LINK_DAYS`` before ``date`` (plus the day itself for
-        dinner only, as the delivery and prep happen during that day), the
-        latest day with a session, or an open default prep day. That day's
-        session if it lists the recipe with a free portion; else the session
-        grows to fit (created when needed) if the day is still open; else
-        ``None``. Older sessions are never reached into, however long their
-        food keeps (a manual link may still pick one).
-        """
-        start = date - datetime.timedelta(days=AUTO_LINK_DAYS)
-        end = date if mealtime is Mealtime.DINNER else date - datetime.timedelta(days=1)
-        sessions = {s.date: s for s in self.sessions.values() if start <= s.date <= end}
-        open_defaults = {
-            day
-            for day in default_session_dates(start, end)
-            if self.policy.session_open(day)
-        }
-        days = sessions.keys() | open_defaults
-        if not days:
-            return None
-        day = max(days)
-        session = sessions.get(day)
+        """The session a recipe drop on ``date`` links to: the session on the
+        meal's cycle day (``cycle_day``). A free portion there, if any; else,
+        while that day is open (today or later), the session grows to fit,
+        created when needed; else ``None``. The same in Admin, and an earlier
+        cycle is never reached into (a manual link may pick one)."""
+        day = cycle_day(date, mealtime)
+        session = self.session_on(day)
         if session is not None:
             item = _item(session, recipe_id)
-            free = item is not None and self.count(session.id, recipe_id) < _portions(
-                item
-            )
-            if free:
+            if item is not None and self.count(session.id, recipe_id) < _portions(item):
                 return session.id
-        if not self.policy.session_open(day):
+        if day < self.policy.today:
             return None
         if session is not None:
             self.make_room(session.id, recipe_id, date)
@@ -361,23 +364,13 @@ class _Draft:
         return created.id
 
 
-def _links_today(
-    draft: _Draft, date: datetime.date, *sessions: uuid.UUID | datetime.date | None
-) -> bool:
-    """A meal dated today may change its link while every session involved
-    (by id or date; ``None`` is no session) is still open: today's own, as
-    the prep happens during its day."""
-    if date != draft.policy.today:
-        return False
-    days: list[datetime.date] = []
-    for s in sessions:
-        if isinstance(s, datetime.date):
-            days.append(s)
-        elif s is not None:
-            if s not in draft.sessions:
-                return False
-            days.append(draft.sessions[s].date)
-    return all(draft.policy.session_open(day) for day in days)
+def _check_open(policy: Policy, date: datetime.date, mealtime: Mealtime) -> None:
+    """Refuse an edit to a settled meal (its prep cycle locked)."""
+    if policy.locked(date, mealtime):
+        raise RuleError(
+            f"{day_label(date)} {mealtime.value} is settled: its prep cycle "
+            "ended (Admin can still change it)"
+        )
 
 
 def _item(session: PrepSessionDTO, recipe_id: str) -> SessionItemDTO | None:
@@ -408,23 +401,15 @@ def add_entry(
     link: Link = "auto",
 ) -> tuple[Change, DiaryEntryDTO]:
     """Add an entry for ``recipe``; ``link`` is a session id, ``None`` or
-    ``"auto"`` (a palette drop: auto-linked on a day after today, Admin or
-    not; unlinked on today and earlier)."""
+    ``"auto"`` (a recipe drop: auto-linked, on any day, Admin or not)."""
+    _check_open(policy, date, mealtime)
     draft = _Draft(diary, policy, recipes)
-    mode = policy.mode(date)
     session: uuid.UUID | None
     if link == "auto":
-        session = (
-            draft.auto_link(recipe.id, date, mealtime) if policy.ahead(date) else None
-        )
+        session = draft.auto_link(recipe.id, date, mealtime)
     elif link is None:
         session = None
     else:
-        if mode is Mode.LOG and not _links_today(draft, date, link):
-            raise RuleError(
-                f"{day_label(date)} is in Log mode: new entries can't be linked "
-                "to a session"
-            )
         draft.session(link)  # must exist
         draft.make_room(link, recipe.id, date)
         session = link
@@ -439,10 +424,13 @@ def add_entry(
 def remove_entry(
     diary: Diary, policy: Policy, week: str, entry_id: uuid.UUID
 ) -> Change:
-    """Remove one entry (any mode). In Plan its session shrinks to fit the
-    remaining meals; in Log the portion stays made (spare)."""
+    """Remove one entry unless it is settled. An open session shrinks to fit
+    the remaining meals; a closed one keeps the portion made (spare)."""
     draft = _Draft(diary, policy, {})
-    draft.put_week(week, entries.remove_entry(_week_of(draft, week), entry_id))
+    current = _week_of(draft, week)
+    date, mealtime, _ = entries.find_entry(current, entry_id)
+    _check_open(policy, date, mealtime)
+    draft.put_week(week, entries.remove_entry(current, entry_id))
     return draft.change()
 
 
@@ -456,21 +444,19 @@ def move_entry(
     mealtime: Mealtime,
     position: int | None = None,
 ) -> Change:
-    """Move or reorder one entry, keeping its link while it still holds.
-
-    In Plan a link the move breaks (the entry now precedes its session) is
-    re-linked by the auto-link rule; in Log and Admin the move is refused.
-    """
+    """Move or reorder one entry (neither place settled), keeping its link
+    while it still holds; a link the move breaks (the entry now precedes its
+    session) is re-linked by the auto-link rule."""
     draft = _Draft(diary, policy, recipes)
     current = _week_of(draft, week)
-    old_date, _, entry = entries.find_entry(current, entry_id)
+    old_date, old_mealtime, entry = entries.find_entry(current, entry_id)
+    _check_open(policy, old_date, old_mealtime)
+    _check_open(policy, date, mealtime)
     moved = entries.move_entry(current, entry_id, date, mealtime, position)
     draft.put_week(week, moved)
     session = entry.session
-    if (
-        session is not None
-        and policy.mode(old_date, date) is Mode.PLAN
-        and (session not in draft.sessions or draft.sessions[session].date > date)
+    if session is not None and (
+        session not in draft.sessions or draft.sessions[session].date > date
     ):
         unlinked = entries.set_entry_session(moved, entry_id, None)
         draft.put_week(week, unlinked)
@@ -489,21 +475,14 @@ def set_entry_session(
     session: uuid.UUID | None,
     session_date: datetime.date | None = None,
 ) -> Change:
-    """Link one entry to ``session`` (``None`` unlinks), or to the session on
-    ``session_date``, creating it with the entry's recipe when that day has
-    none yet (not for a day that already happened). Plan auto-fills; Log
-    refuses, except a meal dated today moving to or from today's session;
-    Admin adds the recipe or batches as needed, on any session."""
+    """Link one entry (not settled) to ``session`` (``None`` unlinks), or to
+    the session on ``session_date``, creating it with the entry's recipe when
+    that day has none yet (only while open). An open session grows to fit; a
+    closed one only gives a free portion (Admin grows any)."""
     draft = _Draft(diary, policy, recipes)
     current = _week_of(draft, week)
-    date, _, entry = entries.find_entry(current, entry_id)
-    mode = policy.mode(date)
-    target = session_date if session_date is not None else session
-    if mode is Mode.LOG and not _links_today(draft, date, entry.session, target):
-        raise RuleError(
-            f"{day_label(date)} is in Log mode: an entry's session can only "
-            "change in Admin mode"
-        )
+    date, mealtime, entry = entries.find_entry(current, entry_id)
+    _check_open(policy, date, mealtime)
     if session_date is not None:
         existing = draft.session_on(session_date)
         if existing is not None:

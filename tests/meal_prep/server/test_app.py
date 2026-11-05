@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 from pathlib import Path
 
 import pytest
@@ -11,11 +12,15 @@ from meal_prep.server.app import create_app
 from meal_prep.server.weeks import current_week, week_dates
 
 REPO = Path(__file__).resolve().parents[3]
+# Entries are added in week 2026-W43 (from Mon 19 Oct): none of it settled.
+TODAY = datetime.date(2026, 10, 19)
 
 
 @pytest.fixture()
 def client(tmp_path: Path) -> TestClient:
-    app = create_app(REPO / "data", REPO / "recipes", tmp_path / "diary")
+    app = create_app(
+        REPO / "data", REPO / "recipes", tmp_path / "diary", today=lambda: TODAY
+    )
     return TestClient(app)
 
 
@@ -110,7 +115,11 @@ def test_frozen_numbers_survive_a_server_with_changed_data(
     path = tmp_path / "diary" / f"{WEEK}.yaml"
     path.write_text(path.read_text().replace("title: ", "title: Old ", 1))
     # A fresh server (fresh library) still shows what was frozen.
-    fresh = TestClient(create_app(REPO / "data", REPO / "recipes", tmp_path / "diary"))
+    fresh = TestClient(
+        create_app(
+            REPO / "data", REPO / "recipes", tmp_path / "diary", today=lambda: TODAY
+        )
+    )
     [entry] = _slot(fresh.get(f"/api/diary/{WEEK}").json(), 0, "dinner")
     assert entry["title"].startswith("Old ")
 

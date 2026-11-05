@@ -44,6 +44,8 @@ export type Mode = "plan" | "log";
 export interface DiaryDay {
   date: string;
   mode: Mode;
+  /** mealtimes whose prep cycle locked: editable in Admin only */
+  settled: Mealtime[];
   meals: DiaryMeal[];
   totals: Record<string, number>;
 }

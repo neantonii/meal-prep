@@ -10,7 +10,7 @@ import datetime
 import uuid
 from collections.abc import Collection, Mapping
 
-from meal_prep.enums import RecipeCategory
+from meal_prep.enums import Mealtime, RecipeCategory
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.library import Library
 from meal_prep.models.log import LogEntry
@@ -198,11 +198,13 @@ def week_response(
     for date in dates:
         day = by_date.get(date)
         mode = policy.mode(date).value
+        settled = [m.value for m in Mealtime if policy.locked(date, m)]
         if day is None:
             days.append(
                 DiaryDay(
                     date=date.isoformat(),
                     mode=mode,
+                    settled=settled,
                     meals=[],
                     totals=_totals(0.0, MacrosInfo.zero()),
                 )
@@ -212,6 +214,7 @@ def week_response(
             DiaryDay(
                 date=date.isoformat(),
                 mode=mode,
+                settled=settled,
                 meals=[
                     DiaryMeal(
                         mealtime=meal.mealtime.value,

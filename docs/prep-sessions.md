@@ -86,56 +86,54 @@ checked across all weeks, not inside one week file.
 
 ## Editing modes
 
-One diary, one stored state (no planned/eaten flag). The mode decides which
-edits are allowed:
+One diary, one stored state (no planned/eaten flag). Three ideas decide which
+edits are allowed (#165):
 
-| Mode | When | Behaviour |
-|---|---|---|
-| **Plan** | days and sessions *after today* | Fill ahead of time; sessions follow their linked meals. |
-| **Log** | *today and earlier* | Edit only where reality deviated; nothing is auto-filled. |
-| **Admin** | header switch, off on reload | Amend history: meals can also be linked to sessions that already happened, and a session grows to fit them. |
+- **Prep cycles.** The session days are the fixed preset **Sun, Tue, Thu**. A
+  meal belongs to the latest session day on or before its day; the meal's
+  own day counts only for **dinner and snacks**, eaten in the evening after
+  that day's prep. Skipped preps and extra sessions are handled by hand.
+- **Settled meals.** A cycle's meals lock **the day after the next session
+  day**: on a Tuesday both Sunday's and Tuesday's cycles are open, and
+  Sunday's locks on Wednesday. Today's meals never lock. Every edit to a
+  settled meal (add, remove, move, link) needs Admin; the week page shows
+  settled slots muted.
+- **Open and closed sessions.** A session dated today or later is open: it
+  grows to fit the meals linked to it, and shrinks back while planned. An
+  earlier session is closed: it is the record of what was cooked, so it only
+  gives free portions and never grows.
 
-"Today" is the server's local date. An edit is checked against the mode of
-every date it touches; if any is Log, Log rules apply (Admin overrides all).
+**Admin** (header switch, off on reload) edits settled meals and grows
+closed sessions by hand. Nothing else differs, auto-link included.
 
-**Today's session is still open.** The prep happens during the session's
-day, so a session dated today can still take new meals and grow, as in
-Plan; from tomorrow it is a record of what was made. Meals dated today may
-also be linked to today's session, or unlinked from it (today's dinner
-from today's prep); otherwise they follow Log rules as usual.
+"Today" is the server's local date. The day's Plan / Log label (after today
+/ today and earlier) is kept for display and for moving sessions.
 
 ### Entries
 
-| Edit | Plan | Log | Admin |
-|---|---|---|---|
-| Add from the recipe palette | auto-linked (below) | unlinked | auto-linked on Plan days, unlinked on Log days |
-| Add from a session card | linked; session grows | refused | linked; session grows |
-| Remove | ✅ (the session shrinks to fit) | ✅ (the portion stays made: spare) | ✅ |
-| Move / reorder | ✅; a broken link is re-linked (auto) | ✅ if the link still holds | ✅ if the link still holds |
-| Link / unlink / change session | ✅; session grows | refused | ✅; session grows |
+| Edit (meal not settled) | Result |
+|---|---|
+| Add a recipe (palette drop) | auto-linked (below) |
+| Add on a session card | linked to that session (manual link) |
+| Remove | ✅; an open session shrinks to fit, a closed one keeps the portion (spare) |
+| Move / reorder | ✅; a link the move breaks is re-linked by auto-link |
+| Link / unlink / change session | ✅ to any session on or before the meal's day (manual link) |
 
-**A session grows to fit its meals.** Linking a meal to a session that lacks
-its recipe adds it; batches follow the meals (see "Session item"). This
-applies to sessions still in Plan or dated today, and in Admin to any
-session; an earlier session is otherwise not changed, so such a link is
-refused.
+**A link only says where a portion went.** A manual link to an **open**
+session adds the recipe or raises its batches as needed (see "Session item");
+a **closed** session only gives a free portion, so a link to a full one, or
+to one without the recipe, is refused ("full", "has no …"). Unlinking is
+always allowed: the portion becomes spare.
 
-**Auto-link** (palette drop on a day after today, Admin or not): a meal
-belongs to the latest prep day before it, its supply cycle. Among the 7 days
-before the entry's day (plus that day itself for dinner), that is the latest
-day with a session, or a default session day (Sun, Tue, Thu) still open
-(today or later). The entry links to
+**Auto-link** runs on every drop, on any day, the same in Admin: it looks at
+the session on the meal's cycle day, and links
 
-1. that day's session, if it lists the recipe with a free portion;
-2. else that day's session grown to fit (created on a default day), if the
-   day is still open;
+1. to a free portion there;
+2. else, while that day is open (today or later), to that session grown to
+   fit, created when it doesn't exist yet;
 
-and stays unlinked otherwise. Earlier sessions are never reached into, however
-long their food keeps: a spare from last week is not assumed to be eaten
-(a manual link may still pick it). The entry's own day counts only for
-dinner, since the delivery and prep happen during that day: breakfast, lunch
-and snacks come from an earlier session (a manual link may still choose the
-same day for any meal).
+and leaves the meal unlinked otherwise. An earlier cycle is never reached
+into, however long its food keeps (a manual link may still pick it).
 
 ### Sessions
 

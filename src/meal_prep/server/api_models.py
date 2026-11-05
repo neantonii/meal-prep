@@ -47,6 +47,7 @@ class DiaryMeal(BaseModel):
 class DiaryDay(BaseModel):
     date: str
     mode: str  # "plan" or "log" (Admin is the client's switch)
+    settled: list[str]  # mealtimes whose prep cycle locked (Admin still edits)
     meals: list[DiaryMeal]
     totals: dict[str, float]
 
