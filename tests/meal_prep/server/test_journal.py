@@ -86,3 +86,21 @@ def test_a_journal_that_cannot_be_written_never_fails_the_edit(
     (tmp_path / "diary").mkdir(exist_ok=True)
     (tmp_path / "diary" / ".journal").write_text("not a folder")
     _add(client, "2026-11-06")
+
+
+def test_requests_rejected_before_the_edit_are_journaled(
+    client: TestClient, tmp_path: Path
+):
+    body = {"date": "2026-11-06", "mealtime": "lunch", "recipe": "no-such-recipe"}
+    assert client.post(f"/api/diary/{WEEK}/entries", json=body).status_code == 422
+    bad_week = {**body, "recipe": BEANS}
+    assert client.post("/api/diary/2026-W99/entries", json=bad_week).status_code == 422
+    malformed = {"date": "2026-11-06", "mealtime": "brunch", "recipe": BEANS}
+    assert client.post(f"/api/diary/{WEEK}/entries", json=malformed).status_code == 422
+    unknown, week, request = _journal(tmp_path)
+    assert (unknown["action"], unknown["outcome"]) == ("entry.add", "invalid")
+    assert "no-such-recipe" in unknown["message"]
+    assert (week["action"], week["params"]["week"]) == ("entry.add", "2026-W99")
+    assert request["action"] == f"POST /api/diary/{WEEK}/entries"
+    assert request["params"]["body"]["mealtime"] == "brunch"
+    assert request["outcome"] == "invalid"

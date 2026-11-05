@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from meal_prep.server.api_models import (
     AlwaysUpdate,
@@ -49,10 +49,6 @@ def session_router(editor: Editor) -> APIRouter:
         session_id: uuid.UUID, ingredient_id: str, body: AlwaysUpdate
     ) -> SessionDetail:
         """Staples span sessions; the reply is ``session_id``'s page."""
-        if ingredient_id not in editor.library.ingredients:
-            raise HTTPException(
-                status_code=422, detail=f"unknown ingredient '{ingredient_id}'"
-            )
         editor.set_staple(ingredient_id, body.always)
         logger.info("staple %s: %s", ingredient_id, body.always)
         return editor.detail(session_id)

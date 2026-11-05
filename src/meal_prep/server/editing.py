@@ -23,6 +23,9 @@ from meal_prep.server.weeks import week_dates
 from meal_prep.services import prep
 from meal_prep.services.diary import EntryNotFoundError
 
+# Journal outcome per HTTP status of a refused edit.
+_OUTCOMES = {404: "not_found", 409: "refused", 422: "invalid"}
+
 
 class Editor:
     """Runs diary edits and builds the week page they return."""
@@ -113,12 +116,17 @@ class Editor:
     ) -> None:
         """Load, run ``op``, write its change and journal how it went.
         Call under the lock. Rule refusals are 409, unknown entries or
-        sessions 404, invalid input 422."""
-        diary = self.load()
+        sessions 404, invalid input 422; every one is journaled too."""
         status, outcome = 0, "ok"
         error: Exception | None = None
         try:
+            diary = self.load()
             change = op(diary)
+        except HTTPException as e:
+            self._note(
+                action, params, admin, _OUTCOMES.get(e.status_code, "error"), e.detail
+            )
+            raise
         except prep.RuleError as e:
             status, outcome, error = 409, "refused", e
         except (EntryNotFoundError, prep.SessionNotFoundError) as e:
@@ -150,6 +158,10 @@ class Editor:
     def set_staple(self, ingredient_id: str, always: bool) -> None:
         """Add or remove one staple (``staples.yaml``)."""
         params = {"ingredient": ingredient_id, "always": always}
+        if ingredient_id not in self.library.ingredients:
+            message = f"unknown ingredient '{ingredient_id}'"
+            self._note("staple.set", params, False, "invalid", message)
+            raise HTTPException(status_code=422, detail=message)
         with self._lock:
             try:
                 ids = set(self.store.load_staples().always_have)
@@ -170,8 +182,13 @@ class Editor:
         admin: bool,
     ) -> DiaryWeek:
         """Run one edit under the lock, write it, return ``week``'s page."""
-        self.check_week(week)
+        params = {"week": week, **params}
+        try:
+            self.check_week(week)
+        except HTTPException as e:
+            self._note(action, params, admin, "invalid", e.detail)
+            raise
         with self._lock:
-            self._run(op, action, {"week": week, **params}, admin)
+            self._run(op, action, params, admin)
             after = self.load()
         return week_response(week, after, self.today(), self.library)
