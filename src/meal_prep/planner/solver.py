@@ -6,14 +6,20 @@ covered by cooked batches — one integer variable per recipe (0..7; at most
 one cook session per recipe per day) — and the objective minimizes full
 batch cost, so leftovers are tolerated but charged.
 CP-SAT works on integers, so batch costs are scaled to cents first.
+
+Optional convex quadratic terms (``ConvexQuadratic``, in cents) join the
+objective through secant cuts (``_add_quadratic``); see
+``meal_prep.planner.quadratic``.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from itertools import pairwise
 
 from ortools.sat.python import cp_model
+from ortools.sat.python.cp_model import LinearExpr
 
 from meal_prep.enums import RecipeCategory
 from meal_prep.models.recipe import Recipe
@@ -24,6 +30,7 @@ from meal_prep.planner.plan import (
     PlannedMeal,
     WeekPlan,
 )
+from meal_prep.planner.quadratic import ConvexQuadratic, square_breakpoints
 
 _CENTS = 100
 # A batch is a cook session: at most one per recipe per day, so 7 is a safe
@@ -55,8 +62,68 @@ class _PlannedDay:
     dinner: _PlannedMeal
 
 
-def plan_week(recipes: Sequence[Recipe]) -> WeekPlan:
-    """Solve the cheapest 7-day x 3-meal plan over ``recipes``."""
+@dataclass(eq=False)
+class _QuadraticTerm:
+    """One cut quadratic: what ``_add_quadratic`` built for ``q(x)``.
+
+    ``t >= x²`` via secants at ``breakpoints`` (exact there, a slight
+    overestimate between them); ``objective`` is ``c·t + b·x + d``. Report
+    ``q(value of x)``, not the cut estimate.
+    """
+
+    x: LinearExpr
+    t: cp_model.IntVar
+    objective: LinearExpr
+    q: ConvexQuadratic
+    breakpoints: tuple[int, ...]
+
+
+def _add_quadratic(
+    model: cp_model.CpModel,
+    x: LinearExpr,
+    lo: int,
+    hi: int,
+    q: ConvexQuadratic,
+    *,
+    name: str,
+    max_cuts: int = 100,
+) -> _QuadraticTerm:
+    """Add ``q(x)`` for an integer expression ``x`` known to lie in ``[lo, hi]``.
+
+    Adds ``lo <= x <= hi`` (past the outer breakpoints a secant would
+    underestimate ``x²``, so the bounds must hold), a variable ``t`` and at
+    most ``max_cuts`` secant cuts ``t >= (p + r)·x - p·r`` (``p``, ``r`` neighbouring
+    breakpoints). The caller adds
+    the returned ``objective`` to the single ``minimize`` call.
+    """
+    model.add(x >= lo)
+    model.add(x <= hi)
+    squares = (lo * lo, hi * hi)
+    t_min = 0 if lo <= 0 <= hi else min(squares)
+    t = model.new_int_var(t_min, max(squares), f"{name}_sq")
+    breakpoints = square_breakpoints(lo, hi, q.vertex, max_cuts)
+    if len(breakpoints) == 1:
+        model.add(t == lo * lo)
+    for left, right in pairwise(breakpoints):
+        model.add(t >= (left + right) * x - left * right)
+    return _QuadraticTerm(
+        x=x,
+        t=t,
+        objective=q.c * t + q.b * x + q.d,
+        q=q,
+        breakpoints=breakpoints,
+    )
+
+
+def plan_week(
+    recipes: Sequence[Recipe], *, daily_kcal: ConvexQuadratic | None = None
+) -> WeekPlan:
+    """Solve the cheapest 7-day x 3-meal plan over ``recipes``.
+
+    ``daily_kcal`` adds a convex penalty (in cents) on each day's kcal,
+    e.g. ``ConvexQuadratic.deviation(2100, weight)`` to pull every day
+    toward a target. Per-serving kcal are rounded to whole kcal.
+    """
     meals = list(recipes)
     if not meals:
         raise ValueError("plan_week needs at least one recipe.")
@@ -100,9 +167,15 @@ def plan_week(recipes: Sequence[Recipe]) -> WeekPlan:
         ]
         model.add(sum(uses) <= batches[recipe.id] * round(recipe.servings))
 
-    model.minimize(
-        sum(batch_costs_cents[recipe.id] * batches[recipe.id] for recipe in meals)
-    )
+    objective: list[LinearExpr] = [
+        batch_costs_cents[recipe.id] * batches[recipe.id] for recipe in meals
+    ]
+    if daily_kcal is not None:
+        objective.extend(
+            _add_daily_kcal(model, planned_day, daily_kcal).objective
+            for planned_day in week
+        )
+    model.minimize(LinearExpr.sum(objective))
 
     solver = cp_model.CpSolver()
     solver.parameters.random_seed = 1
@@ -144,6 +217,30 @@ def plan_week(recipes: Sequence[Recipe]) -> WeekPlan:
             )
         )
     return WeekPlan(days=tuple(days), prep=tuple(prep))
+
+
+def _add_daily_kcal(
+    model: cp_model.CpModel, planned_day: _PlannedDay, q: ConvexQuadratic
+) -> _QuadraticTerm:
+    """Cut ``q`` over the day's kcal; bounds from the cheapest/richest picks."""
+    kcal: list[LinearExpr] = []
+    lo = hi = 0
+    for planned_meal in (planned_day.breakfast, planned_day.lunch, planned_day.dinner):
+        options = [_kcal(recipe) for recipe in planned_meal.recipes]
+        kcal.extend(
+            option * var
+            for option, var in zip(options, planned_meal.is_selected, strict=True)
+        )
+        lo += min(options)
+        hi += max(options)
+    return _add_quadratic(
+        model, LinearExpr.sum(kcal), lo, hi, q, name=f"kcal_{planned_day.day}"
+    )
+
+
+def _kcal(recipe: Recipe) -> int:
+    """Per-serving kcal as the integer CP-SAT needs."""
+    return round(recipe.per_serving_macros.calories_kcal)
 
 
 def _new_planned_meal(

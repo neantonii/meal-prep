@@ -5,12 +5,15 @@ All recipes are hand-built fakes; the cheapest assignment is known exactly.
 
 from __future__ import annotations
 
+import itertools
+
 import pytest
 
 from meal_prep.enums import Aisle, RecipeCategory, StorageType
 from meal_prep.models.ingredient import MacrosInfo, Package
 from meal_prep.models.recipe import Recipe, RecipeIngredient
 from meal_prep.planner.plan import WeekPlan
+from meal_prep.planner.quadratic import ConvexQuadratic
 from meal_prep.planner.solver import plan_week
 
 
@@ -34,6 +37,7 @@ def _recipe(
     cost: float,
     category: RecipeCategory = RecipeCategory.MODULAR_PROTEIN,
     servings: float = 1.0,
+    kcal: float = 100.0,
 ) -> Recipe:
     return Recipe(
         id=recipe_id,
@@ -57,7 +61,7 @@ def _recipe(
                 unit="g",
                 grams=200.0,
                 cost=cost,
-                macros=_macros(),
+                macros=_macros(cal=kcal),
                 package=Package("Test 1 kg", 1.0, "kg", 1000.0),
             ),
         ),
@@ -168,3 +172,61 @@ def test_many_recipes_solve():
     recipes.append(_recipe("morning", cost=0.5, category=RecipeCategory.BREAKFAST))
     plan = plan_week(recipes)
     assert isinstance(plan, WeekPlan)
+
+
+def _day_kcal(plan: WeekPlan) -> list[float]:
+    return [day.macros.calories_kcal for day in plan.days]
+
+
+def test_daily_kcal_pull_matches_brute_force():
+    # One 21-serving batch covers any use pattern, so batch cost is paid
+    # once per used recipe; at zero cost only the kcal penalty is left and
+    # every day is independent: brute force one day.
+    recipes = [
+        _recipe(
+            "oats",
+            cost=0.0,
+            category=RecipeCategory.BREAKFAST,
+            servings=21.0,
+            kcal=400 * 21,
+        ),
+        *(
+            _recipe(f"meal-{kcal}", cost=0.0, servings=21.0, kcal=kcal * 21)
+            for kcal in (500, 900, 1300)
+        ),
+    ]
+    penalty = ConvexQuadratic.deviation(2050, 0.01)
+    plan = plan_week(recipes, daily_kcal=penalty)
+
+    options = (400, 500, 900, 1300)  # lunch/dinner may be any recipe
+    best = min(
+        (400 + a + b for a, b in itertools.product(options, repeat=2)),
+        key=penalty,
+    )
+    assert best == 2100  # 400 + 400 + 1300
+    assert _day_kcal(plan) == pytest.approx([best] * 7)
+
+
+def test_daily_kcal_trades_off_against_cost():
+    # Pricey hearty meals hit 2100 kcal; cheap light ones fall short. Oats
+    # cover exactly the 7 breakfasts; reusing them costs a 10-euro batch.
+    recipes = [
+        _recipe(
+            "oats",
+            cost=10.0,
+            category=RecipeCategory.BREAKFAST,
+            servings=7.0,
+            kcal=500 * 7,
+        ),
+        _recipe("light", cost=1.0, servings=21.0, kcal=300 * 21),
+        _recipe("hearty", cost=20.0, servings=21.0, kcal=800 * 21),
+    ]
+
+    def solve(weight: float) -> list[float]:
+        target = ConvexQuadratic.deviation(2100, weight)
+        return _day_kcal(plan_week(recipes, daily_kcal=target))
+
+    # Hearty costs 1900 cents more than light; light falls 1000 kcal short
+    # on each of 7 days, so the shortfall costs 7 x 1000² x w cents.
+    assert solve(1e-5) == pytest.approx([1100] * 7)  # 70 cents: stay light
+    assert solve(1e-3) == pytest.approx([2100] * 7)  # 7000 cents: go hearty
