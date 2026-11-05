@@ -116,7 +116,8 @@ _SCHEMA: dict[str, Any] = {
 def _prompt(country: str) -> str:
     return f"""You estimate the nutrition of meals someone ate, for a food diary.
 The user describes what they ate, often messily: misspelled, several items in
-one line, details left out. Split it into items and estimate each one.
+one line, details left out. Split it into menu items, the separate things
+one would order or be served, and estimate each one.
 Everything was eaten as served (takeout, restaurant, someone else's
 cooking): a weight is always the weight of the food as served.
 
@@ -126,10 +127,11 @@ the user sees each part and can fix or delete it. Never fold a part into
 another item or leave it out silently.
 
 For every item:
-- name: a short, specific name with the brand when known, and with the size
-  or count whenever it changes the numbers, so a different size reads as a
-  different item, e.g. "McDonald's McChicken", "McDonald's Small Fries",
-  "McDonald's 6 Chicken McNuggets", "250 g Baked Rainbow Trout", "Drink".
+- name: the item as a menu would list it: the brand when known, then the
+  size or count whenever it changes the numbers (a different size is a
+  different menu item), then the dish, e.g. "McDonald's McChicken",
+  "McDonald's Small Fries", "McDonald's 6 Chicken McNuggets", "Large Pho with
+  Brisket", "Drink".
   Use what the user said: their count and size, and no ingredients or
   variants they didn't mention. If something they said looks wrong (a size
   the menu doesn't have), keep it in the name and estimate it, and ask in

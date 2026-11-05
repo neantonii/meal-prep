@@ -85,10 +85,10 @@ oil), while still giving a best estimate. Everything is taken as eaten as
 served, so a weight is always the served (cooked) weight. Each item
 comes back with:
 
-- a short `name` with the brand when known and the size or count when it
-  changes the numbers ("McDonald's 6 Chicken McNuggets"), so a 9-piece order
-  is a different repeat; plus `brand` (a brand mentioned once applies to the
-  whole order);
+- `name`: the item as a menu would list it, brand, then size or count when
+  it changes the numbers, then the dish ("McDonald's 6 Chicken McNuggets"),
+  so a 9-piece order is a different menu item and a different repeat; plus
+  `brand` (a brand mentioned once applies to the whole order);
 - `quantity` assumed, `kcal` with `kcal_low`/`kcal_high`, protein, carbs,
   fat, fiber;
 - `source`: `published` (the brand's menu values for the configured
