@@ -8,7 +8,7 @@ import uuid
 
 import pytest
 
-from meal_prep.dtos.log import DiaryEntryDTO
+from meal_prep.dtos.log import RecipeEntryDTO
 from meal_prep.dtos.session import PrepSessionDTO
 from meal_prep.enums import Aisle, Mealtime, RecipeCategory, StorageType
 from meal_prep.models.ingredient import MacrosInfo, Package
@@ -101,7 +101,7 @@ def _add(
     link: prep.Link = "auto",
     policy: Policy = PLAN,
     meal: Mealtime = Mealtime.LUNCH,
-) -> tuple[Diary, DiaryEntryDTO]:
+) -> tuple[Diary, RecipeEntryDTO]:
     week = _week(date)
     change, entry = prep.add_entry(
         diary, policy, RECIPES, week, date, meal, recipe, link=link
@@ -119,7 +119,7 @@ def _only(diary: Diary) -> PrepSessionDTO:
     return session
 
 
-def _entry(diary: Diary, entry_id: uuid.UUID, week: str = WEEK) -> DiaryEntryDTO:
+def _entry(diary: Diary, entry_id: uuid.UUID, week: str = WEEK) -> RecipeEntryDTO:
     return next(
         e for d in diary.weeks[week].days for e in d.entries() if e.id == entry_id
     )

@@ -16,21 +16,70 @@ export interface CatalogGroup {
   recipes: CatalogEntry[];
 }
 
-/** One logged serving, with the numbers frozen when it was logged. */
-export interface DiaryEntry {
+/** What every logged serving shows: calories and macros, as logged. */
+interface EntryBase {
   id: string;
-  recipe: string;
   title: string;
-  /** null when the recipe no longer exists */
-  card_url: string | null;
-  /** id of the prep session it came from */
-  session: string | null;
   kcal: number;
   protein_g: number;
   carbs_g: number;
   fat_g: number;
+}
+
+/** A serving of a catalog recipe, with the numbers frozen when logged. */
+export interface RecipeEntry extends EntryBase {
+  kind: "recipe";
+  recipe: string;
+  /** null when the recipe no longer exists */
+  card_url: string | null;
+  /** id of the prep session it came from */
+  session: string | null;
   fiber_g: number;
   cost: number;
+}
+
+/** A takeout meal: never from a session; its cost only if known. */
+export interface TakeoutEntry extends EntryBase {
+  kind: "takeout";
+  cost: number | null;
+}
+
+/** One logged serving, told apart by `kind`. */
+export type DiaryEntry = RecipeEntry | TakeoutEntry;
+
+/** A takeout meal as typed (one portion): calories and macros, cost if known. */
+export interface TakeoutFields {
+  title: string;
+  kcal: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  cost: number | null;
+}
+
+/** One item of an AI estimate (shown while reviewing, never stored). */
+export interface EstimatedItem {
+  name: string;
+  brand: string;
+  /** what unsaid detail changes the numbers, as a question ("" when none) */
+  question: string;
+  quantity: string;
+  kcal: number;
+  kcal_low: number;
+  kcal_high: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  fiber_g: number;
+  source: "published" | "typical" | "guess";
+  assumptions: string[];
+}
+
+/** A takeout meal eaten before: its latest numbers. */
+export interface Usual extends TakeoutFields {
+  /** ISO date it was last eaten */
+  last: string;
+  times: number;
 }
 
 export interface DiaryMeal {
@@ -199,6 +248,17 @@ export const api = {
   session: (id: string) => request<SessionDetail>(`/api/sessions/${id}`),
   addEntry: (week: string, recipe: string, where: Placement, session: Link, admin: boolean) =>
     send<DiaryWeek>("POST", `/api/diary/${week}/entries`, admin, { ...where, recipe, session }),
+  /** Add takeout items (a whole order) to one slot. */
+  addTakeout: (week: string, where: Placement, items: TakeoutFields[], admin: boolean) =>
+    send<DiaryWeek>("POST", `/api/diary/${week}/takeout`, admin, { ...where, items }),
+  editTakeout: (week: string, id: string, fields: TakeoutFields, admin: boolean) =>
+    send<DiaryWeek>("PUT", `/api/diary/${week}/takeout/${id}`, admin, fields),
+  usuals: () => request<Usual[]>("/api/usuals"),
+  /** Whether AI estimates are on (the host has an API key). */
+  estimateStatus: () => request<{ available: boolean; model: string | null }>("/api/estimate"),
+  /** Split a messy description into items with estimated numbers. */
+  estimate: (text: string) =>
+    send<{ items: EstimatedItem[] }>("POST", "/api/estimate", false, { text }),
   removeEntry: (week: string, id: string, admin: boolean) =>
     send<DiaryWeek>("DELETE", `/api/diary/${week}/entries/${id}`, admin),
   moveEntry: (week: string, id: string, where: Placement, admin: boolean) =>

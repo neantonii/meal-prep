@@ -13,7 +13,7 @@ from collections.abc import Collection, Mapping
 from meal_prep.enums import Mealtime, RecipeCategory
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.library import Library
-from meal_prep.models.log import LogEntry
+from meal_prep.models.log import LogEntry, TakeoutLogEntry
 from meal_prep.models.recipe import Recipe
 from meal_prep.models.session import NeedShare as ModelNeedShare
 from meal_prep.models.session import PrepSession
@@ -26,9 +26,11 @@ from meal_prep.server.api_models import (
     MealRef,
     NeededIngredient,
     NeedShare,
+    RecipeEntryOut,
     Session,
     SessionDetail,
     SessionItem,
+    TakeoutEntryOut,
 )
 from meal_prep.server.weeks import week_dates
 from meal_prep.services import prep
@@ -109,17 +111,28 @@ def _needs_out(
 
 
 def _entry_out(entry: LogEntry, library: Library) -> DiaryEntry:
-    return DiaryEntry(
+    m = entry.macros
+    if isinstance(entry, TakeoutLogEntry):
+        return TakeoutEntryOut(
+            id=entry.entry_id,
+            title=entry.title,
+            kcal=m.calories_kcal,
+            protein_g=m.protein_g,
+            carbs_g=m.carbs_g,
+            fat_g=m.fat_g,
+            cost=entry.cost,
+        )
+    return RecipeEntryOut(
         id=entry.entry_id,
-        recipe=entry.recipe_id,
         title=entry.title,
+        kcal=m.calories_kcal,
+        protein_g=m.protein_g,
+        carbs_g=m.carbs_g,
+        fat_g=m.fat_g,
+        recipe=entry.recipe_id,
         card_url=_card_url(library.recipes.get(entry.recipe_id)),
         session=entry.session_id,
-        kcal=entry.macros.calories_kcal,
-        protein_g=entry.macros.protein_g,
-        carbs_g=entry.macros.carbs_g,
-        fat_g=entry.macros.fat_g,
-        fiber_g=entry.macros.fiber_g,
+        fiber_g=m.fiber_g,
         cost=entry.cost,
     )
 
@@ -237,10 +250,7 @@ def week_response(
     start, end = prep.session_window(dates[0])
     meals = _meals_by_item(diary)
     linked_here = {
-        entry.session
-        for day_dto in (dto.days if dto is not None else ())
-        for entry in day_dto.entries()
-        if entry.session is not None
+        link.session for link in prep.linked_entries([dto] if dto is not None else [])
     }
     cards: list[tuple[datetime.date, Session]] = []
     taken: set[datetime.date] = set()

@@ -20,12 +20,16 @@ import datetime
 import math
 import uuid
 from collections import Counter
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Literal
 
-from meal_prep.dtos.log import DiaryEntryDTO, DiaryWeekDTO
+from meal_prep.dtos.log import (
+    DiaryWeekDTO,
+    RecipeEntryDTO,
+    TakeoutEntryDTO,
+)
 from meal_prep.dtos.session import PrepSessionDTO, SessionItemDTO
 from meal_prep.enums import Mealtime
 from meal_prep.models.recipe import Recipe
@@ -137,20 +141,38 @@ def next_session_day(day: datetime.date) -> datetime.date:
     return day
 
 
+@dataclass(frozen=True, slots=True)
+class Linked:
+    """A recipe entry linked to a prep session, and where it was eaten."""
+
+    date: datetime.date
+    mealtime: Mealtime
+    entry: RecipeEntryDTO
+    session: uuid.UUID
+
+
+def linked_entries(weeks: Iterable[DiaryWeekDTO]) -> Iterator[Linked]:
+    """Every entry linked to a prep session, over all ``weeks``, in date and
+    mealtime order within each week. Only recipe entries link (takeout never
+    does), so this is the one place that tells them apart."""
+    for week in weeks:
+        for day in week.days:
+            for mealtime in Mealtime:
+                for entry in getattr(day, mealtime.value) or ():
+                    if isinstance(entry, RecipeEntryDTO) and entry.session:
+                        yield Linked(day.date, mealtime, entry, entry.session)
+
+
 def linked_meals(
     weeks: Iterable[DiaryWeekDTO],
 ) -> dict[tuple[uuid.UUID, str], list[tuple[datetime.date, Mealtime]]]:
     """The meals linked per (session id, recipe id), over all ``weeks``, in
     date and mealtime order."""
     meals: dict[tuple[uuid.UUID, str], list[tuple[datetime.date, Mealtime]]] = {}
+    for link in linked_entries(weeks):
+        key = (link.session, link.entry.recipe)
+        meals.setdefault(key, []).append((link.date, link.mealtime))
     order = list(Mealtime)
-    for week in weeks:
-        for day in week.days:
-            for mealtime in Mealtime:
-                for entry in getattr(day, mealtime.value) or ():
-                    if entry.session is not None:
-                        key = (entry.session, entry.recipe)
-                        meals.setdefault(key, []).append((day.date, mealtime))
     for found in meals.values():
         found.sort(key=lambda m: (m[0], order.index(m[1])))
     return meals
@@ -158,13 +180,7 @@ def linked_meals(
 
 def link_counts(weeks: Iterable[DiaryWeekDTO]) -> Counter[tuple[uuid.UUID, str]]:
     """Linked entries per (session id, recipe id), over all ``weeks``."""
-    counts: Counter[tuple[uuid.UUID, str]] = Counter()
-    for week in weeks:
-        for day in week.days:
-            for entry in day.entries():
-                if entry.session is not None:
-                    counts[(entry.session, entry.recipe)] += 1
-    return counts
+    return Counter((link.session, link.entry.recipe) for link in linked_entries(weeks))
 
 
 def _portions(item: SessionItemDTO) -> int:
@@ -253,15 +269,6 @@ class _Draft:
 
     # -- links ----------------------------------------------------------------
 
-    def linked(self) -> list[tuple[datetime.date, DiaryEntryDTO]]:
-        return [
-            (day.date, entry)
-            for week in self.weeks.values()
-            for day in week.days
-            for entry in day.entries()
-            if entry.session is not None
-        ]
-
     def count(self, session_id: uuid.UUID, recipe_id: str) -> int:
         return link_counts(self.weeks.values())[(session_id, recipe_id)]
 
@@ -271,11 +278,11 @@ class _Draft:
         if not wanted:
             return
         counts: Counter[tuple[uuid.UUID, str]] = Counter()
-        for date, entry in self.linked():
-            if entry.session not in wanted:
+        for link in linked_entries(self.weeks.values()):
+            if link.session not in wanted:
                 continue
-            assert entry.session is not None
-            session = self.sessions.get(entry.session)
+            date, entry = link.date, link.entry
+            session = self.sessions.get(link.session)
             if session is None:
                 raise RuleError(f"{entry.title}: its prep session no longer exists")
             label = day_label(session.date)
@@ -286,7 +293,7 @@ class _Draft:
                     f"{entry.title} on {day_label(date)} can't come from the "
                     f"later {label} session"
                 )
-            counts[(entry.session, entry.recipe)] += 1
+            counts[(link.session, entry.recipe)] += 1
         for sid in wanted:
             session = self.sessions.get(sid)
             if session is None:
@@ -400,7 +407,7 @@ def add_entry(
     recipe: Recipe,
     position: int | None = None,
     link: Link = "auto",
-) -> tuple[Change, DiaryEntryDTO]:
+) -> tuple[Change, RecipeEntryDTO]:
     """Add an entry for ``recipe``; ``link`` is a session id, ``None`` or
     ``"auto"`` (a recipe drop: auto-linked, on any day, Admin or not)."""
     _check_open(policy, date, mealtime)
@@ -420,6 +427,47 @@ def add_entry(
     draft.put_week(week, dto)
     draft.check([session])
     return draft.change(), entry
+
+
+def add_takeout_entries(
+    diary: Diary,
+    policy: Policy,
+    week: str,
+    date: datetime.date,
+    mealtime: Mealtime,
+    added: Sequence[TakeoutEntryDTO],
+    position: int | None = None,
+) -> Change:
+    """Add takeout entries to one slot, in order from ``position`` (``None``
+    appends): a whole order at once. They never link to a session, so only
+    the settled-meal lock applies."""
+    _check_open(policy, date, mealtime)
+    draft = _Draft(diary, policy, {})
+    dto = draft.week(week)
+    for offset, entry in enumerate(added):
+        at = None if position is None else position + offset
+        dto, _ = entries.insert_entry(dto, week, date, mealtime, entry, at)
+    if dto is not None:
+        draft.put_week(week, dto)
+    return draft.change()
+
+
+def edit_takeout_entry(
+    diary: Diary, policy: Policy, week: str, entry: TakeoutEntryDTO
+) -> Change:
+    """Replace a takeout entry's title and numbers, keeping its id and
+    place; recipe entries stay frozen."""
+    draft = _Draft(diary, policy, {})
+    current = _week_of(draft, week)
+    date, mealtime, old = entries.find_entry(current, entry.id)
+    _check_open(policy, date, mealtime)
+    if not isinstance(old, TakeoutEntryDTO):
+        raise RuleError(
+            f"{old.title} is a recipe: its numbers are frozen (remove it and "
+            "add it again)"
+        )
+    draft.put_week(week, entries.replace_entry(current, entry))
+    return draft.change()
 
 
 def remove_entry(
@@ -459,6 +507,8 @@ def move_entry(
     _check_open(policy, date, mealtime)
     moved = entries.move_entry(current, entry_id, date, mealtime, position)
     draft.put_week(week, moved)
+    if not isinstance(entry, RecipeEntryDTO):
+        return draft.change()  # takeout never links
     session = entry.session
     linked = draft.sessions.get(session) if session is not None else None
     if session is not None and (
@@ -495,6 +545,13 @@ def set_entry_session(
     current = _week_of(draft, week)
     date, mealtime, entry = entries.find_entry(current, entry_id)
     _check_open(policy, date, mealtime)
+    if not isinstance(entry, RecipeEntryDTO):
+        if session is None and session_date is None:
+            return Change()  # never linked: nothing to unlink
+        raise RuleError(
+            f"{entry.title} is takeout: takeout is never linked to a prep session"
+        )
+    recipe_id = entry.recipe
     if session_date is not None:
         existing = draft.session_on(session_date)
         if existing is not None:
@@ -508,7 +565,7 @@ def set_entry_session(
             created = PrepSessionDTO(
                 id=uuid.uuid4(),
                 date=session_date,
-                items=[freeze_item(draft.recipe(entry.recipe))],
+                items=[freeze_item(draft.recipe(recipe_id))],
             )
             draft.put_session(created)
             session = created.id
@@ -518,7 +575,7 @@ def set_entry_session(
     draft.put_week(week, unlinked)
     if session is not None:
         draft.session(session)  # must exist
-        draft.make_room(session, entry.recipe, date)
+        draft.make_room(session, recipe_id, date)
         draft.put_week(week, entries.set_entry_session(unlinked, entry_id, session))
     draft.check([session])
     return draft.change()

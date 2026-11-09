@@ -8,7 +8,7 @@ Our custom validation in this module:
 - ``DiaryWeekDTO.validate_day_order`` -> strictly increasing dates
 - ``DiaryWeekDTO.validate_days_in_week`` -> real ISO week, days inside it
 - ``DiaryWeekDTO.validate_unique_entry_ids`` -> no entry id twice in a week
-- ``DiaryEntryDTO.validate_recipe_id`` -> normalizes the recipe slug
+- ``RecipeEntryDTO.validate_recipe_id`` -> normalizes the recipe slug
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ import uuid
 import pytest
 from pydantic import ValidationError
 
-from meal_prep.dtos.log import DiaryDayDTO, DiaryEntryDTO, DiaryWeekDTO
+from meal_prep.dtos.log import DiaryDayDTO, DiaryWeekDTO, RecipeEntryDTO
 
 
 def _entry(recipe: str = "oatmeal", entry_id: str | None = None) -> dict:
@@ -62,7 +62,9 @@ def test_diary_week_valid():
 
 
 def test_entry_recipe_id_is_normalized():
-    assert DiaryEntryDTO.model_validate(_entry(recipe="  Oatmeal ")).recipe == "oatmeal"
+    assert (
+        RecipeEntryDTO.model_validate(_entry(recipe="  Oatmeal ")).recipe == "oatmeal"
+    )
 
 
 def test_rejects_bare_recipe_ids():
@@ -74,12 +76,12 @@ def test_entry_requires_frozen_numbers():
     data = _entry()
     del data["cost"]
     with pytest.raises(ValidationError):
-        DiaryEntryDTO.model_validate(data)
+        RecipeEntryDTO.model_validate(data)
 
 
 def test_entry_rejects_non_uuid_id():
     with pytest.raises(ValidationError):
-        DiaryEntryDTO.model_validate(_entry(entry_id="not-a-uuid"))
+        RecipeEntryDTO.model_validate(_entry(entry_id="not-a-uuid"))
 
 
 def test_day_rejects_empty_meal_list():
@@ -144,10 +146,10 @@ def test_week_rejects_day_outside_its_week():
 
 
 def test_entry_session_link_is_optional():
-    assert DiaryEntryDTO.model_validate(_entry()).session is None
+    assert RecipeEntryDTO.model_validate(_entry()).session is None
     session = uuid.uuid4()
-    linked = DiaryEntryDTO.model_validate({**_entry(), "session": str(session)})
+    linked = RecipeEntryDTO.model_validate({**_entry(), "session": str(session)})
     assert linked.session == session
-    assert "session" not in DiaryEntryDTO.model_validate(_entry()).model_dump(
+    assert "session" not in RecipeEntryDTO.model_validate(_entry()).model_dump(
         exclude_none=True
     )

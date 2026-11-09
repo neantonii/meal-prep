@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import datetime
 import uuid
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
@@ -23,20 +23,39 @@ class CatalogEntry(BaseModel):
     cost: float
 
 
-class DiaryEntry(BaseModel):
-    """One logged serving, with the numbers frozen when it was logged."""
+class _EntryOut(BaseModel):
+    """What every logged serving shows: calories and macros, as logged."""
 
     id: str
-    recipe: str
     title: str
-    card_url: str | None  # None when the recipe no longer exists
-    session: str | None  # id of the prep session it came from
     kcal: float
     protein_g: float
     carbs_g: float
     fat_g: float
+
+
+class RecipeEntryOut(_EntryOut):
+    """A serving of a catalog recipe."""
+
+    kind: Literal["recipe"] = "recipe"
+    recipe: str
+    card_url: str | None  # None when the recipe no longer exists
+    session: str | None  # id of the prep session it came from
     fiber_g: float
     cost: float
+
+
+class TakeoutEntryOut(_EntryOut):
+    """A takeout meal: never from a session; its cost only if known."""
+
+    kind: Literal["takeout"] = "takeout"
+    cost: float | None
+
+
+# One logged serving, told apart by ``kind``.
+type DiaryEntry = Annotated[
+    RecipeEntryOut | TakeoutEntryOut, Field(discriminator="kind")
+]
 
 
 class DiaryMeal(BaseModel):
@@ -194,3 +213,61 @@ class EntryLink(BaseModel):
 
 class SessionMove(BaseModel):
     date: datetime.date
+
+
+class TakeoutFields(BaseModel):
+    """A takeout meal as typed (one portion): its title, calories and
+    macros, and its cost when known."""
+
+    title: str = Field(..., min_length=1, max_length=200)
+    kcal: float = Field(..., ge=0)
+    protein_g: float = Field(..., ge=0)
+    carbs_g: float = Field(..., ge=0)
+    fat_g: float = Field(..., ge=0)
+    cost: float | None = Field(default=None, ge=0)
+
+
+class NewTakeoutEntries(BaseModel):
+    """Takeout meals to add to one slot, in order, from ``position``
+    (``None`` appends): a whole order at once."""
+
+    date: datetime.date
+    mealtime: Mealtime
+    position: int | None = Field(default=None, ge=0)
+    items: list[TakeoutFields] = Field(..., min_length=1, max_length=20)
+
+
+class EstimateRequest(BaseModel):
+    """What was eaten, as typed (messy is fine)."""
+
+    text: str = Field(..., min_length=1, max_length=1000)
+
+
+class EstimatedItemOut(BaseModel):
+    """One item of an AI estimate (``meal_prep.server.estimate``)."""
+
+    name: str
+    brand: str
+    question: str  # what is unclear and changes the numbers ("" when nothing)
+    quantity: str
+    kcal: float
+    kcal_low: float
+    kcal_high: float
+    protein_g: float
+    carbs_g: float
+    fat_g: float
+    fiber_g: float
+    source: str  # "published", "typical" or "guess"
+    assumptions: list[str]
+
+
+class EstimateOut(BaseModel):
+    items: list[EstimatedItemOut]
+
+
+class Usual(TakeoutFields):
+    """A takeout meal eaten before: its latest numbers, when it was last
+    eaten and how often."""
+
+    last: str
+    times: int

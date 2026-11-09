@@ -4,7 +4,9 @@ A diary week is a record of what was eaten: an ISO week of days with four
 fixed mealtime fields (breakfast/lunch/dinner/snacks). Each mealtime is an
 ordered list of entries, and every entry carries its own id plus the numbers
 frozen when it was logged (#107), so past weeks never change when recipes,
-ingredients or prices do. Absent mealtime means not logged; present-but-empty
+ingredients or prices do. An entry is a recipe serving
+(``RecipeEntryDTO``) or a takeout meal (``TakeoutEntryDTO``), told apart by
+whether it names a recipe. Absent mealtime means not logged; present-but-empty
 is rejected. Parsing of the files lives in ``meal_prep.adapters.logs``.
 
 Compatibility rule: entry fields are only ever added, never renamed or
@@ -18,8 +20,17 @@ import datetime
 import itertools
 import re
 import uuid
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Discriminator,
+    Field,
+    Tag,
+    field_validator,
+    model_validator,
+)
 
 from meal_prep.dtos._normalize import normalize_slug
 
@@ -28,23 +39,41 @@ from meal_prep.dtos._normalize import normalize_slug
 WEEK_ID = re.compile(r"(\d{4})-W(\d{2})")
 
 
-class DiaryEntryDTO(BaseModel):
-    """One eaten serving, with the numbers as they were when it was logged."""
+# The numbers every entry carries: what totals are made of.
+MACROS = ("calories_kcal", "protein_g", "fat_g", "carbs_g")
+# The rest: required on a recipe entry, optional on a takeout one.
+EXTRAS = (
+    "cost",
+    "fiber_g",
+    "saturated_fat_g",
+    "sugars_g",
+    "sodium_mg",
+    "potassium_mg",
+)
+# Every number, in file order.
+NUMBERS = ("cost", *MACROS, *EXTRAS[1:])
+
+
+class _EntryDTO(BaseModel):
+    """What every diary entry has: an id, a title and, for one serving,
+    calories and the three macros."""
 
     model_config = ConfigDict(extra="forbid")
 
     id: uuid.UUID = Field(..., description="Entry id (UUID); never changes")
-    recipe: str = Field(..., description="Id of the recipe that was eaten")
-    title: str = Field(
-        ..., min_length=1, description="Recipe title when the entry was logged"
-    )
-    cost: float = Field(
-        ..., ge=0, description="Cost of one serving when logged, in CAD"
-    )
+    title: str = Field(..., min_length=1, description="Title when logged")
     calories_kcal: float = Field(..., ge=0, description="Per serving, when logged")
     protein_g: float = Field(..., ge=0, description="Per serving, when logged")
     fat_g: float = Field(..., ge=0, description="Per serving, when logged")
     carbs_g: float = Field(..., ge=0, description="Per serving, when logged")
+
+
+class RecipeEntryDTO(_EntryDTO):
+    """A serving of a catalog recipe: every number frozen when it was logged
+    (#107), and the prep session it came from, if any."""
+
+    recipe: str = Field(..., description="Id of the recipe that was eaten")
+    cost: float = Field(..., ge=0, description="Cost of one serving, in CAD")
     fiber_g: float = Field(..., ge=0, description="Per serving, when logged")
     saturated_fat_g: float = Field(..., ge=0, description="Per serving, when logged")
     sugars_g: float = Field(..., ge=0, description="Per serving, when logged")
@@ -60,6 +89,38 @@ class DiaryEntryDTO(BaseModel):
     @classmethod
     def validate_recipe_id(cls, v: str) -> str:
         return normalize_slug(v, field="Logged recipe id")
+
+
+class TakeoutEntryDTO(_EntryDTO):
+    """A meal that isn't a recipe (takeout, eating out): calories and macros
+    as typed or estimated; cost and the minor nutrients only when known
+    (absent = unknown). Never linked to a prep session: it has no field for
+    one."""
+
+    cost: float | None = Field(
+        default=None, ge=0, description="Cost in CAD; absent when unknown"
+    )
+    fiber_g: float | None = Field(default=None, ge=0, description="If known")
+    saturated_fat_g: float | None = Field(default=None, ge=0, description="If known")
+    sugars_g: float | None = Field(default=None, ge=0, description="If known")
+    sodium_mg: float | None = Field(default=None, ge=0, description="If known")
+    potassium_mg: float | None = Field(default=None, ge=0, description="If known")
+
+
+def _entry_kind(value: object) -> str:
+    """A diary entry is a recipe entry when it names a recipe."""
+    if isinstance(value, dict):
+        return "recipe" if "recipe" in value else "takeout"
+    return "recipe" if isinstance(value, RecipeEntryDTO) else "takeout"
+
+
+# One diary entry: a recipe serving or a takeout meal, told apart by whether
+# it names a recipe (no kind field in the file).
+type DiaryEntryDTO = Annotated[
+    Annotated[RecipeEntryDTO, Tag("recipe")]
+    | Annotated[TakeoutEntryDTO, Tag("takeout")],
+    Discriminator(_entry_kind),
+]
 
 
 class DiaryDayDTO(BaseModel):
