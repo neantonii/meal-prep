@@ -1,4 +1,4 @@
-"""The free-form entry API (#142): add, edit, repeats, and the week page."""
+"""The takeout API (#142): add, edit, repeats, and the week page."""
 
 from __future__ import annotations
 
@@ -38,44 +38,48 @@ def _ok(response) -> dict:
 
 def _add(client: TestClient, date: str = "2026-11-06", **fields) -> dict:
     body = {"date": date, "mealtime": "lunch", "items": [{**ORDER, **fields}]}
-    return _ok(client.post(f"/api/diary/{WEEK}/others", json=body))
+    return _ok(client.post(f"/api/diary/{WEEK}/takeout", json=body))
 
 
 def _entries(week: dict) -> list[dict]:
     return [e for d in week["days"] for m in d["meals"] for e in m["entries"]]
 
 
-def _day(week: dict, date: str) -> dict:
-    return next(d for d in week["days"] if d["date"] == date)
-
-
-def test_add_an_estimate_and_see_it_in_the_totals(client: TestClient):
-    week = _add(client, estimated=True)
-    [entry] = _entries(week)
-    assert entry["recipe"] is None and entry["session"] is None
-    assert (entry["kcal"], entry["cost"], entry["fiber_g"]) == (480, None, None)
-    assert entry["estimated"]
-    day = _day(week, "2026-11-06")
-    assert day["totals"]["kcal"] == 480 and day["estimated"]
-    assert day["unknown"] == ["fiber_g", "cost"]
-    assert week["estimated"] and week["unknown"] == day["unknown"]
+def test_add_a_whole_order_and_see_it_in_the_totals(client: TestClient):
+    fries = {**ORDER, "title": "McDonald's Small Fries", "kcal": 230, "cost": 3.5}
+    body = {"date": "2026-11-06", "mealtime": "lunch", "items": [ORDER, fries]}
+    week = _ok(client.post(f"/api/diary/{WEEK}/takeout", json=body))
+    chicken, fries_out = _entries(week)
+    assert chicken["kind"] == fries_out["kind"] == "takeout"
+    assert (chicken["kcal"], chicken["cost"]) == (480, None)
+    assert "session" not in chicken and "recipe" not in chicken
+    assert fries_out["cost"] == 3.5
+    day = next(d for d in week["days"] if d["date"] == "2026-11-06")
+    assert day["totals"]["kcal"] == 710 and day["totals"]["cost"] == 3.5
     assert all(s["id"] is None for s in week["sessions"])  # no session made
+
+
+def test_recipe_entries_say_so(client: TestClient):
+    body = {"date": "2026-11-06", "mealtime": "dinner", "recipe": "boiled-basmati-rice"}
+    week = _ok(client.post(f"/api/diary/{WEEK}/entries", json=body))
+    [rice] = _entries(week)
+    assert rice["kind"] == "recipe" and rice["recipe"] == "boiled-basmati-rice"
+    assert rice["session"] is not None and rice["cost"] > 0
 
 
 def test_calories_and_macros_are_required(client: TestClient):
     body = {"date": "2026-11-06", "mealtime": "lunch", "items": [{"title": "Pho"}]}
-    response = client.post(f"/api/diary/{WEEK}/others", json=body)
+    response = client.post(f"/api/diary/{WEEK}/takeout", json=body)
     assert response.status_code == 422
 
 
-def test_edit_corrects_the_numbers_in_place(client: TestClient):
+def test_edit_corrects_takeout_in_place_but_not_a_recipe(client: TestClient):
     [entry] = _entries(_add(client))
     body = {**ORDER, "kcal": 470, "fat_g": 21}
-    week = _ok(client.put(f"/api/diary/{WEEK}/others/{entry['id']}", json=body))
+    week = _ok(client.put(f"/api/diary/{WEEK}/takeout/{entry['id']}", json=body))
     [edited] = _entries(week)
     assert edited["id"] == entry["id"]
-    assert (edited["kcal"], edited["fat_g"], edited["estimated"]) == (470, 21, False)
-    # A recipe entry's numbers stay frozen.
+    assert (edited["kcal"], edited["fat_g"]) == (470, 21)
     recipe = {
         "date": "2026-11-06",
         "mealtime": "dinner",
@@ -84,13 +88,13 @@ def test_edit_corrects_the_numbers_in_place(client: TestClient):
     rice = next(
         e
         for e in _entries(_ok(client.post(f"/api/diary/{WEEK}/entries", json=recipe)))
-        if e["recipe"]
+        if e["kind"] == "recipe"
     )
-    response = client.put(f"/api/diary/{WEEK}/others/{rice['id']}", json=ORDER)
+    response = client.put(f"/api/diary/{WEEK}/takeout/{rice['id']}", json=ORDER)
     assert response.status_code == 409 and "frozen" in response.json()["detail"]
 
 
-def test_linking_a_free_form_entry_is_refused(client: TestClient):
+def test_linking_takeout_is_refused(client: TestClient):
     [entry] = _entries(_add(client))
     response = client.put(
         f"/api/diary/{WEEK}/entries/{entry['id']}/session",
@@ -102,15 +106,15 @@ def test_linking_a_free_form_entry_is_refused(client: TestClient):
 def test_usuals_list_past_meals_latest_first(client: TestClient, tmp_path: Path):
     assert _ok(client.get("/api/usuals")) == []
     _add(client)
-    _add(client, date="2026-11-07", title="Pho, large", kcal=780, cost=18.5)
-    _add(client, date="2026-11-08", title="mcdonald's MCCHICKEN", estimated=True)
+    _add(client, date="2026-11-07", title="Large Pho with Brisket", kcal=780, cost=18.5)
+    _add(client, date="2026-11-08", title="mcdonald's MCCHICKEN")
     usuals = _ok(client.get("/api/usuals"))
     assert [(u["title"], u["times"], u["last"]) for u in usuals] == [
         ("mcdonald's MCCHICKEN", 2, "2026-11-08"),
-        ("Pho, large", 1, "2026-11-07"),
+        ("Large Pho with Brisket", 1, "2026-11-07"),
     ]
-    assert usuals[0]["kcal"] == 480 and usuals[0]["estimated"]
-    # Both edits are journaled.
+    assert usuals[0]["kcal"] == 480 and usuals[1]["cost"] == 18.5
+    # Every add is journaled.
     [month] = (tmp_path / "diary" / ".journal").glob("*.jsonl")
     actions = [json.loads(line)["action"] for line in month.read_text().splitlines()]
-    assert actions == ["other.add"] * 3
+    assert actions == ["takeout.add"] * 3

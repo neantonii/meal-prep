@@ -1,4 +1,4 @@
-"""AI estimates of free-form meals (#141), against a fake service."""
+"""AI estimates of takeout meals (#141), against a fake service."""
 
 from __future__ import annotations
 
@@ -111,38 +111,3 @@ def test_a_failed_estimate_says_so(tmp_path: Path, reply: Any):
     response = client.post("/api/estimate", json={"text": "fries"})
     assert response.status_code == 502
     assert response.json()["detail"]
-
-
-def test_ai_items_are_saved_together_with_their_assumptions(tmp_path: Path):
-    client = _client(tmp_path, None)
-    items = [
-        {
-            "title": "McDonald's Small Fries",
-            "kcal": 230,
-            "protein_g": 3,
-            "carbs_g": 30,
-            "fat_g": 11,
-            "estimated": True,
-            "source": "ai",
-            "kcal_low": 210,
-            "kcal_high": 250,
-            "assumptions": ["no drink assumed"],
-        },
-        {
-            "title": "McDonald's McChicken",
-            "kcal": 400,
-            "protein_g": 14,
-            "carbs_g": 40,
-            "fat_g": 21,
-            "estimated": True,
-        },
-    ]
-    body = {"date": "2026-11-06", "mealtime": "lunch", "items": items}
-    response = client.post(f"/api/diary/{WEEK}/others", json=body)
-    assert response.status_code == 200, response.text
-    week = response.json()
-    entries = [e for d in week["days"] for m in d["meals"] for e in m["entries"]]
-    assert [e["title"] for e in entries] == [i["title"] for i in items]
-    assert entries[0]["assumptions"] == ["no drink assumed"]
-    stored = (tmp_path / "diary" / f"{WEEK}.yaml").read_text()
-    assert "source: ai" in stored and "kcal_low: 210" in stored

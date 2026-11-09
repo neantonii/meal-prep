@@ -10,10 +10,11 @@ import datetime
 import uuid
 from collections.abc import Collection, Mapping
 
+from meal_prep.dtos.log import RecipeEntryDTO
 from meal_prep.enums import Mealtime, RecipeCategory
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.library import Library
-from meal_prep.models.log import LogEntry
+from meal_prep.models.log import LogEntry, TakeoutLogEntry
 from meal_prep.models.recipe import Recipe
 from meal_prep.models.session import NeedShare as ModelNeedShare
 from meal_prep.models.session import PrepSession
@@ -26,29 +27,16 @@ from meal_prep.server.api_models import (
     MealRef,
     NeededIngredient,
     NeedShare,
+    RecipeEntryOut,
     Session,
     SessionDetail,
     SessionItem,
+    TakeoutEntryOut,
 )
 from meal_prep.server.weeks import week_dates
 from meal_prep.services import prep
 from meal_prep.services.logs import prepare_diary_week
 from meal_prep.services.sessions import prepare_session
-
-# API number name -> model field name, for the numbers the page shows.
-SHOWN = {
-    "kcal": "calories_kcal",
-    "protein_g": "protein_g",
-    "carbs_g": "carbs_g",
-    "fat_g": "fat_g",
-    "fiber_g": "fiber_g",
-    "cost": "cost",
-}
-
-
-def _unknown_out(unknown: frozenset[str]) -> list[str]:
-    """The shown numbers that ``unknown`` (model field names) leaves out."""
-    return [name for name, field in SHOWN.items() if field in unknown]
 
 
 def _totals(cost: float, macros: MacrosInfo) -> dict[str, float]:
@@ -124,27 +112,29 @@ def _needs_out(
 
 
 def _entry_out(entry: LogEntry, library: Library) -> DiaryEntry:
-    known = _totals(entry.cost, entry.macros)
-    for name in _unknown_out(entry.unknown):
-        known.pop(name)
-    recipe = None if entry.recipe_id is None else library.recipes.get(entry.recipe_id)
-    return DiaryEntry(
+    m = entry.macros
+    if isinstance(entry, TakeoutLogEntry):
+        return TakeoutEntryOut(
+            id=entry.entry_id,
+            title=entry.title,
+            kcal=m.calories_kcal,
+            protein_g=m.protein_g,
+            carbs_g=m.carbs_g,
+            fat_g=m.fat_g,
+            cost=entry.cost,
+        )
+    return RecipeEntryOut(
         id=entry.entry_id,
-        recipe=entry.recipe_id,
         title=entry.title,
-        card_url=_card_url(recipe),
+        kcal=m.calories_kcal,
+        protein_g=m.protein_g,
+        carbs_g=m.carbs_g,
+        fat_g=m.fat_g,
+        recipe=entry.recipe_id,
+        card_url=_card_url(library.recipes.get(entry.recipe_id)),
         session=entry.session_id,
-        kcal=known.get("kcal"),
-        protein_g=known.get("protein_g"),
-        carbs_g=known.get("carbs_g"),
-        fat_g=known.get("fat_g"),
-        fiber_g=known.get("fiber_g"),
-        cost=known.get("cost"),
-        estimated=entry.estimated,
-        assumptions=[] if entry.estimate is None else list(entry.estimate.assumptions),
-        estimate_source=None if entry.estimate is None else entry.estimate.source,
-        kcal_low=None if entry.estimate is None else entry.estimate.kcal_low,
-        kcal_high=None if entry.estimate is None else entry.estimate.kcal_high,
+        fiber_g=m.fiber_g,
+        cost=entry.cost,
     )
 
 
@@ -247,8 +237,6 @@ def week_response(
                     for meal in day.meals()
                 ],
                 totals=_totals(day.cost, day.macros),
-                unknown=_unknown_out(day.unknown),
-                estimated=day.estimated,
             )
         )
     totals = (
@@ -266,7 +254,7 @@ def week_response(
         entry.session
         for day_dto in (dto.days if dto is not None else ())
         for entry in day_dto.entries()
-        if entry.session is not None
+        if isinstance(entry, RecipeEntryDTO) and entry.session is not None
     }
     cards: list[tuple[datetime.date, Session]] = []
     taken: set[datetime.date] = set()
@@ -306,8 +294,6 @@ def week_response(
         days=days,
         sessions=[card for _, card in cards],
         totals=totals,
-        unknown=[] if logged is None else _unknown_out(logged.unknown),
-        estimated=logged is not None and logged.estimated,
     )
 
 

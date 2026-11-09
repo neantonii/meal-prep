@@ -50,7 +50,7 @@ def create_app(
 
     ``today`` splits Plan (after it) from Log (it and earlier); the server's
     local date unless a test pins it. ``estimator`` makes AI estimates of
-    free-form meals: configured from the environment (``"env"``, off without
+    takeout meals: configured from the environment (``"env"``, off without
     an API key), a given one (tests), or ``None`` (off).
     """
     data_dir, recipes_dir, diary_dir = (

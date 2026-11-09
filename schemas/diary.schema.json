@@ -85,36 +85,144 @@
       "type": "object"
     },
     "DiaryEntryDTO": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/RecipeEntryDTO"
+        },
+        {
+          "$ref": "#/$defs/TakeoutEntryDTO"
+        }
+      ]
+    },
+    "RecipeEntryDTO": {
       "additionalProperties": false,
-      "description": "One eaten serving, with the numbers as they were when it was logged.\n\nA recipe entry names its recipe and carries every number. A free-form\nentry (takeout, eating out) has no recipe: a title, calories and the\nthree macros for one portion (the other numbers, cost included, may be\nabsent = unknown), and whether the numbers are an estimate. It is never\nlinked to a prep session.",
+      "description": "A serving of a catalog recipe: every number frozen when it was logged\n(#107), and the prep session it came from, if any.",
       "properties": {
         "calories_kcal": {
-          "anyOf": [
-            {
-              "minimum": 0,
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "description": "Per serving, when logged",
-          "title": "Calories Kcal"
+          "minimum": 0,
+          "title": "Calories Kcal",
+          "type": "number"
         },
         "carbs_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Carbs G",
+          "type": "number"
+        },
+        "cost": {
+          "description": "Cost of one serving, in CAD",
+          "minimum": 0,
+          "title": "Cost",
+          "type": "number"
+        },
+        "fat_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Fat G",
+          "type": "number"
+        },
+        "fiber_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Fiber G",
+          "type": "number"
+        },
+        "id": {
+          "description": "Entry id (UUID); never changes",
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "potassium_mg": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Potassium Mg",
+          "type": "number"
+        },
+        "protein_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Protein G",
+          "type": "number"
+        },
+        "recipe": {
+          "description": "Id of the recipe that was eaten",
+          "title": "Recipe",
+          "type": "string"
+        },
+        "saturated_fat_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Saturated Fat G",
+          "type": "number"
+        },
+        "session": {
           "anyOf": [
             {
-              "minimum": 0,
-              "type": "number"
+              "format": "uuid",
+              "type": "string"
             },
             {
               "type": "null"
             }
           ],
           "default": null,
+          "description": "Id of the prep session this serving came from; absent when not from a session",
+          "title": "Session"
+        },
+        "sodium_mg": {
           "description": "Per serving, when logged",
-          "title": "Carbs G"
+          "minimum": 0,
+          "title": "Sodium Mg",
+          "type": "number"
+        },
+        "sugars_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Sugars G",
+          "type": "number"
+        },
+        "title": {
+          "description": "Title when logged",
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "calories_kcal",
+        "protein_g",
+        "fat_g",
+        "carbs_g",
+        "recipe",
+        "cost",
+        "fiber_g",
+        "saturated_fat_g",
+        "sugars_g",
+        "sodium_mg",
+        "potassium_mg"
+      ],
+      "title": "RecipeEntryDTO",
+      "type": "object"
+    },
+    "TakeoutEntryDTO": {
+      "additionalProperties": false,
+      "description": "A meal that isn't a recipe (takeout, eating out): calories and macros\nas typed or estimated; cost and the minor nutrients only when known\n(absent = unknown). Never linked to a prep session: it has no field for\none.",
+      "properties": {
+        "calories_kcal": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Calories Kcal",
+          "type": "number"
+        },
+        "carbs_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Carbs G",
+          "type": "number"
         },
         "cost": {
           "anyOf": [
@@ -127,34 +235,14 @@
             }
           ],
           "default": null,
-          "description": "Cost of one serving when logged, in CAD",
+          "description": "Cost in CAD; absent when unknown",
           "title": "Cost"
         },
-        "estimate": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/EntryEstimateDTO"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Free-form entries: present when the numbers are a guess"
-        },
         "fat_g": {
-          "anyOf": [
-            {
-              "minimum": 0,
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "description": "Per serving, when logged",
-          "title": "Fat G"
+          "minimum": 0,
+          "title": "Fat G",
+          "type": "number"
         },
         "fiber_g": {
           "anyOf": [
@@ -167,7 +255,7 @@
             }
           ],
           "default": null,
-          "description": "Per serving, when logged",
+          "description": "If known",
           "title": "Fiber G"
         },
         "id": {
@@ -187,35 +275,14 @@
             }
           ],
           "default": null,
-          "description": "Per serving, when logged",
+          "description": "If known",
           "title": "Potassium Mg"
         },
         "protein_g": {
-          "anyOf": [
-            {
-              "minimum": 0,
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "description": "Per serving, when logged",
-          "title": "Protein G"
-        },
-        "recipe": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Id of the recipe that was eaten; absent for a free-form entry (takeout, eating out)",
-          "title": "Recipe"
+          "minimum": 0,
+          "title": "Protein G",
+          "type": "number"
         },
         "saturated_fat_g": {
           "anyOf": [
@@ -228,22 +295,8 @@
             }
           ],
           "default": null,
-          "description": "Per serving, when logged",
+          "description": "If known",
           "title": "Saturated Fat G"
-        },
-        "session": {
-          "anyOf": [
-            {
-              "format": "uuid",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Id of the prep session this serving came from; absent when not from a session",
-          "title": "Session"
         },
         "sodium_mg": {
           "anyOf": [
@@ -256,7 +309,7 @@
             }
           ],
           "default": null,
-          "description": "Per serving, when logged",
+          "description": "If known",
           "title": "Sodium Mg"
         },
         "sugars_g": {
@@ -270,11 +323,11 @@
             }
           ],
           "default": null,
-          "description": "Per serving, when logged",
+          "description": "If known",
           "title": "Sugars G"
         },
         "title": {
-          "description": "Recipe title when the entry was logged",
+          "description": "Title when logged",
           "minLength": 1,
           "title": "Title",
           "type": "string"
@@ -282,65 +335,13 @@
       },
       "required": [
         "id",
-        "title"
+        "title",
+        "calories_kcal",
+        "protein_g",
+        "fat_g",
+        "carbs_g"
       ],
-      "title": "DiaryEntryDTO",
-      "type": "object"
-    },
-    "EntryEstimateDTO": {
-      "additionalProperties": false,
-      "description": "How a free-form entry's numbers were guessed (absent: they are known,\ne.g. from the menu or label).",
-      "properties": {
-        "assumptions": {
-          "description": "What the estimate assumed (size, oil, sauce...)",
-          "items": {
-            "type": "string"
-          },
-          "title": "Assumptions",
-          "type": "array"
-        },
-        "kcal_high": {
-          "anyOf": [
-            {
-              "minimum": 0,
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "High end of the calories range, if given",
-          "title": "Kcal High"
-        },
-        "kcal_low": {
-          "anyOf": [
-            {
-              "minimum": 0,
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Low end of the calories range, if given",
-          "title": "Kcal Low"
-        },
-        "source": {
-          "description": "Typed in by hand, or estimated by AI",
-          "enum": [
-            "manual",
-            "ai"
-          ],
-          "title": "Source",
-          "type": "string"
-        }
-      },
-      "required": [
-        "source"
-      ],
-      "title": "EntryEstimateDTO",
+      "title": "TakeoutEntryDTO",
       "type": "object"
     }
   },

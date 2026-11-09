@@ -161,9 +161,9 @@ Diary entries are frozen (#107): each one stores the recipe's title, cost and
 nutrition as they were when it was logged, so past weeks never change when
 recipes, ingredients or prices do.
 
-Takeout and eating out are free-form entries (`docs/free-form-entries.md`):
-a title and the numbers you know or guess, kept in the week file, never
-linked to a session. "+ other" in a meal slot adds a whole order at once:
+Takeout and eating out (`docs/takeout.md`) are diary entries without a
+recipe: a title, calories and macros (cost if known), kept in the week file,
+never linked to a session. "+ other" in a meal slot adds a whole order at once:
 describe it and Gemini splits and estimates it (optional: set
 `GEMINI_API_KEY` in a `.env` next to `compose.yml`), or pick meals you ate
 before.

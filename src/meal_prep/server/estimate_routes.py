@@ -1,6 +1,6 @@
 """AI estimate routes (#141): whether estimates are on, and one estimate.
 The client lives in ``meal_prep.server.estimate``; saving the items is an
-ordinary free-form add (``diary_routes``)."""
+ordinary takeout add (``diary_routes``)."""
 
 from __future__ import annotations
 

@@ -22,7 +22,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from meal_prep.dtos.log import DiaryWeekDTO
+from meal_prep.dtos.log import DiaryWeekDTO, RecipeEntryDTO
 from meal_prep.dtos.session import PrepSessionDTO
 from meal_prep.enums import Mealtime
 from meal_prep.services.prep import Change, Diary
@@ -85,15 +85,23 @@ def _kept(
 
 
 def _placements(week: DiaryWeekDTO | None) -> dict[uuid.UUID, tuple[Any, ...]]:
-    """Entry id -> (recipe, title, date, mealtime, session id)."""
+    """Entry id -> (recipe, title, date, mealtime, session id); takeout has
+    no recipe or session."""
     if week is None:
         return {}
-    return {
-        entry.id: (entry.recipe, entry.title, day.date, mealtime, entry.session)
-        for day in week.days
-        for mealtime in Mealtime
-        for entry in getattr(day, mealtime.value) or ()
-    }
+    placed: dict[uuid.UUID, tuple[Any, ...]] = {}
+    for day in week.days:
+        for mealtime in Mealtime:
+            for entry in getattr(day, mealtime.value) or ():
+                recipe = isinstance(entry, RecipeEntryDTO)
+                placed[entry.id] = (
+                    entry.recipe if recipe else None,
+                    entry.title,
+                    day.date,
+                    mealtime,
+                    entry.session if recipe else None,
+                )
+    return placed
 
 
 def _place(

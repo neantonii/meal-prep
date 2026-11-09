@@ -7,7 +7,7 @@ from datetime import date
 from meal_prep.enums import RecipeCategory
 from meal_prep.logbook import render_log_week, render_log_week_page
 from meal_prep.models.ingredient import MacrosInfo
-from meal_prep.models.log import LogDay, LogEntry, LogWeek
+from meal_prep.models.log import LogDay, LogEntry, LogWeek, RecipeLogEntry
 from meal_prep.models.recipe import Recipe
 from meal_prep.models.session import PrepSession
 
@@ -43,7 +43,7 @@ def _recipe(recipe_id: str = "oatmeal") -> Recipe:
 
 
 def _entry(recipe_id: str = "oatmeal", title: str = "Oatmeal") -> LogEntry:
-    return LogEntry(
+    return RecipeLogEntry(
         entry_id="e1", recipe_id=recipe_id, title=title, cost=1.5, macros=_macros()
     )
 
@@ -111,7 +111,7 @@ def test_page_relativizes_card_links_to_output_dir(tmp_path):
 
 
 def test_report_badges_entries_linked_to_a_prep_session():
-    linked = LogEntry(
+    linked = RecipeLogEntry(
         entry_id="e2",
         recipe_id="oatmeal",
         title="Oatmeal",
@@ -126,24 +126,9 @@ def test_report_badges_entries_linked_to_a_prep_session():
     assert "prep ?" in render_log_week(_week(linked), sessions={})
 
 
-def test_free_form_guesses_are_marked():
-    import datetime
+def test_takeout_entries_show_without_a_card_link():
+    from meal_prep.models.log import TakeoutLogEntry
 
-    from meal_prep.dtos.log import EntryEstimateDTO
-    from meal_prep.enums import Mealtime
-    from meal_prep.logbook.report import render_log_week
-    from meal_prep.services import diary
-    from meal_prep.services.logs import prepare_diary_week
-
-    fri = datetime.date(2026, 11, 6)
-    macros = {"calories_kcal": 780.0, "protein_g": 40.0, "carbs_g": 80.0, "fat_g": 20.0}
-    guess = EntryEstimateDTO(source="manual")
-    week, _ = diary.insert_entry(
-        None,
-        "2026-W45",
-        fri,
-        Mealtime.LUNCH,
-        diary.free_entry("Pho", macros, estimate=guess),
-    )
-    html = render_log_week(prepare_diary_week(week))
-    assert html.count("≈ 780 kcal") == 3  # the entry, its day and the week
+    takeout = TakeoutLogEntry(entry_id="t1", title="Pho", macros=_macros())
+    page = render_log_week(_week(takeout))
+    assert "Pho" in page and 'class="session-badge"' not in page

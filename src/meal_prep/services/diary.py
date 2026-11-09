@@ -2,12 +2,11 @@
 
 An entry's numbers are frozen exactly once, when it is added. Removing,
 moving, reordering and (re)linking to a prep session never recompute them,
-so nothing here needs to match old and new entries. A free-form entry
-(takeout, eating out) has no recipe: its numbers are typed in (or
-estimated), one portion as for every entry; it is the only kind whose numbers can
-be edited later (a corrected estimate). Past free-form entries are the
-source of "usuals" (``free_form_history``): repeats need no storage of their
-own. Every operation returns a new, re-validated
+so nothing here needs to match old and new entries. A takeout entry
+(``takeout_entry``) is typed in or estimated, one portion like every entry,
+and is the only kind whose numbers can be edited later. Past takeout entries
+are the source of repeats (``takeout_history``), so they need no storage of
+their own. Every operation returns a new, re-validated
 ``DiaryWeekDTO`` (or ``None`` when the week ends up empty); storage is the
 caller's job.
 """
@@ -17,15 +16,15 @@ from __future__ import annotations
 import datetime
 import re
 import uuid
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from meal_prep.dtos.log import (
-    NUMBERS,
     DiaryDayDTO,
     DiaryEntryDTO,
     DiaryWeekDTO,
-    EntryEstimateDTO,
+    RecipeEntryDTO,
+    TakeoutEntryDTO,
 )
 from meal_prep.enums import Mealtime
 from meal_prep.models.recipe import Recipe
@@ -38,11 +37,11 @@ class EntryNotFoundError(LookupError):
     """No entry with the given id in this week."""
 
 
-def freeze_entry(recipe: Recipe, session: uuid.UUID | None = None) -> DiaryEntryDTO:
+def freeze_entry(recipe: Recipe, session: uuid.UUID | None = None) -> RecipeEntryDTO:
     """A new diary entry carrying ``recipe``'s current per-serving numbers,
     linked to prep session ``session`` when given."""
     macros = recipe.per_serving_macros
-    return DiaryEntryDTO(
+    return RecipeEntryDTO(
         id=uuid.uuid4(),
         session=session,
         recipe=recipe.id,
@@ -60,26 +59,25 @@ def freeze_entry(recipe: Recipe, session: uuid.UUID | None = None) -> DiaryEntry
     )
 
 
-def free_entry(
+def takeout_entry(
     title: str,
-    numbers: Mapping[str, float | None],
-    estimate: EntryEstimateDTO | None = None,
+    calories_kcal: float,
+    protein_g: float,
+    carbs_g: float,
+    fat_g: float,
+    cost: float | None = None,
     entry_id: uuid.UUID | None = None,
-) -> DiaryEntryDTO:
-    """A free-form entry for one portion: ``numbers`` by DTO field name
-    (``None`` or missing: unknown; calories and macros are required).
-    ``entry_id`` keeps an edited entry's id."""
-    unknown_names = set(numbers) - set(NUMBERS)
-    if unknown_names:
-        raise ValueError(f"Unknown numbers: {', '.join(sorted(unknown_names))}")
-    values = {name: numbers.get(name) for name in NUMBERS}
-    return DiaryEntryDTO.model_validate(
-        {
-            "id": entry_id or uuid.uuid4(),
-            "title": " ".join(title.split()),
-            "estimate": estimate,
-            **values,
-        }
+) -> TakeoutEntryDTO:
+    """A takeout entry (one portion); ``entry_id`` keeps an edited entry's
+    id. The title's spacing is tidied."""
+    return TakeoutEntryDTO(
+        id=entry_id or uuid.uuid4(),
+        title=" ".join(title.split()),
+        calories_kcal=calories_kcal,
+        protein_g=protein_g,
+        carbs_g=carbs_g,
+        fat_g=fat_g,
+        cost=cost,
     )
 
 
@@ -149,15 +147,15 @@ def add_entry(
     recipe: Recipe,
     position: int | None = None,
     session: uuid.UUID | None = None,
-) -> tuple[DiaryWeekDTO, DiaryEntryDTO]:
+) -> tuple[DiaryWeekDTO, RecipeEntryDTO]:
     """Add a newly frozen entry for ``recipe``; return the week and entry.
 
     ``position`` is its index in the slot; ``None`` appends. ``session`` links
     the entry to a prep session (the link rules are ``services.prep``'s job).
     """
-    return insert_entry(
-        diary, week, date, mealtime, freeze_entry(recipe, session), position
-    )
+    entry = freeze_entry(recipe, session)
+    result, _ = insert_entry(diary, week, date, mealtime, entry, position)
+    return result, entry
 
 
 def insert_entry(
@@ -168,7 +166,7 @@ def insert_entry(
     entry: DiaryEntryDTO,
     position: int | None = None,
 ) -> tuple[DiaryWeekDTO, DiaryEntryDTO]:
-    """Add a ready entry (a frozen recipe or ``free_entry``) at ``position``
+    """Add a ready entry (``freeze_entry`` or ``takeout_entry``) at ``position``
     of its slot (``None`` appends); return the week and the entry."""
     slots = _slots(diary)
     _insert(slots, date, mealtime, entry, position)
@@ -177,7 +175,7 @@ def insert_entry(
     return result, entry
 
 
-def replace_entry(diary: DiaryWeekDTO, entry: DiaryEntryDTO) -> DiaryWeekDTO:
+def replace_entry(diary: DiaryWeekDTO, entry: TakeoutEntryDTO) -> DiaryWeekDTO:
     """Put ``entry`` in place of the entry with its id (same slot and
     position)."""
     slots = _slots(diary)
@@ -229,6 +227,8 @@ def set_entry_session(
         for entries in meals.values():
             for index, entry in enumerate(entries):
                 if entry.id == entry_id:
+                    if not isinstance(entry, RecipeEntryDTO):
+                        raise ValueError("Only recipe entries link to a session")
                     entries[index] = entry.model_copy(update={"session": session})
                     result = _build(diary.week, slots)
                     assert result is not None
@@ -238,13 +238,10 @@ def set_entry_session(
 
 @dataclass(frozen=True, slots=True)
 class Usual:
-    """A free-form meal eaten before: its latest numbers (``None``:
-    unknown), whether they were a guess, when it was last eaten and how
-    often."""
+    """A takeout meal eaten before: its latest entry, when it was last eaten
+    and how often."""
 
-    title: str
-    numbers: dict[str, float | None]
-    estimate: EntryEstimateDTO | None
+    entry: TakeoutEntryDTO
     last: datetime.date
     times: int
 
@@ -253,36 +250,24 @@ def _title_key(title: str) -> str:
     return re.sub(r"\s+", " ", title).strip().casefold()
 
 
-def free_form_history(weeks: Iterable[DiaryWeekDTO]) -> list[Usual]:
-    """Every free-form meal eaten so far, one per title (case and spacing
-    ignored), with the numbers of its latest entry; most recent first, then
-    most eaten."""
-    found: list[tuple[datetime.date, int, DiaryEntryDTO]] = []
+def takeout_history(weeks: Iterable[DiaryWeekDTO]) -> list[Usual]:
+    """Every takeout meal eaten so far, one per title (case and spacing
+    ignored), with its latest entry; most recent first, then most eaten."""
+    found: list[tuple[datetime.date, int, TakeoutEntryDTO]] = []
     order = list(Mealtime)
     for week in weeks:
         for day in week.days:
             for mealtime in Mealtime:
                 for entry in getattr(day, mealtime.value) or ():
-                    if entry.recipe is None:
+                    if isinstance(entry, TakeoutEntryDTO):
                         found.append((day.date, order.index(mealtime), entry))
     found.sort(key=lambda f: (f[0], f[1]), reverse=True)
-    usuals: dict[str, Usual] = {}
+    latest: dict[str, tuple[TakeoutEntryDTO, datetime.date]] = {}
     counts: dict[str, int] = {}
     for date, _, entry in found:
         key = _title_key(entry.title)
         counts[key] = counts.get(key, 0) + 1
-        if key in usuals:
-            continue
-        usuals[key] = Usual(
-            title=entry.title,
-            numbers={name: getattr(entry, name) for name in NUMBERS},
-            estimate=entry.estimate,
-            last=date,
-            times=0,
-        )
-    ranked = [
-        Usual(u.title, u.numbers, u.estimate, u.last, counts[key])
-        for key, u in usuals.items()
-    ]
-    ranked.sort(key=lambda u: (u.last, u.times), reverse=True)
-    return ranked
+        latest.setdefault(key, (entry, date))
+    usuals = [Usual(entry, date, counts[key]) for key, (entry, date) in latest.items()]
+    usuals.sort(key=lambda u: (u.last, u.times), reverse=True)
+    return usuals

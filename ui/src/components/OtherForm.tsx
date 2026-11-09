@@ -1,28 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  FREE_NUMBERS,
-  REQUIRED_NUMBERS,
-  api,
-  approx,
-  dayLabel,
-  type EstimatedItem,
-  type FreeForm,
-  type FreeNumber,
-  type Usual,
-} from "../api";
+import { api, dayLabel, type EstimatedItem, type TakeoutFields, type Usual } from "../api";
 
 interface Props {
   /** Where it goes, for the heading ("Fri 6 Nov lunch"). */
   date: string;
   meal: string;
   /** Editing an entry: its current fields; adding: null. */
-  initial: FreeForm | null;
+  initial: TakeoutFields | null;
   /** Adding: every item, in order; editing: the one entry. */
-  onSave: (items: FreeForm[]) => void;
+  onSave: (items: TakeoutFields[]) => void;
   onClose: () => void;
 }
 
-const LABELS: Record<FreeNumber, string> = {
+/** The numbers a row is typed with; all but cost are required. */
+const NUMBERS = ["kcal", "protein_g", "carbs_g", "fat_g", "cost"] as const;
+type NumberName = (typeof NUMBERS)[number];
+const REQUIRED: readonly NumberName[] = ["kcal", "protein_g", "carbs_g", "fat_g"];
+const LABELS: Record<NumberName, string> = {
   kcal: "kcal",
   protein_g: "protein",
   carbs_g: "carbs",
@@ -30,65 +24,39 @@ const LABELS: Record<FreeNumber, string> = {
   cost: "$",
 };
 
-/** One item being edited: numbers as typed (blank = unknown), plus what
- * an AI estimate said about it. */
+/** One item being edited: numbers as typed, plus, for an AI row, what the
+ * estimate said about it (shown while reviewing, never saved). */
 interface Row {
   key: number;
   title: string;
-  nums: Record<FreeNumber, string>;
-  estimated: boolean;
-  source: "manual" | "ai";
-  kcal_low: number | null;
-  kcal_high: number | null;
-  assumptions: string[];
-  /** from the AI: an unsaid detail that changes the numbers */
-  question: string;
-  /** from the AI: the amount it assumed, and where its numbers come from */
-  quantity: string;
-  basis: string;
+  nums: Record<NumberName, string>;
+  ai: EstimatedItem | null;
 }
 
 let nextKey = 1;
 const fmt = (v: number | null | undefined) => (v === null || v === undefined ? "" : String(Math.round(v * 10) / 10));
 
-function rowFrom(f: FreeForm | null): Row {
+function rowFrom(f: TakeoutFields | null, ai: EstimatedItem | null = null): Row {
   return {
     key: nextKey++,
     title: f?.title ?? "",
-    nums: Object.fromEntries(FREE_NUMBERS.map((n) => [n, fmt(f?.[n])])) as Record<FreeNumber, string>,
-    estimated: f?.estimated ?? true,
-    source: f?.source ?? "manual",
-    kcal_low: f?.kcal_low ?? null,
-    kcal_high: f?.kcal_high ?? null,
-    assumptions: f?.assumptions ?? [],
-    question: "",
-    quantity: "",
-    basis: "",
+    nums: Object.fromEntries(NUMBERS.map((n) => [n, fmt(f?.[n])])) as Record<NumberName, string>,
+    ai,
   };
 }
 
-const blank = (): Row => rowFrom(null);
-
-function rowFromEstimate(item: EstimatedItem): Row {
-  return {
-    ...rowFrom({
+const rowFromEstimate = (item: EstimatedItem): Row =>
+  rowFrom(
+    {
       title: item.name,
       kcal: item.kcal,
       protein_g: item.protein_g,
       carbs_g: item.carbs_g,
       fat_g: item.fat_g,
       cost: null,
-      estimated: true,
-      source: "ai",
-      kcal_low: item.kcal_low,
-      kcal_high: item.kcal_high,
-      assumptions: item.assumptions,
-    }),
-    question: item.question,
-    quantity: item.quantity,
-    basis: item.source,
-  };
-}
+    },
+    item,
+  );
 
 const parse = (v: string): number | null => {
   const t = v.trim();
@@ -96,23 +64,16 @@ const parse = (v: string): number | null => {
 };
 const bad = (v: string) => v.trim() !== "" && (parse(v) === null || parse(v)! < 0);
 /** A number the row can't save with: malformed, or a required one left blank. */
-const wrong = (r: Row, n: FreeNumber) => bad(r.nums[n]) || (REQUIRED_NUMBERS.includes(n) && r.nums[n].trim() === "");
+const wrong = (r: Row, n: NumberName) => bad(r.nums[n]) || (REQUIRED.includes(n) && r.nums[n].trim() === "");
 
-function toFields(r: Row): FreeForm {
-  return {
-    title: r.title.trim(),
-    kcal: parse(r.nums.kcal) ?? 0,
-    protein_g: parse(r.nums.protein_g) ?? 0,
-    carbs_g: parse(r.nums.carbs_g) ?? 0,
-    fat_g: parse(r.nums.fat_g) ?? 0,
-    cost: parse(r.nums.cost),
-    estimated: r.estimated,
-    source: r.source,
-    kcal_low: r.kcal_low,
-    kcal_high: r.kcal_high,
-    assumptions: r.assumptions,
-  };
-}
+const toFields = (r: Row): TakeoutFields => ({
+  title: r.title.trim(),
+  kcal: parse(r.nums.kcal) ?? 0,
+  protein_g: parse(r.nums.protein_g) ?? 0,
+  carbs_g: parse(r.nums.carbs_g) ?? 0,
+  fat_g: parse(r.nums.fat_g) ?? 0,
+  cost: parse(r.nums.cost),
+});
 
 /** Takeout or eating out. Adding: describe the meal (messy is fine) and let
  * the AI split and estimate it, pick meals eaten before, or type items in;
@@ -159,7 +120,7 @@ export default function OtherForm({ date, meal, initial, onSave, onClose }: Prop
     try {
       const { items } = await api.estimate(text);
       // A new estimate replaces the previous one; picked and typed rows stay.
-      setRows((cur) => [...cur.filter((r) => r.source !== "ai" && r.title.trim() !== ""), ...items.map(rowFromEstimate)]);
+      setRows((cur) => [...cur.filter((r) => r.ai === null && r.title.trim() !== ""), ...items.map(rowFromEstimate)]);
     } catch (e) {
       setProblem(e instanceof Error ? e.message : String(e));
     } finally {
@@ -171,9 +132,8 @@ export default function OtherForm({ date, meal, initial, onSave, onClose }: Prop
     setSearch("");
   };
 
-  const valid = rows.length > 0 && rows.every((r) => r.title.trim() !== "" && !FREE_NUMBERS.some((n) => wrong(r, n)));
+  const valid = rows.length > 0 && rows.every((r) => r.title.trim() !== "" && !NUMBERS.some((n) => wrong(r, n)));
   const total = rows.reduce((sum, r) => sum + (parse(r.nums.kcal) ?? 0), 0);
-  const guessed = rows.some((r) => r.estimated);
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -204,7 +164,7 @@ export default function OtherForm({ date, meal, initial, onSave, onClose }: Prop
               }}
             />
             <button type="button" className="primary" disabled={busy || text.trim() === ""} onClick={() => void estimate()}>
-              {busy ? "Estimating…" : rows.some((r) => r.source === "ai") ? "Estimate again" : "Estimate"}
+              {busy ? "Estimating…" : rows.some((r) => r.ai !== null) ? "Estimate again" : "Estimate"}
             </button>
           </div>
         )}
@@ -224,7 +184,7 @@ export default function OtherForm({ date, meal, initial, onSave, onClose }: Prop
                     <button type="button" onClick={() => pick(u)}>
                       <span className="usual-title">{u.title}</span>
                       <span className="usual-meta">
-                        {approx(u.kcal, u.estimated, " kcal")} · {approx(u.protein_g, false, " P")}
+                        {Math.round(u.kcal)} kcal · {Math.round(u.protein_g)} P
                         {u.cost !== null && ` · $${u.cost.toFixed(2)}`} · {dayLabel(u.last)}
                         {u.times > 1 && ` · ${u.times}×`}
                       </span>
@@ -261,43 +221,31 @@ export default function OtherForm({ date, meal, initial, onSave, onClose }: Prop
                     </button>
                   )}
                 </div>
-                {r.question && <div className="question">{r.question}</div>}
+                {r.ai?.question && <div className="question">{r.ai.question}</div>}
                 <div className="numbers">
-                  {FREE_NUMBERS.map((n) => (
+                  {NUMBERS.map((n) => (
                     <label key={n}>
                       <input
                         inputMode="decimal"
                         value={r.nums[n]}
                         aria-label={LABELS[n]}
                         aria-invalid={bad(r.nums[n])}
-                        aria-required={REQUIRED_NUMBERS.includes(n)}
-                        placeholder={REQUIRED_NUMBERS.includes(n) ? " " : "?"}
+                        aria-required={REQUIRED.includes(n)}
+                        placeholder={REQUIRED.includes(n) ? " " : "?"}
                         onChange={(e) => update(r.key, { nums: { ...r.nums, [n]: e.target.value } })}
                       />
                       <span>{LABELS[n]}</span>
                     </label>
                   ))}
                 </div>
-                <div className="item-foot">
-                  <label className="check" title="Untick for numbers from the menu or label">
-                    <input
-                      type="checkbox"
-                      checked={r.estimated}
-                      onChange={(e) => update(r.key, { estimated: e.target.checked })}
-                    />
-                    guess
-                  </label>
-                </div>
-                {(r.source === "ai" || r.assumptions.length > 0) && (
+                {r.ai && (
                   <div className="ai-note">
-                    {r.kcal_low !== null && r.kcal_high !== null && (
-                      <span>
-                        {Math.round(r.kcal_low)}–{Math.round(r.kcal_high)} kcal
-                      </span>
-                    )}
-                    {r.quantity && <span>{r.quantity}</span>}
-                    {r.basis && <span>{r.basis === "published" ? "menu values" : r.basis}</span>}
-                    {r.assumptions.length > 0 && <span>assumed: {r.assumptions.join("; ")}</span>}
+                    <span>
+                      {Math.round(r.ai.kcal_low)}–{Math.round(r.ai.kcal_high)} kcal
+                    </span>
+                    {r.ai.quantity && <span>{r.ai.quantity}</span>}
+                    <span>{r.ai.source === "published" ? "menu values" : r.ai.source}</span>
+                    {r.ai.assumptions.length > 0 && <span>assumed: {r.ai.assumptions.join("; ")}</span>}
                   </div>
                 )}
               </li>
@@ -305,14 +253,14 @@ export default function OtherForm({ date, meal, initial, onSave, onClose }: Prop
           </ol>
         )}
         {!editing && (
-          <button type="button" className="add-row" onClick={() => setRows((cur) => [...cur, blank()])}>
+          <button type="button" className="add-row" onClick={() => setRows((cur) => [...cur, rowFrom(null)])}>
             + type an item
           </button>
         )}
         <div className="actions">
           {rows.length > 0 && (
             <span className="sum">
-              {rows.length} item{rows.length === 1 ? "" : "s"} · {guessed ? "≈ " : ""}
+              {rows.length} item{rows.length === 1 ? "" : "s"} ·{" "}
               {Math.round(total).toLocaleString("en-US")} kcal
             </span>
           )}

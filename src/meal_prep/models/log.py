@@ -7,12 +7,11 @@ directly. Each mealtime resolves to entries in authored order (duplicates
 preserved — each entry is one serving) with summed cost/macros aggregates,
 with no hidden state.
 
-A ``LogEntry`` carries its own title, cost and macros: the numbers frozen when
-the entry was logged (#107), never looked up in current recipes. Its
-``session_id`` names the prep session it came from (``models.session``). A
-free-form entry (takeout, eating out) has no recipe; numbers it doesn't know
-count as 0 in every sum and are listed in ``unknown``, so a total can say
-it is incomplete. ``estimated`` marks numbers that are a guess.
+A ``LogEntry`` is a ``RecipeLogEntry`` or a ``TakeoutLogEntry``. Either
+carries its own title, cost and macros: the numbers frozen when the entry was
+logged (#107), never looked up in current recipes. A recipe entry's
+``session_id`` names the prep session it came from (``models.session``); a
+takeout entry has none, and its unknown cost counts as 0 in sums.
 
 Frozen dataclass value objects: no collaborators, no I/O, no mutation.
 Methods are pure functions of the fields alone. All amounts are raw floats
@@ -22,7 +21,6 @@ with no rounding — presentation is the report's concern.
 from __future__ import annotations
 
 import datetime
-from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import reduce
 
@@ -31,38 +29,31 @@ from meal_prep.models.ingredient import MacrosInfo
 
 
 @dataclass(frozen=True, slots=True)
-class EntryEstimate:
-    """How a free-form entry's numbers were guessed."""
+class RecipeLogEntry:
+    """A logged serving of a catalog recipe: its frozen per-serving title,
+    cost and macros, and the prep session it came from (if any)."""
 
-    source: str  # "manual" or "ai"
-    kcal_low: float | None = None
-    kcal_high: float | None = None
-    assumptions: tuple[str, ...] = ()
+    entry_id: str
+    title: str
+    macros: MacrosInfo
+    recipe_id: str
+    cost: float
+    session_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
-class LogEntry:
-    """One logged serving: its id, which recipe (``None``: free-form), its
-    frozen per-serving title, cost and macros, and the prep session it came
-    from (if any). ``unknown`` names the numbers a free-form entry doesn't
-    know (``cost``, ``fiber_g``...; 0 in ``cost``/``macros``)."""
+class TakeoutLogEntry:
+    """A logged meal that isn't a recipe (takeout, eating out). Its cost is
+    ``None`` when unknown; nutrients it doesn't know are 0 in ``macros``."""
 
     entry_id: str
-    recipe_id: str | None
     title: str
-    cost: float
     macros: MacrosInfo
-    session_id: str | None = None
-    unknown: frozenset[str] = frozenset()
-    estimate: EntryEstimate | None = None
-
-    @property
-    def estimated(self) -> bool:
-        return self.estimate is not None
+    cost: float | None = None
 
 
-def _unknown(entries: Iterable[LogEntry]) -> frozenset[str]:
-    return frozenset().union(*(entry.unknown for entry in entries))
+# One logged serving: a recipe or a takeout meal.
+type LogEntry = RecipeLogEntry | TakeoutLogEntry
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,23 +65,14 @@ class LoggedMeal:
 
     @property
     def recipe_ids(self) -> tuple[str, ...]:
-        """Recipe ids in order (duplicates preserved; free-form entries
-        skipped)."""
-        return tuple(e.recipe_id for e in self.entries if e.recipe_id is not None)
-
-    @property
-    def unknown(self) -> frozenset[str]:
-        """Numbers some entry doesn't know: the sums leave them out."""
-        return _unknown(self.entries)
-
-    @property
-    def estimated(self) -> bool:
-        return any(entry.estimated for entry in self.entries)
+        """Recipe ids in order (duplicates preserved; takeout skipped)."""
+        return tuple(e.recipe_id for e in self.entries if isinstance(e, RecipeLogEntry))
 
     @property
     def cost(self) -> float:
-        """Meal cost at one serving per entry (raw; renderer rounds)."""
-        return sum(entry.cost for entry in self.entries)
+        """Meal cost at one serving per entry (raw; renderer rounds); an
+        unknown takeout cost counts as 0."""
+        return sum(entry.cost or 0.0 for entry in self.entries)
 
     @property
     def macros(self) -> MacrosInfo:
@@ -130,14 +112,6 @@ class LogDay:
         return tuple(entry for meal in self.meals() for entry in meal.entries)
 
     @property
-    def unknown(self) -> frozenset[str]:
-        return _unknown(self.entries())
-
-    @property
-    def estimated(self) -> bool:
-        return any(entry.estimated for entry in self.entries())
-
-    @property
     def cost(self) -> float:
         """Day cost summed over logged mealtimes."""
         return sum(meal.cost for meal in self.meals())
@@ -158,14 +132,6 @@ class LogWeek:
 
     week: str
     days: tuple[LogDay, ...]
-
-    @property
-    def unknown(self) -> frozenset[str]:
-        return frozenset().union(*(day.unknown for day in self.days))
-
-    @property
-    def estimated(self) -> bool:
-        return any(day.estimated for day in self.days)
 
     @property
     def total_cost(self) -> float:

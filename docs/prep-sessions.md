@@ -13,7 +13,7 @@ eaten stay aligned. Per-session ingredient lists build on this later.
 
 - Subtracting counted stock from the ingredient list (inventory, see
   `docs/spikes/inventory.md`); the checklist below only records yes/no.
-- Free-form takeout / eating-out entries (#142, `docs/free-form-entries.md`)
+- Takeout / eating-out entries (#142, `docs/takeout.md`)
   and AI macro estimates (#141). They are never linked to a session.
 - Checks that compare portions made with portions eaten (shortfall, waste,
   fridge life). Only the hard rules below are enforced.

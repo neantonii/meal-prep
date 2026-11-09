@@ -25,7 +25,11 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Literal
 
-from meal_prep.dtos.log import DiaryEntryDTO, DiaryWeekDTO
+from meal_prep.dtos.log import (
+    DiaryWeekDTO,
+    RecipeEntryDTO,
+    TakeoutEntryDTO,
+)
 from meal_prep.dtos.session import PrepSessionDTO, SessionItemDTO
 from meal_prep.enums import Mealtime
 from meal_prep.models.recipe import Recipe
@@ -148,7 +152,7 @@ def linked_meals(
         for day in week.days:
             for mealtime in Mealtime:
                 for entry in getattr(day, mealtime.value) or ():
-                    if entry.session is not None and entry.recipe is not None:
+                    if isinstance(entry, RecipeEntryDTO) and entry.session:
                         key = (entry.session, entry.recipe)
                         meals.setdefault(key, []).append((day.date, mealtime))
     for found in meals.values():
@@ -162,7 +166,7 @@ def link_counts(weeks: Iterable[DiaryWeekDTO]) -> Counter[tuple[uuid.UUID, str]]
     for week in weeks:
         for day in week.days:
             for entry in day.entries():
-                if entry.session is not None and entry.recipe is not None:
+                if isinstance(entry, RecipeEntryDTO) and entry.session:
                     counts[(entry.session, entry.recipe)] += 1
     return counts
 
@@ -253,13 +257,13 @@ class _Draft:
 
     # -- links ----------------------------------------------------------------
 
-    def linked(self) -> list[tuple[datetime.date, DiaryEntryDTO]]:
+    def linked(self) -> list[tuple[datetime.date, RecipeEntryDTO]]:
         return [
             (day.date, entry)
             for week in self.weeks.values()
             for day in week.days
             for entry in day.entries()
-            if entry.session is not None
+            if isinstance(entry, RecipeEntryDTO) and entry.session is not None
         ]
 
     def count(self, session_id: uuid.UUID, recipe_id: str) -> int:
@@ -274,8 +278,7 @@ class _Draft:
         for date, entry in self.linked():
             if entry.session not in wanted:
                 continue
-            # A linked entry always names a recipe (free-form ones never link).
-            assert entry.session is not None and entry.recipe is not None
+            assert entry.session is not None
             session = self.sessions.get(entry.session)
             if session is None:
                 raise RuleError(f"{entry.title}: its prep session no longer exists")
@@ -401,7 +404,7 @@ def add_entry(
     recipe: Recipe,
     position: int | None = None,
     link: Link = "auto",
-) -> tuple[Change, DiaryEntryDTO]:
+) -> tuple[Change, RecipeEntryDTO]:
     """Add an entry for ``recipe``; ``link`` is a session id, ``None`` or
     ``"auto"`` (a recipe drop: auto-linked, on any day, Admin or not)."""
     _check_open(policy, date, mealtime)
@@ -423,20 +426,18 @@ def add_entry(
     return draft.change(), entry
 
 
-def add_free_entries(
+def add_takeout_entries(
     diary: Diary,
     policy: Policy,
     week: str,
     date: datetime.date,
     mealtime: Mealtime,
-    added: Sequence[DiaryEntryDTO],
+    added: Sequence[TakeoutEntryDTO],
     position: int | None = None,
 ) -> Change:
-    """Add free-form entries (``diary.free_entry``) to one slot, in order
-    from ``position`` (``None`` appends): a whole order at once. They are
-    never linked to a session, so only the settled-meal lock applies."""
-    if any(e.recipe is not None or e.session is not None for e in added):
-        raise ValueError("Not a free-form entry")
+    """Add takeout entries to one slot, in order from ``position`` (``None``
+    appends): a whole order at once. They never link to a session, so only
+    the settled-meal lock applies."""
     _check_open(policy, date, mealtime)
     draft = _Draft(diary, policy, {})
     dto = draft.week(week)
@@ -448,22 +449,20 @@ def add_free_entries(
     return draft.change()
 
 
-def edit_free_entry(
-    diary: Diary, policy: Policy, week: str, entry: DiaryEntryDTO
+def edit_takeout_entry(
+    diary: Diary, policy: Policy, week: str, entry: TakeoutEntryDTO
 ) -> Change:
-    """Replace a free-form entry's title and numbers (a corrected estimate),
-    keeping its id and place; recipe entries stay frozen."""
+    """Replace a takeout entry's title and numbers, keeping its id and
+    place; recipe entries stay frozen."""
     draft = _Draft(diary, policy, {})
     current = _week_of(draft, week)
     date, mealtime, old = entries.find_entry(current, entry.id)
     _check_open(policy, date, mealtime)
-    if old.recipe is not None:
+    if not isinstance(old, TakeoutEntryDTO):
         raise RuleError(
             f"{old.title} is a recipe: its numbers are frozen (remove it and "
             "add it again)"
         )
-    if entry.recipe is not None or entry.session is not None:
-        raise ValueError("Not a free-form entry")
     draft.put_week(week, entries.replace_entry(current, entry))
     return draft.change()
 
@@ -505,19 +504,17 @@ def move_entry(
     _check_open(policy, date, mealtime)
     moved = entries.move_entry(current, entry_id, date, mealtime, position)
     draft.put_week(week, moved)
+    if not isinstance(entry, RecipeEntryDTO):
+        return draft.change()  # takeout never links
     session = entry.session
     linked = draft.sessions.get(session) if session is not None else None
-    if (
-        session is not None
-        and entry.recipe is not None
-        and (
-            linked is None
-            or linked.date > date
-            or (
-                policy.session_open(linked.date)
-                and linked.date == cycle_day(old_date, old_mealtime)
-                and cycle_day(date, mealtime) > linked.date
-            )
+    if session is not None and (
+        linked is None
+        or linked.date > date
+        or (
+            policy.session_open(linked.date)
+            and linked.date == cycle_day(old_date, old_mealtime)
+            and cycle_day(date, mealtime) > linked.date
         )
     ):
         unlinked = entries.set_entry_session(moved, entry_id, None)
@@ -545,12 +542,11 @@ def set_entry_session(
     current = _week_of(draft, week)
     date, mealtime, entry = entries.find_entry(current, entry_id)
     _check_open(policy, date, mealtime)
-    if entry.recipe is None:
+    if not isinstance(entry, RecipeEntryDTO):
         if session is None and session_date is None:
             return Change()  # never linked: nothing to unlink
         raise RuleError(
-            f"{entry.title} isn't from a prep session: takeout and other "
-            "free-form meals are never linked to one"
+            f"{entry.title} is takeout: takeout is never linked to a prep session"
         )
     recipe_id = entry.recipe
     if session_date is not None:

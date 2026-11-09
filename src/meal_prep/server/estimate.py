@@ -1,4 +1,4 @@
-"""AI estimates for free-form diary entries (#141): a messy description of
+"""AI estimates for takeout diary entries (#141): a messy description of
 what was eaten -> separate items with clean names, brand, numbers, a
 calories range, the assumptions behind them, and a question where something
 unsaid changes the numbers.

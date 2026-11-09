@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import datetime
 import uuid
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
@@ -23,29 +23,39 @@ class CatalogEntry(BaseModel):
     cost: float
 
 
-class DiaryEntry(BaseModel):
-    """One logged serving, with the numbers frozen when it was logged.
-    ``recipe`` is ``None`` for a free-form entry (takeout, eating out), whose
-    unknown numbers are ``None``."""
+class _EntryOut(BaseModel):
+    """What every logged serving shows: calories and macros, as logged."""
 
     id: str
-    recipe: str | None
     title: str
+    kcal: float
+    protein_g: float
+    carbs_g: float
+    fat_g: float
+
+
+class RecipeEntryOut(_EntryOut):
+    """A serving of a catalog recipe."""
+
+    kind: Literal["recipe"] = "recipe"
+    recipe: str
     card_url: str | None  # None when the recipe no longer exists
     session: str | None  # id of the prep session it came from
-    kcal: float | None
-    protein_g: float | None
-    carbs_g: float | None
-    fat_g: float | None
-    fiber_g: float | None
+    fiber_g: float
+    cost: float
+
+
+class TakeoutEntryOut(_EntryOut):
+    """A takeout meal: never from a session; its cost only if known."""
+
+    kind: Literal["takeout"] = "takeout"
     cost: float | None
-    estimated: bool = False  # free-form: the numbers are a guess
-    assumptions: list[str] = Field(default_factory=list)  # what a guess assumed
-    # How a guess was made ("manual" or "ai") and the AI's calories range
-    # for the whole order; kept when the entry is edited.
-    estimate_source: str | None = None
-    kcal_low: float | None = None
-    kcal_high: float | None = None
+
+
+# One logged serving, told apart by ``kind``.
+type DiaryEntry = Annotated[
+    RecipeEntryOut | TakeoutEntryOut, Field(discriminator="kind")
+]
 
 
 class DiaryMeal(BaseModel):
@@ -59,8 +69,6 @@ class DiaryDay(BaseModel):
     settled: list[str]  # mealtimes whose prep cycle locked (Admin still edits)
     meals: list[DiaryMeal]
     totals: dict[str, float]
-    unknown: list[str] = Field(default_factory=list)  # totals missing a number
-    estimated: bool = False  # totals include a guess
 
 
 class MealRef(BaseModel):
@@ -172,8 +180,6 @@ class DiaryWeek(BaseModel):
     days: list[DiaryDay]
     sessions: list[Session]
     totals: dict[str, float]
-    unknown: list[str] = Field(default_factory=list)  # totals missing a number
-    estimated: bool = False  # totals include a guess
 
 
 class NewEntry(BaseModel):
@@ -209,35 +215,26 @@ class SessionMove(BaseModel):
     date: datetime.date
 
 
-class FreeFormFields(BaseModel):
-    """A free-form entry's title and its numbers for one portion: calories
-    and macros required, fiber and cost optional (``None``: unknown).
-    ``estimated``: the numbers are a guess."""
+class TakeoutFields(BaseModel):
+    """A takeout meal as typed (one portion): its title, calories and
+    macros, and its cost when known."""
 
     title: str = Field(..., min_length=1, max_length=200)
     kcal: float = Field(..., ge=0)
     protein_g: float = Field(..., ge=0)
     carbs_g: float = Field(..., ge=0)
     fat_g: float = Field(..., ge=0)
-    fiber_g: float | None = Field(default=None, ge=0)
     cost: float | None = Field(default=None, ge=0)
-    estimated: bool = False
-    # How a guess was made (kept only when ``estimated``): typed in or by AI,
-    # with the AI's calories range and assumptions.
-    source: Literal["manual", "ai"] = "manual"
-    kcal_low: float | None = Field(default=None, ge=0)
-    kcal_high: float | None = Field(default=None, ge=0)
-    assumptions: list[str] = Field(default_factory=list, max_length=12)
 
 
-class NewFreeEntries(BaseModel):
-    """Free-form entries to add to one slot, in order, from ``position``
-    (``None`` appends): a whole takeout order at once."""
+class NewTakeoutEntries(BaseModel):
+    """Takeout meals to add to one slot, in order, from ``position``
+    (``None`` appends): a whole order at once."""
 
     date: datetime.date
     mealtime: Mealtime
     position: int | None = Field(default=None, ge=0)
-    items: list[FreeFormFields] = Field(..., min_length=1, max_length=20)
+    items: list[TakeoutFields] = Field(..., min_length=1, max_length=20)
 
 
 class EstimateRequest(BaseModel):
@@ -268,17 +265,9 @@ class EstimateOut(BaseModel):
     items: list[EstimatedItemOut]
 
 
-class Usual(BaseModel):
-    """A free-form meal eaten before: its latest numbers (``None``:
-    unknown), when it was last eaten and how often."""
+class Usual(TakeoutFields):
+    """A takeout meal eaten before: its latest numbers, when it was last
+    eaten and how often."""
 
-    title: str
-    kcal: float | None
-    protein_g: float | None
-    carbs_g: float | None
-    fat_g: float | None
-    fiber_g: float | None
-    cost: float | None
-    estimated: bool
     last: str
     times: int

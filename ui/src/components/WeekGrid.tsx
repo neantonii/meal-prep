@@ -1,8 +1,8 @@
 import { useDndContext, useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { DiaryDay, DiaryEntry, Mealtime, Session } from "../api";
-import { MEALTIMES, approx, dayLabel, sessionColor, totalMark } from "../api";
+import type { DiaryDay, DiaryEntry, Mealtime, Session, TakeoutEntry } from "../api";
+import { MEALTIMES, dayLabel, sessionColor } from "../api";
 import { slotId, type DragData, type DropData } from "../dnd";
 
 interface Props {
@@ -18,8 +18,8 @@ interface Props {
   onRemove: (id: string) => void;
   /** "+ other" on a slot: add a takeout / eating-out meal there. */
   onAddOther: (date: string, meal: Mealtime) => void;
-  /** Click on a free-form meal: correct it. */
-  onEditOther: (entry: DiaryEntry, date: string, meal: Mealtime) => void;
+  /** Click on a takeout meal: correct it. */
+  onEditOther: (entry: TakeoutEntry, date: string, meal: Mealtime) => void;
 }
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -47,21 +47,9 @@ export default function WeekGrid({ days, ...rest }: Props) {
               <td className="day-cell">
                 {DAY_NAMES[di] ?? ""} <span className={`mode-tag ${day.mode}`}>{day.mode}</span>
                 <span className="date">{day.date}</span>
-                <span
-                  className="day-total"
-                  title={
-                    day.unknown.length
-                      ? "≥: a meal's number is unknown, so the total leaves it out"
-                      : day.estimated
-                        ? "≈: includes guessed numbers"
-                        : undefined
-                  }
-                >
-                  {totalMark(day.unknown, day.estimated, "kcal")}
-                  {Math.round(t["kcal"] ?? 0)} kcal · {totalMark(day.unknown, day.estimated, "protein_g")}
-                  {Math.round(t["protein_g"] ?? 0)}P · {totalMark(day.unknown, day.estimated, "carbs_g")}
-                  {Math.round(t["carbs_g"] ?? 0)}C · {totalMark(day.unknown, day.estimated, "fat_g")}
-                  {Math.round(t["fat_g"] ?? 0)}F
+                <span className="day-total">
+                  {Math.round(t["kcal"] ?? 0)} kcal · {Math.round(t["protein_g"] ?? 0)}P ·{" "}
+                  {Math.round(t["carbs_g"] ?? 0)}C · {Math.round(t["fat_g"] ?? 0)}F
                 </span>
               </td>
               {MEALTIMES.map((mt) => (
@@ -177,7 +165,7 @@ function EntryRow({
    * standard sessions (Sun before, Tue, Thu, own Sun): those are told apart
    * by the edge color alone. */
   const badge = () => {
-    if (!entry.session) return null;
+    if (entry.kind !== "recipe" || !entry.session) return null;
     const source = sessions.find((s) => s.id === entry.session);
     if (source && STANDARD.has(sessionColor(source.date, monday))) return null;
     return (
@@ -186,20 +174,19 @@ function EntryRow({
       </span>
     );
   };
-  const free = entry.recipe === null;
-  const edge = entry.session ? `linked ${colors[entry.session] ?? ""}` : free ? "other" : "unlinked";
-  const guessed = [entry.estimated ? "A guess" : "", ...entry.assumptions].filter(Boolean).join("; ");
+  const edge =
+    entry.kind === "takeout" ? "other" : entry.session ? `linked ${colors[entry.session] ?? ""}` : "unlinked";
 
   return (
     <div
       ref={setNodeRef}
       className={`entry ${edge}${isDragging ? " dragging" : ""}${incoming ? " incoming" : ""}`}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      title={free ? "Takeout / eating out" : entry.session ? undefined : "Not from a prep session"}
+      title={entry.kind === "takeout" ? "Takeout" : entry.session ? undefined : "Not from a prep session"}
       {...attributes}
       {...listeners}
     >
-      {free ? (
+      {entry.kind === "takeout" ? (
         settled ? (
           <span>{entry.title}</span>
         ) : (
@@ -220,9 +207,7 @@ function EntryRow({
         <span title="This recipe no longer exists">{entry.title}</span>
       )}
       {badge()}
-      <span className="kcal" title={guessed || (entry.kcal === null ? "Calories unknown" : undefined)}>
-        {approx(entry.kcal, entry.estimated)}
-      </span>
+      <span className="kcal">{Math.round(entry.kcal)}</span>
       <button
         className="x"
         title="Remove"
