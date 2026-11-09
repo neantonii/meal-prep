@@ -10,7 +10,6 @@ import datetime
 import uuid
 from collections.abc import Collection, Mapping
 
-from meal_prep.dtos.log import RecipeEntryDTO
 from meal_prep.enums import Mealtime, RecipeCategory
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.library import Library
@@ -251,10 +250,7 @@ def week_response(
     start, end = prep.session_window(dates[0])
     meals = _meals_by_item(diary)
     linked_here = {
-        entry.session
-        for day_dto in (dto.days if dto is not None else ())
-        for entry in day_dto.entries()
-        if isinstance(entry, RecipeEntryDTO) and entry.session is not None
+        link.session for link in prep.linked_entries([dto] if dto is not None else [])
     }
     cards: list[tuple[datetime.date, Session]] = []
     taken: set[datetime.date] = set()

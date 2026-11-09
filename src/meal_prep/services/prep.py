@@ -20,7 +20,7 @@ import datetime
 import math
 import uuid
 from collections import Counter
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Literal
@@ -141,20 +141,38 @@ def next_session_day(day: datetime.date) -> datetime.date:
     return day
 
 
+@dataclass(frozen=True, slots=True)
+class Linked:
+    """A recipe entry linked to a prep session, and where it was eaten."""
+
+    date: datetime.date
+    mealtime: Mealtime
+    entry: RecipeEntryDTO
+    session: uuid.UUID
+
+
+def linked_entries(weeks: Iterable[DiaryWeekDTO]) -> Iterator[Linked]:
+    """Every entry linked to a prep session, over all ``weeks``, in date and
+    mealtime order within each week. Only recipe entries link (takeout never
+    does), so this is the one place that tells them apart."""
+    for week in weeks:
+        for day in week.days:
+            for mealtime in Mealtime:
+                for entry in getattr(day, mealtime.value) or ():
+                    if isinstance(entry, RecipeEntryDTO) and entry.session:
+                        yield Linked(day.date, mealtime, entry, entry.session)
+
+
 def linked_meals(
     weeks: Iterable[DiaryWeekDTO],
 ) -> dict[tuple[uuid.UUID, str], list[tuple[datetime.date, Mealtime]]]:
     """The meals linked per (session id, recipe id), over all ``weeks``, in
     date and mealtime order."""
     meals: dict[tuple[uuid.UUID, str], list[tuple[datetime.date, Mealtime]]] = {}
+    for link in linked_entries(weeks):
+        key = (link.session, link.entry.recipe)
+        meals.setdefault(key, []).append((link.date, link.mealtime))
     order = list(Mealtime)
-    for week in weeks:
-        for day in week.days:
-            for mealtime in Mealtime:
-                for entry in getattr(day, mealtime.value) or ():
-                    if isinstance(entry, RecipeEntryDTO) and entry.session:
-                        key = (entry.session, entry.recipe)
-                        meals.setdefault(key, []).append((day.date, mealtime))
     for found in meals.values():
         found.sort(key=lambda m: (m[0], order.index(m[1])))
     return meals
@@ -162,13 +180,7 @@ def linked_meals(
 
 def link_counts(weeks: Iterable[DiaryWeekDTO]) -> Counter[tuple[uuid.UUID, str]]:
     """Linked entries per (session id, recipe id), over all ``weeks``."""
-    counts: Counter[tuple[uuid.UUID, str]] = Counter()
-    for week in weeks:
-        for day in week.days:
-            for entry in day.entries():
-                if isinstance(entry, RecipeEntryDTO) and entry.session:
-                    counts[(entry.session, entry.recipe)] += 1
-    return counts
+    return Counter((link.session, link.entry.recipe) for link in linked_entries(weeks))
 
 
 def _portions(item: SessionItemDTO) -> int:
@@ -257,15 +269,6 @@ class _Draft:
 
     # -- links ----------------------------------------------------------------
 
-    def linked(self) -> list[tuple[datetime.date, RecipeEntryDTO]]:
-        return [
-            (day.date, entry)
-            for week in self.weeks.values()
-            for day in week.days
-            for entry in day.entries()
-            if isinstance(entry, RecipeEntryDTO) and entry.session is not None
-        ]
-
     def count(self, session_id: uuid.UUID, recipe_id: str) -> int:
         return link_counts(self.weeks.values())[(session_id, recipe_id)]
 
@@ -275,11 +278,11 @@ class _Draft:
         if not wanted:
             return
         counts: Counter[tuple[uuid.UUID, str]] = Counter()
-        for date, entry in self.linked():
-            if entry.session not in wanted:
+        for link in linked_entries(self.weeks.values()):
+            if link.session not in wanted:
                 continue
-            assert entry.session is not None
-            session = self.sessions.get(entry.session)
+            date, entry = link.date, link.entry
+            session = self.sessions.get(link.session)
             if session is None:
                 raise RuleError(f"{entry.title}: its prep session no longer exists")
             label = day_label(session.date)
@@ -290,7 +293,7 @@ class _Draft:
                     f"{entry.title} on {day_label(date)} can't come from the "
                     f"later {label} session"
                 )
-            counts[(entry.session, entry.recipe)] += 1
+            counts[(link.session, entry.recipe)] += 1
         for sid in wanted:
             session = self.sessions.get(sid)
             if session is None:

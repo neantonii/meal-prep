@@ -42,7 +42,7 @@ def _recipe(recipe_id: str = "oatmeal") -> Recipe:
     )
 
 
-def _entry(recipe_id: str = "oatmeal", title: str = "Oatmeal") -> LogEntry:
+def _entry(recipe_id: str = "oatmeal", title: str = "Oatmeal") -> RecipeLogEntry:
     return RecipeLogEntry(
         entry_id="e1", recipe_id=recipe_id, title=title, cost=1.5, macros=_macros()
     )
