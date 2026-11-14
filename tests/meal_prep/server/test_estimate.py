@@ -29,6 +29,7 @@ ITEM = {
     "carbs_g": 30,
     "fat_g": 11,
     "fiber_g": 3,
+    "price": 3.29,
     "source": "published",
     "assumptions": ["no drink assumed"],
 }
@@ -88,6 +89,7 @@ def test_an_estimate_splits_the_meal_and_is_cached(tmp_path: Path):
     ]
     assert first["items"][2]["question"].startswith("Which drink?")
     assert first["items"][0]["assumptions"] == ["no drink assumed"]
+    assert first["items"][0]["price"] == 3.29
     # The same words again (spacing and case aside): no second call.
     again = client.post("/api/estimate", json={"text": f"  {text.upper()} "})
     assert again.json() == first
@@ -95,6 +97,7 @@ def test_an_estimate_splits_the_meal_and_is_cached(tmp_path: Path):
     assert body["messages"][-1]["content"] == text
     assert body["response_format"]["type"] == "json_schema"
     assert "Canada" in body["messages"][0]["content"]
+    assert "Canadian dollars" in body["messages"][0]["content"]
 
 
 @pytest.mark.parametrize(

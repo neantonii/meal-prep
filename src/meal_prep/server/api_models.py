@@ -257,6 +257,7 @@ class EstimatedItemOut(BaseModel):
     carbs_g: float
     fat_g: float
     fiber_g: float
+    price: float  # rough typical price in CAD
     source: str  # "published", "typical" or "guess"
     assumptions: list[str]
 

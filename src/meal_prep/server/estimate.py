@@ -59,6 +59,7 @@ class EstimatedItem(BaseModel):
     carbs_g: float = Field(..., ge=0, le=1000)
     fat_g: float = Field(..., ge=0, le=1000)
     fiber_g: float = Field(default=0, ge=0, le=1000)
+    price: float = Field(default=0, ge=0, le=1000)
     source: Literal["published", "typical", "guess"]
     assumptions: list[str] = Field(default_factory=list, max_length=8)
 
@@ -86,6 +87,7 @@ _SCHEMA: dict[str, Any] = {
                     "carbs_g": {"type": "number"},
                     "fat_g": {"type": "number"},
                     "fiber_g": {"type": "number"},
+                    "price": {"type": "number"},
                     "source": {
                         "type": "string",
                         "enum": ["published", "typical", "guess"],
@@ -104,6 +106,7 @@ _SCHEMA: dict[str, Any] = {
                     "carbs_g",
                     "fat_g",
                     "fiber_g",
+                    "price",
                     "source",
                     "assumptions",
                 ],
@@ -146,6 +149,10 @@ For every item:
   realistic range. Use the brand's published values for {country} menus when
   you know them (source "published"), otherwise typical values ("typical"),
   or "guess" when the item itself is vague.
+- price: a typical current price for that quantity in Canadian dollars (CAD),
+  before tax: the menu price at a {country} location when it's a restaurant
+  item, a typical store or restaurant price otherwise. A rough estimate is
+  fine; 0 only for something free (tap water, a sauce packet included).
 - question: when something the user didn't say changes the numbers a lot
   (which drink, which brand, the size, a sauce), ask it
   in one short question that says what is at stake, e.g. "Which drink? A
