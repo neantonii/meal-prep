@@ -219,14 +219,17 @@ def test_session_detail_lists_what_to_have_by_aisle(client: TestClient):
 
 def test_session_items_come_grouped_by_category(client: TestClient):
     # Added carb, breakfast, protein: listed protein, carb, breakfast (the
-    # RecipeCategory order the palette uses), each with its category.
+    # RecipeCategory order the palette uses), each with its category and
+    # the category's display name.
     for recipe in (RICE, "flat-white", CHICKEN):
         _ok(_add(client, "2026-11-02", recipe))
     sun = _card(_ok(client.get(f"/api/diary/{W45}")), "2026-11-01")
-    assert [(i["recipe"], i["category"]) for i in sun["items"]] == [
-        (CHICKEN, "modular_protein"),
-        (RICE, "modular_carb"),
-        ("flat-white", "breakfast"),
+    assert [
+        (i["recipe"], i["category"], i["category_label"]) for i in sun["items"]
+    ] == [
+        (CHICKEN, "modular_protein", "Protein"),
+        (RICE, "modular_carb", "Carbs"),
+        ("flat-white", "breakfast", "Breakfast"),
     ]
 
 

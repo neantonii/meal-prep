@@ -89,7 +89,7 @@ def test_category_badge_uses_display_name_not_title_case():
 
     recipe = replace(_recipe(), category=RecipeCategory.MODULAR_CARB)
     html = renderer.render_recipe_card(recipe)
-    assert ">Modular Side (Carbs)</span>" in html
+    assert ">Carbs</span>" in html
     assert ">Modular Carb</span>" not in html
     assert 'title="Starchy sides (rice, buckwheat, potatoes, pasta)"' in html
 

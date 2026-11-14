@@ -86,6 +86,7 @@ class SessionItem(BaseModel):
     title: str
     card_url: str | None
     category: str | None  # the recipe's category; None once the recipe is gone
+    category_label: str | None  # its display name (``category_display_name``)
     batches: int
     servings: int
     portions: int  # made: batches x servings

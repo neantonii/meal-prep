@@ -45,16 +45,20 @@ def storage_display_name(storage: StorageType) -> str:
 
 
 def category_display_name(category: RecipeCategory) -> str:
-    """Human-facing category label for the recipe card badge."""
+    """Human-facing category label: the card badge and the UI's group titles.
+
+    Short enough for a sidebar heading; ``category_description`` carries the
+    detail.
+    """
     match category:
         case RecipeCategory.MODULAR_PROTEIN:
-            return "Modular Protein"
+            return "Protein"
         case RecipeCategory.MODULAR_CARB:
-            return "Modular Side (Carbs)"
+            return "Carbs"
         case RecipeCategory.MODULAR_COOKED_VEG:
-            return "Modular Side (Cooked Veg)"
+            return "Cooked Veg"
         case RecipeCategory.FRESH_SALAD_VEG:
-            return "Fresh Vegetables & Salads"
+            return "Salads"
         case RecipeCategory.ONE_DISH:
             return "One-Dish Meals"
         case RecipeCategory.BREAKFAST:

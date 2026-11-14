@@ -219,7 +219,9 @@ function SessionPanel({
         <div className="session-items">
           {byCategory(session.items).map(([category, items]) => (
             <div className="session-group" key={category ?? "other"}>
-              <div className="session-group-title">{categoryLabel(category)}</div>
+              <div className="session-group-title">
+                {items[0].category_label ?? "other (recipe removed)"}
+              </div>
               {items.map((it) => (
                 <ItemRow key={it.recipe} it={it} session={id} onRemoveItem={onRemoveItem} />
               ))}
@@ -241,10 +243,6 @@ function byCategory(items: SessionItem[]): [string | null, SessionItem[]][] {
     else groups.push([it.category, [it]]);
   }
   return groups;
-}
-
-function categoryLabel(category: string | null): string {
-  return category ? category.replaceAll("_", " ") : "other (recipe removed)";
 }
 
 /** One recipe of the open session: batches, portions, the meals it feeds. */
