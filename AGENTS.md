@@ -27,6 +27,10 @@
   (→ `weekly_plan/diary-2026-W43.html`; regenerates cards, relativizes
   links). Never hand-roll the load/prepare/render chain inline — the script
   is the entry point.
+- **Skills**: authoring workflows live in `.agents/skills/` (`meal-recipe`,
+  `meal-ingredient`, `meal-usda`); `.claude/skills` symlinks there so
+  Claude Code discovers them. Read the matching `SKILL.md` before adding or
+  changing a recipe or ingredient.
 - **GitHub CLI**: `gh` is available but needs auth — export `GH_TOKEN="$GITHUB_TOKEN"`
   first (e.g. `export GH_TOKEN="$GITHUB_TOKEN" && gh issue list`). The `GITHUB_TOKEN`
   env var alone is not picked up by `gh`. Agents act on GitHub as
