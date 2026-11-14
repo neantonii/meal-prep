@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import assert_never
 
 from meal_prep.enums import Mealtime
-from meal_prep.models.log import LogEntry, LoggedMeal, LogWeek
+from meal_prep.models.log import LogEntry, LoggedMeal, LogWeek, RecipeLogEntry
 from meal_prep.models.recipe import Recipe
 from meal_prep.models.session import PrepSession
 
@@ -247,7 +247,11 @@ def _kcal(value: float) -> str:
 
 def _session_badge(entry: LogEntry, sessions: Mapping[str, PrepSession] | None) -> str:
     """``prep Sun 1 Nov`` for a linked entry when sessions are known."""
-    if sessions is None or entry.session_id is None:
+    if (
+        sessions is None
+        or not isinstance(entry, RecipeLogEntry)
+        or entry.session_id is None
+    ):
         return ""
     session = sessions.get(entry.session_id)
     label = (
@@ -265,7 +269,11 @@ def _entry_cell(
     sessions: Mapping[str, PrepSession] | None = None,
 ) -> str:
     """One entry title plus its per-serving calories line."""
-    recipe = recipes.get(entry.recipe_id) if recipes is not None else None
+    recipe = (
+        recipes.get(entry.recipe_id)
+        if recipes is not None and isinstance(entry, RecipeLogEntry)
+        else None
+    )
     if cards_root is None or recipe is None:
         title = html.escape(entry.title)
     else:

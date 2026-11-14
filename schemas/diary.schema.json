@@ -85,8 +85,18 @@
       "type": "object"
     },
     "DiaryEntryDTO": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/RecipeEntryDTO"
+        },
+        {
+          "$ref": "#/$defs/TakeoutEntryDTO"
+        }
+      ]
+    },
+    "RecipeEntryDTO": {
       "additionalProperties": false,
-      "description": "One eaten serving, with the numbers as they were when it was logged.",
+      "description": "A serving of a catalog recipe: every number frozen when it was logged\n(#107), and the prep session it came from, if any.",
       "properties": {
         "calories_kcal": {
           "description": "Per serving, when logged",
@@ -101,7 +111,7 @@
           "type": "number"
         },
         "cost": {
-          "description": "Cost of one serving when logged, in CAD",
+          "description": "Cost of one serving, in CAD",
           "minimum": 0,
           "title": "Cost",
           "type": "number"
@@ -174,7 +184,7 @@
           "type": "number"
         },
         "title": {
-          "description": "Recipe title when the entry was logged",
+          "description": "Title when logged",
           "minLength": 1,
           "title": "Title",
           "type": "string"
@@ -182,20 +192,156 @@
       },
       "required": [
         "id",
-        "recipe",
         "title",
-        "cost",
         "calories_kcal",
         "protein_g",
         "fat_g",
         "carbs_g",
+        "recipe",
+        "cost",
         "fiber_g",
         "saturated_fat_g",
         "sugars_g",
         "sodium_mg",
         "potassium_mg"
       ],
-      "title": "DiaryEntryDTO",
+      "title": "RecipeEntryDTO",
+      "type": "object"
+    },
+    "TakeoutEntryDTO": {
+      "additionalProperties": false,
+      "description": "A meal that isn't a recipe (takeout, eating out): calories and macros\nas typed or estimated; cost and the minor nutrients only when known\n(absent = unknown). Never linked to a prep session: it has no field for\none.",
+      "properties": {
+        "calories_kcal": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Calories Kcal",
+          "type": "number"
+        },
+        "carbs_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Carbs G",
+          "type": "number"
+        },
+        "cost": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Cost in CAD; absent when unknown",
+          "title": "Cost"
+        },
+        "fat_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Fat G",
+          "type": "number"
+        },
+        "fiber_g": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "If known",
+          "title": "Fiber G"
+        },
+        "id": {
+          "description": "Entry id (UUID); never changes",
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "potassium_mg": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "If known",
+          "title": "Potassium Mg"
+        },
+        "protein_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Protein G",
+          "type": "number"
+        },
+        "saturated_fat_g": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "If known",
+          "title": "Saturated Fat G"
+        },
+        "sodium_mg": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "If known",
+          "title": "Sodium Mg"
+        },
+        "sugars_g": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "If known",
+          "title": "Sugars G"
+        },
+        "title": {
+          "description": "Title when logged",
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "calories_kcal",
+        "protein_g",
+        "fat_g",
+        "carbs_g"
+      ],
+      "title": "TakeoutEntryDTO",
       "type": "object"
     }
   },
