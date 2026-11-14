@@ -1,7 +1,7 @@
 import { useDndContext, useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { DiaryDay, DiaryEntry, Mealtime, Session } from "../api";
+import type { DiaryDay, DiaryEntry, Mealtime, Session, TakeoutEntry } from "../api";
 import { MEALTIMES, dayLabel, sessionColor } from "../api";
 import { slotId, type DragData, type DropData } from "../dnd";
 
@@ -16,6 +16,10 @@ interface Props {
   /** Admin edits settled meals too. */
   admin: boolean;
   onRemove: (id: string) => void;
+  /** "+ other" on a slot: add a takeout / eating-out meal there. */
+  onAddOther: (date: string, meal: Mealtime) => void;
+  /** Click on a takeout meal: correct it. */
+  onEditOther: (entry: TakeoutEntry, date: string, meal: Mealtime) => void;
 }
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -24,7 +28,7 @@ const STANDARD = new Set(["c0", "c1", "c2", "c3"]);
 
 /** The week table. Meals are sortable within and across slots; the drop
  * logic itself lives in App's onDragEnd. */
-export default function WeekGrid({ days, sessions, colors, monday, admin, onRemove }: Props) {
+export default function WeekGrid({ days, ...rest }: Props) {
   return (
     <table className="grid">
       <thead>
@@ -54,12 +58,8 @@ export default function WeekGrid({ days, sessions, colors, monday, admin, onRemo
                   date={day.date}
                   meal={mt}
                   entries={day.meals.find((m) => m.mealtime === mt)?.entries ?? []}
-                  settled={!admin && day.settled.includes(mt)}
-                  sessions={sessions}
-                  colors={colors}
-                  monday={monday}
-                  admin={admin}
-                  onRemove={onRemove}
+                  settled={!rest.admin && day.settled.includes(mt)}
+                  {...rest}
                 />
               ))}
             </tr>
@@ -100,7 +100,7 @@ function Slot({ date, meal, entries, settled, ...rest }: SlotProps) {
     >
       <SortableContext id={id} items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
         <div className="slot">
-          {entries.length === 0 ? (
+          {entries.length === 0 && settled ? (
             <span className="empty-slot">—</span>
           ) : (
             entries.map((entry, index) => (
@@ -115,6 +115,15 @@ function Slot({ date, meal, entries, settled, ...rest }: SlotProps) {
               />
             ))
           )}
+          {!settled && (
+            <button
+              className="add-other"
+              title="Add a takeout or eating-out meal"
+              onClick={() => rest.onAddOther(date, meal)}
+            >
+              + other
+            </button>
+          )}
         </div>
       </SortableContext>
     </td>
@@ -124,7 +133,18 @@ function Slot({ date, meal, entries, settled, ...rest }: SlotProps) {
 type EntryProps = Omit<SlotProps, "entries"> & { entry: DiaryEntry; index: number };
 
 /** One meal: sortable (drag to reorder or move), with its session edge. */
-function EntryRow({ entry, date, meal, index, sessions, colors, monday, onRemove }: EntryProps) {
+function EntryRow({
+  entry,
+  date,
+  meal,
+  index,
+  settled,
+  sessions,
+  colors,
+  monday,
+  onRemove,
+  onEditOther,
+}: EntryProps) {
   const data = {
     kind: "entry",
     id: entry.id,
@@ -145,7 +165,7 @@ function EntryRow({ entry, date, meal, index, sessions, colors, monday, onRemove
    * standard sessions (Sun before, Tue, Thu, own Sun): those are told apart
    * by the edge color alone. */
   const badge = () => {
-    if (!entry.session) return null;
+    if (entry.kind !== "recipe" || !entry.session) return null;
     const source = sessions.find((s) => s.id === entry.session);
     if (source && STANDARD.has(sessionColor(source.date, monday))) return null;
     return (
@@ -154,18 +174,32 @@ function EntryRow({ entry, date, meal, index, sessions, colors, monday, onRemove
       </span>
     );
   };
-  const edge = entry.session ? `linked ${colors[entry.session] ?? ""}` : "unlinked";
+  const edge =
+    entry.kind === "takeout" ? "other" : entry.session ? `linked ${colors[entry.session] ?? ""}` : "unlinked";
 
   return (
     <div
       ref={setNodeRef}
       className={`entry ${edge}${isDragging ? " dragging" : ""}${incoming ? " incoming" : ""}`}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      title={entry.session ? undefined : "Not from a prep session"}
+      title={entry.kind === "takeout" ? "Takeout" : entry.session ? undefined : "Not from a prep session"}
       {...attributes}
       {...listeners}
     >
-      {entry.card_url ? (
+      {entry.kind === "takeout" ? (
+        settled ? (
+          <span>{entry.title}</span>
+        ) : (
+          <button
+            className="other-title"
+            title="Edit this meal"
+            onKeyDown={(e) => e.stopPropagation()}
+            onClick={() => onEditOther(entry, date, meal)}
+          >
+            {entry.title}
+          </button>
+        )
+      ) : entry.card_url ? (
         <a href={entry.card_url} target="_blank" rel="noreferrer">
           {entry.title}
         </a>

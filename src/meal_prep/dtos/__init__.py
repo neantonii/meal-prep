@@ -18,6 +18,8 @@ from meal_prep.dtos.log import (
     DiaryDayDTO,
     DiaryEntryDTO,
     DiaryWeekDTO,
+    RecipeEntryDTO,
+    TakeoutEntryDTO,
 )
 from meal_prep.dtos.meal import MealDTO
 from meal_prep.dtos.recipe import (
@@ -45,6 +47,7 @@ __all__ = [
     "RecipeCategory",
     "RecipeCookwareRef",
     "RecipeDTO",
+    "RecipeEntryDTO",
     "RecipeFrontmatter",
     "RecipeIngredientMention",
     "RecipeIngredientRef",
@@ -52,6 +55,7 @@ __all__ = [
     "RecipeYield",
     "ReferenceInfo",
     "StorageType",
+    "TakeoutEntryDTO",
     "UnitConversion",
     "UnitsFileSchema",
     "clean_token",
