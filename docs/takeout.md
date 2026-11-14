@@ -52,8 +52,12 @@ Fries"), so a repeat brings back just that item, not the whole order.
 screen) opens the takeout form. It adds a whole order at once:
 
 1. **Describe it**, messy is fine ("mcdonalds meal, mcchicken, small fries,
-   6 nuggets + sweet and sour"), and press Estimate (or Ctrl/⌘+Enter). Each
-   item comes back as its own row. Estimating again replaces those rows.
+   6 nuggets + sweet and sour"), **and/or add photos** of the meal, a menu or
+   a receipt (up to 3: "📷 Add photo", which offers the camera on a phone, or
+   drop or paste them onto the description), and press Estimate (or
+   Ctrl/⌘+Enter). Each item comes back as its own row. Estimating again
+   replaces the rows not corrected by hand. Photos are shrunk in the browser
+   (to 1280 px, JPEG) and sent only with the estimate, never stored.
 2. **Add a meal you had before**: type to search your history; a pick adds
    its row.
 3. **+ type an item**: a blank row.
@@ -70,7 +74,9 @@ correct it. Takeout entries have a dashed yellow edge.
 
 ## AI estimates (#141)
 
-`POST /api/estimate` (`server/estimate.py`) sends the description to an
+`POST /api/estimate` (`server/estimate.py`) sends the description and any
+photos (as image parts of the same message; a receipt's prices are taken as
+what was paid) to an
 OpenAI-compatible chat completions API, Gemini's by default, with a JSON
 schema for the reply, using only the standard library.
 
@@ -122,8 +128,9 @@ Google use prompts to improve its products; a paid key doesn't.
   recipe entries.
 - `GET /api/usuals`: the repeats, as above.
 - `GET /api/estimate`: whether estimates are on, and the model.
-- `POST /api/estimate`: `{text}` -> `{items}` (503 when off, 502 when the
-  service fails).
+- `POST /api/estimate`: `{text, images}` -> `{items}`. `images`: up to 3
+  JPEG/PNG/WebP `data:` URLs under 1.5 MB each; text or a photo is required
+  (422 otherwise; 503 when estimates are off, 502 when the service fails).
 - Week page entries carry `kind`: `recipe` (with `recipe`, `card_url`,
   `session`, `fiber_g`, `cost`) or `takeout` (with `cost`, `null` when
   unknown).

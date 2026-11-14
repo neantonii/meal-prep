@@ -115,3 +115,35 @@ def test_a_failed_estimate_says_so(tmp_path: Path, reply: Any):
     response = client.post("/api/estimate", json={"text": "fries"})
     assert response.status_code == 502
     assert response.json()["detail"]
+
+
+PHOTO = "data:image/jpeg;base64," + "A" * 64
+
+
+def test_photos_go_to_the_model_with_the_text(tmp_path: Path):
+    fake = FakeEstimator(_reply(ITEM), _reply(ITEM))
+    client = _client(tmp_path, fake)
+    response = client.post("/api/estimate", json={"images": [PHOTO]})
+    assert response.status_code == 200, response.text
+    [body] = fake.sent  # type: ignore[attr-defined]
+    content = body["messages"][-1]["content"]
+    assert content[0]["type"] == "text"  # a default prompt for a photo alone
+    assert content[1] == {"type": "image_url", "image_url": {"url": PHOTO}}
+    # The same text with a different photo is a different estimate.
+    other = PHOTO.replace("AAAA", "BBBB", 1)
+    client.post("/api/estimate", json={"images": [other]})
+    assert len(fake.sent) == 2  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"text": "  "},  # nothing to estimate
+        {"images": ["https://example.com/pho.jpg"]},  # not a data URL
+        {"images": ["data:image/gif;base64,AAAA"]},  # not JPEG, PNG or WebP
+        {"images": [PHOTO] * 4},  # more than 3
+    ],
+)
+def test_bad_estimate_requests_are_refused(tmp_path: Path, body: dict):
+    client = _client(tmp_path, FakeEstimator())
+    assert client.post("/api/estimate", json=body).status_code == 422

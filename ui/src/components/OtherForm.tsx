@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, dayLabel, type EstimatedItem, type TakeoutFields, type Usual } from "../api";
+import { MAX_PHOTOS, imageFiles, shrinkPhoto } from "../photos";
 
 interface Props {
   /** Where it goes, for the heading ("Fri 6 Nov lunch"). */
@@ -86,6 +87,10 @@ export default function OtherForm({ date, meal, initial, onSave, onClose }: Prop
   const editing = initial !== null;
   const [rows, setRows] = useState<Row[]>(editing ? [rowFrom(initial)] : []);
   const [text, setText] = useState("");
+  // Photos of the meal, a menu or a receipt (shrunk data URLs); sent with the
+  // description, never stored.
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [dropping, setDropping] = useState(false);
   const [search, setSearch] = useState("");
   const [usuals, setUsuals] = useState<Usual[]>([]);
   const [ai, setAi] = useState(false);
@@ -118,12 +123,24 @@ export default function OtherForm({ date, meal, initial, onSave, onClose }: Prop
   const update = (key: number, change: Partial<Row>) =>
     setRows((cur) => cur.map((r) => (r.key === key ? { ...r, ...change, edited: true } : r)));
 
+  const addPhotos = async (files: Iterable<File>) => {
+    const images = imageFiles(files).slice(0, MAX_PHOTOS - photos.length);
+    if (images.length === 0) return;
+    setProblem(null);
+    try {
+      const shrunk = await Promise.all(images.map(shrinkPhoto));
+      setPhotos((cur) => [...cur, ...shrunk].slice(0, MAX_PHOTOS));
+    } catch {
+      setProblem("Couldn't read that photo: try a JPEG or PNG");
+    }
+  };
+
   const estimate = async () => {
-    if (text.trim() === "" || busy) return;
+    if ((text.trim() === "" && photos.length === 0) || busy) return;
     setBusy(true);
     setProblem(null);
     try {
-      const { items } = await api.estimate(text);
+      const { items } = await api.estimate(text, photos);
       // A new estimate replaces the AI rows not touched since; rows typed,
       // picked or corrected by hand stay.
       setRows((cur) => [
@@ -157,14 +174,33 @@ export default function OtherForm({ date, meal, initial, onSave, onClose }: Prop
           {editing ? "Edit" : "Add"} takeout · {dayLabel(date)} {meal}
         </h2>
         {!editing && ai && (
-          <div className="describe">
+          <div
+            className={`describe${dropping ? " dropping" : ""}`}
+            onDragOver={(e) => {
+              if (![...e.dataTransfer.items].some((i) => i.type.startsWith("image/"))) return;
+              e.preventDefault();
+              setDropping(true);
+            }}
+            onDragLeave={() => setDropping(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDropping(false);
+              void addPhotos(e.dataTransfer.files);
+            }}
+          >
             <textarea
               ref={firstRef}
               rows={2}
               value={text}
               maxLength={1000}
-              placeholder="What did you eat? e.g. mcdonalds meal, mcchicken, small fries, 6 nuggets + sweet and sour"
+              placeholder="What did you eat? e.g. mcdonalds meal, mcchicken, small fries, 6 nuggets + sweet and sour. Or add a photo of the meal, menu or receipt."
               onChange={(e) => setText(e.target.value)}
+              onPaste={(e) => {
+                const pasted = imageFiles(e.clipboardData.files);
+                if (pasted.length === 0) return;
+                e.preventDefault();
+                void addPhotos(pasted);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault();
@@ -172,9 +208,45 @@ export default function OtherForm({ date, meal, initial, onSave, onClose }: Prop
                 }
               }}
             />
-            <button type="button" className="primary" disabled={busy || text.trim() === ""} onClick={() => void estimate()}>
-              {busy ? "Estimating…" : rows.some((r) => r.ai !== null) ? "Estimate again" : "Estimate"}
-            </button>
+            <div className="describe-bar">
+              <div className="photos">
+                {photos.map((url, i) => (
+                  <div key={url.slice(-32) + i} className="photo">
+                    <img src={url} alt={`Photo ${i + 1}`} />
+                    <button
+                      type="button"
+                      className="x"
+                      title="Remove this photo"
+                      onClick={() => setPhotos((cur) => cur.filter((_, j) => j !== i))}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                {photos.length < MAX_PHOTOS && (
+                  <label className="add-photo" title="Meal, menu or receipt: you can also drop or paste photos here">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => {
+                        if (e.target.files) void addPhotos(e.target.files);
+                        e.target.value = "";
+                      }}
+                    />
+                    📷 Add photo
+                  </label>
+                )}
+              </div>
+              <button
+                type="button"
+                className="primary"
+                disabled={busy || (text.trim() === "" && photos.length === 0)}
+                onClick={() => void estimate()}
+              >
+                {busy ? "Estimating…" : rows.some((r) => r.ai !== null) ? "Estimate again" : "Estimate"}
+              </button>
+            </div>
           </div>
         )}
         {problem && <div className="problem">{problem}</div>}
