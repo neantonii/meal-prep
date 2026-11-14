@@ -57,6 +57,21 @@ already inside `carbs` on Canadian labels — do not add it).
 - `cup -> g`: flour ~120, sugar ~200, rice ~185, frozen veg ~145. Density is
   ingredient-specific; challenge only on order-of-magnitude errors.
 
+## Fetched Zeros
+
+`fetch_product.py` lists every nutrient it reported as 0 under `zeros`:
+the lookup turns a blank panel row into 0 even when told not to. Each one
+is checked against the USDA record, scaled to the label's serving:
+
+- It stands (`fetched`) when the USDA amount would also print as 0 under
+  Canadian label rounding: fat, saturated fat, carbs, fibre, sugars and
+  protein below 0.5 g; sodium and potassium below 5 mg. Example: frozen
+  peas and carrots, USDA 0.4 g fat per 85 g, so a fetched "0 g" fat is
+  plausible.
+- Otherwise the USDA value replaces it (`usda`, green), and the read-back
+  says so: "page lookup said 0 g fibre; USDA has 2.1 g per serving, so I
+  used USDA".
+
 ## USDA Cross-Check
 
 Compare the enriched per-100g macros against the FDC record fetched in
@@ -64,10 +79,10 @@ SKILL.md §1 (Foundation/SR Legacy values are already per 100 g — no basis
 scaling). Read the record's `foodNutrients` yourself and decide which
 numbers answer each macro field; there is no mapping table to follow.
 
-- Panel entries: the panel wins, USDA challenges. A large delta usually
-  means a transcription error (re-check the photo) or a genuinely different
-  product (e.g. sweetened vs unsweetened, lean vs regular) — say which you
-  suspect and wait. A small delta is manufacturing variance; confirm it
+- Panel and fetched entries: the label wins, USDA challenges. A large
+  delta usually means a transcription or lookup error (re-check the
+  source) or a genuinely different product (e.g. sweetened vs unsweetened,
+  lean vs regular) — say which you suspect and wait. A small delta is manufacturing variance; confirm it
   stands and move on.
 - No-label entries: USDA is the macro source, so there is nothing to
   compare against — instead, say why the picked record matches the food

@@ -17,18 +17,24 @@ Do not batch multiple unrelated ingredients in one pass.
 
 ## Core Rules
 
-- Guess every required value and mark its provenance explicitly: `panel`
-  for label literals read from a photo with vision, `staged` for agent
-  judgment, `usda` for values taken from a FoodData Central record (see
-  the meal-usda skill). Provenance has no defaults — every rendered value
-  carries the agent's call. Guessing is the flow, not a violation.
-  Anything the user pasted — spec tables, grocery text, macros from chat —
-  is inspiration, never a label literal: stage it as `staged` (yellow)
-  until a photo confirms it. No white without a photo. Only values
-  printed on the panel (macros, serving line, brand, product, price) may
-  ever be `panel`; identity and judgment fields (`id`, `name`,
-  `step_name`, `aisle`, `storage`, `shelf_life_days`, conversion factors)
-  are always `staged` or `usda`.
+- Guess every required value and mark its provenance explicitly:
+  - `fetched` (white): read from a brand or retailer product page by
+    `scripts/fetch_product.py` — the default source of nutrition;
+  - `panel` (bold white): read with vision from the user's own image — a
+    label photo, or the store screenshot they dropped (brand, product,
+    pack size, price);
+  - `usda` (green): taken from a FoodData Central record (the meal-usda
+    skill);
+  - `staged` (yellow): agent judgment.
+  Provenance has no defaults — every rendered value carries the agent's
+  call. Guessing is the flow, not a violation. Anything the user typed or
+  pasted — spec tables, macros from chat — is inspiration, never a label
+  literal: stage it as `staged` until a page or photo confirms it. Only
+  values printed on a label, a product page or the user's screenshot
+  (macros, serving line, brand, product, price, pack size) may be `panel`
+  or `fetched`; identity and judgment fields (`id`, `name`, `step_name`,
+  `aisle`, `storage`, `shelf_life_days`, conversion factors other than
+  the serving line's) are always `staged` or `usda`.
 - The review card IS the collection flow, not a step after it. Transcription
   in hand, stage the draft and render immediately — never interrogate the
   user for identity/storage/edges first. The user corrects guesses on the
@@ -39,7 +45,7 @@ Do not batch multiple unrelated ingredients in one pass.
   scripts/render_ingredient_review.py <draft.yaml> <provenance.yaml>
   <photo[,photo...]|-> <out.html>` (run from the repo root). It validates the entry as
   an `IngredientDTO`, cross-checks the provenance file
-  (`scripts/ingredient_provenance.py` — per-value `panel`/`staged`/`usda`
+  (`scripts/ingredient_provenance.py` — per-value `panel`/`fetched`/`staged`/`usda`
   markers, nothing else), gates on `prepare_ingredient` (gram
   reachability), and renders values from the DTO with color from
   provenance — a draft, provenance, or enrichment failure renders
@@ -58,15 +64,44 @@ Do not batch multiple unrelated ingredients in one pass.
 
 ## Workflow
 
-### 1. Transcribe the label
+### 1. Get the label data
 
-Ask the user to upload a picture of the Nutrition Facts panel (usually a
-grocery-webpage screenshot — panel plus page context; often several
-screenshots of one page). Read the images with your own vision (in Claude
-Code they are already in context), following the spec below — never ask
-the user to transcribe what you can read.
+The user starts an ingredient by dropping what they have: usually a
+screenshot of the store's product page (title, pack size, price), or just
+a typed name. Forward it as-is to the lookup — never retype or summarize
+it first:
 
-The transcription spec:
+```sh
+python .agents/skills/meal-ingredient/scripts/fetch_product.py .agent_tmp/drop-<slug>-1.png [--query "<what they typed>"] --out .agent_tmp/fetched-<slug>.json
+```
+
+The script hands the input to Gemini (search + URL reading; grocery sites
+block scripts but not Google's fetchers), which reads brand, product, pack
+size and prices off the input and finds the Nutrition Facts on brand or
+retailer pages. It needs the Gemini key saved as a network secret for
+`generativelanguage.googleapis.com` (header `x-goog-api-key`), or
+`GEMINI_API_KEY` outside a cloud environment. Its JSON:
+
+- `from_input` — brand, product, pack size, current and regular price as
+  the user's input shows them: stage these `panel`. Store the **regular**
+  price; mention a sale and its end date on the read-back.
+- `nutrition` — serving line verbatim and the nutrients, from pages the
+  lookup reports as retrieved: stage these `fetched`.
+- `zeros` — nutrients it reported as 0. Gemini turns a blank panel row
+  into 0 even when told not to, so each needs the USDA zero check
+  (`references/sanity-checks.md`).
+- `missing` — nutrients not found: fill from USDA, as for a label photo.
+
+Prices only ever come from the user's input; never a looked-up price (they
+vary by banner and sale, and the lookup cannot say where one came from).
+When the input shows no price, ask.
+
+**Fallback: the label photo.** When the script exits 3 (no page retrieved,
+or no nutrition found) or errors twice, ask the user for the Nutrition
+Facts panel (a grocery-webpage screenshot of it is fine). Read the images
+with your own vision (in Claude Code they are already in context),
+following the spec below, and stage what you read `panel` — never ask the
+user to transcribe what you can read.
 
 > This is a screenshot from a grocery webpage showing a food product.
 > Transcribe the Nutrition Facts panel exactly as printed. Reply with ONLY
@@ -84,12 +119,10 @@ Vision transcribes the panel only: never ask it for `unit`/`amount`
 verbatim `serving_text` string in, mapping to `unit` + `amount` happens
 agent-side below. Page-context fields (brand, product, price, pack) are
 small visible judgments — a wrong pick shows on the card for sign-off.
-Fall back to verbatim transcription only when no photo is available.
 
-Alongside transcription, always invoke the meal-usda skill: search
-FoodData Central for the closest plain-food match and fetch the record —
-in the same turn as vision transcription, once the food is identifiable
-from the photo or chat. Do not wait for transcription to finish; the two
+Alongside the lookup or transcription, always invoke the meal-usda skill:
+search FoodData Central for the closest plain-food match and fetch the
+record — in the same turn, once the food is identifiable from the input. Do not wait for transcription to finish; the two
 calls are independent. The panel (when present) stays source of truth;
 the USDA record is the reasoning reference behind staging decisions and
 the cross-check in §5 (see `references/sanity-checks.md`, USDA section).
@@ -107,8 +140,9 @@ between candidate matches).
 Parse the answer as JSON. Expected keys: `brand`, `product`, `pack_size`,
 `price`, `serving_text` (verbatim serving line), flat macro nutrients.
 Missing/optional nutrients are `null` (not printed) — never 0 unless the
-panel prints zero. Source hierarchy for nutrients: `panel` beats `usda`
-beats `staged`. The FDC record has been in hand since §1 — never guess
+panel prints zero. Source hierarchy for nutrients: `panel` beats `fetched`
+beats `usda` beats `staged`; a `fetched` 0 that fails the USDA zero check
+loses to `usda`. The FDC record has been in hand since §1 — never guess
 (`staged`) a nutrient number the record already reports. If the panel
 prints it, stage `panel`; else if a number is needed that the panel
 omits, take it from the record and stage `usda`; `staged` is only for
@@ -134,7 +168,7 @@ never committed):
   shapes come from `schemas/ingredient.schema.json` (the contract) and
   `references/ingredient-catalog.md` (worked exemplars) — never
   re-specify them here.
-- `.agent_tmp/provenance.yaml` — one `panel`/`staged`/`usda` marker per
+- `.agent_tmp/provenance.yaml` — one `panel`/`fetched`/`staged`/`usda` marker per
   rendered value (`scripts/ingredient_provenance.py` is the source of
   truth for the shape): scalar `<field>_provenance` markers plus a
   `conversions` map keyed `from->to` with one entry per draft edge. Null
@@ -150,11 +184,12 @@ photo bytes on disk (vision reads from the message, the renderer reads a
 file), so copy them into `.agent_tmp/` fresh every run from wherever the
 harness saves attachments (Claude Code names each saved path, under
 `~/.claude/uploads/`, in the message; for a harness that keeps them off
-disk, see `extract_chat_image.py` below). Never reuse a stale file from `.agent_tmp/`, and never
-fabricate image bytes (no placeholders, no 1px PNGs) to satisfy the
-renderer. A product page split over several screenshots goes to the renderer as a
-comma-separated list, shown in order; no stitching. Request the photo
-first; when the user has none (fresh meat or produce sold by weight often
+disk, see `extract_chat_image.py` below). Never reuse a stale file from
+`.agent_tmp/`, and never fabricate image bytes (no placeholders, no 1px
+PNGs) to satisfy the renderer. Several screenshots go to the renderer as a
+comma-separated list, shown in order; no stitching. The card shows what
+the user dropped (the store screenshot, plus a label photo if one was
+needed); when the user has none (fresh meat or produce sold by weight often
 has no page to screenshot), pass `-` as the photo: the card says so, every
 user-given fact stages `staged`, and the macros come from USDA. Use
 distinct per-run filenames
@@ -181,9 +216,11 @@ source), screenshot the card and send the PNGs, one per screen:
 node .agents/skills/meal-ingredient/scripts/screenshot.js .agent_tmp/review-<slug>.html .agent_tmp/review-<slug>
 ```
 
-Present the read-back with the card: panel-literal values (white) vs your
-guesses (yellow) vs USDA-sourced values (green, with the cited FDC ID),
-Atwater and macro-sum results, price-band flag. The
+Present the read-back with the card: values from the user's own image
+(bold white) vs product-page values (white, with the page title the
+lookup named) vs your guesses (yellow) vs USDA-sourced values (green, with
+the cited FDC ID), the zero-check outcome for every fetched 0, Atwater and
+macro-sum results, price-band flag, and any sale price seen. The
 user corrects what's wrong on the card. Chat follow-ups are only for
 genuine ambiguities: an unclear serving line, new-entry vs
 update-existing, a price that needs confirming as paid vs shelf-tag.
@@ -268,8 +305,9 @@ For field shapes and worked examples (simple, custom-unit, count-chain), see
 ### 4. Review card contract
 
 The card renders values from the DTO with color from provenance — no
-free text. `panel` values render white, `staged` values render yellow,
-`usda` values render green. A
+free text. `fetched` values render white, `panel` values bold white,
+`staged` values yellow, `usda` values green; a legend on the card says
+so. A
 draft, provenance, or enrichment failure renders errors instead of
 values. Layout lives in `scripts/render_ingredient_review.py`; do not
 re-specify it here.
@@ -326,11 +364,15 @@ as cross-check reference otherwise.
   without a preview pane: `node scripts/screenshot.js <page.html>
   <out-prefix> [device]` → `<out-prefix>-1.png`, `-2.png`, … Send all of
   them, in order.
+- **`scripts/fetch_product.py`** — §1's lookup: the user's screenshots
+  and/or typed query in, product-page label data out (JSON with
+  `from_input`, `nutrition`, `retrieval`, `zeros`, `missing`). Exits 3
+  when nothing usable came back; the label photo flow takes over.
 - **`scripts/validate_ingredient.py`** — enrich one entry via the real
   pipeline and print `check_ingredient` warnings. Usage:
   `python scripts/validate_ingredient.py data/ingredients/<aisle>.yaml --id <slug>`.
 - **`scripts/ingredient_provenance.py`** — `IngredientProvenance`:
-  per-value `panel`/`staged`/`usda` markers only (no value fields, no defaults),
+  per-value `panel`/`fetched`/`staged`/`usda` markers only (no value fields, no defaults),
   plus a `conversions` map keyed `from->to`. Cross-checks itself against
   the staged DTO via `check_against()`; provenance never enters the DTO.
   The source of truth for the provenance shape.

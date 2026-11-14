@@ -25,6 +25,7 @@ from __future__ import annotations
 import base64
 import html
 import sys
+from fractions import Fraction
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -71,28 +72,39 @@ border-radius: 10px; padding: 10px 12px; }
 .facts .k { color: var(--muted); }
 .inferred { color: var(--warn); }
 .sourced { color: var(--ok); }
+.label-photo { font-weight: 800; }
+.legend { color: var(--muted); font-size: 0.85rem; margin-top: 8px; }
 .err { color: var(--err); }
 .note { color: var(--muted); font-size: 0.85rem; margin-top: 10px; }
 """
 
 
+_PROVENANCE_CLASS = {
+    Provenance.PANEL: "label-photo",
+    Provenance.FETCHED: "",
+    Provenance.STAGED: "inferred",
+    Provenance.USDA: "sourced",
+}
+
+_LEGEND = (
+    '<div class="legend">white: product page · '
+    '<span class="label-photo">bold: your screenshot or label photo</span> · '
+    '<span class="inferred">yellow: guess</span> · '
+    '<span class="sourced">green: USDA</span></div>'
+)
+
+
 def _conf_val(value: str, provenance: Provenance) -> str:
-    """Inline value HTML by provenance: panel (plain), staged (yellow), usda (green)."""
-    if provenance == Provenance.STAGED:
-        return f'<span class="inferred">{html.escape(value)}</span>'
-    if provenance == Provenance.USDA:
-        return f'<span class="sourced">{html.escape(value)}</span>'
-    return html.escape(value)
+    """Inline value HTML, colored by provenance (see ``_LEGEND``)."""
+    css = _PROVENANCE_CLASS[provenance]
+    if not css:
+        return html.escape(value)
+    return f'<span class="{css}">{html.escape(value)}</span>'
 
 
 def _conf_fact(key: str, value: str, provenance: Provenance) -> str:
-    """Render a fact by provenance: panel (plain), staged (yellow), usda (green)."""
-    if provenance == Provenance.STAGED:
-        val = f'<span class="inferred">{html.escape(value)}</span>'
-    elif provenance == Provenance.USDA:
-        val = f'<span class="sourced">{html.escape(value)}</span>'
-    else:
-        val = html.escape(value)
+    """Render a fact, colored by provenance."""
+    val = _conf_val(value, provenance)
     return f'<li><span class="k">{html.escape(key)}:</span> {val}</li>'
 
 
@@ -124,8 +136,20 @@ def _conversions_section(dto: IngredientDTO, provenance: IngredientProvenance) -
     return _panel("Conversions", "", f'<ul class="facts">\n{rows}\n</ul>')
 
 
+def _amount_text(amount: float) -> str:
+    """An authored amount as written: 2/3 stays "2/3", not "0.666667"."""
+    if amount == int(amount):
+        return f"{amount:g}"
+    frac = Fraction(amount).limit_denominator(16)
+    if abs(float(frac) - amount) > 1e-9:
+        return f"{amount:g}"
+    whole, rest = divmod(frac.numerator, frac.denominator)
+    part = f"{rest}/{frac.denominator}"
+    return f"{whole} {part}" if whole else part
+
+
 def _basis_subline(unit: str, amount: float, basis_g: float | None) -> str:
-    subline = f"per {amount:g} {unit}"
+    subline = f"per {_amount_text(amount)} {unit}"
     if basis_g is not None:
         subline += f" ({basis_g:g} g)"
     return subline
@@ -139,7 +163,7 @@ def _panel(title: str, sub: str, body: str) -> str:
 def _photo_panel(photos: list[str], title: str = "") -> str:
     head = f"<h2>{html.escape(title)}</h2>\n" if title else ""
     if not photos:
-        body = '<p class="basis">No photo: every value comes from chat or USDA.</p>'
+        body = '<p class="basis">No photo: values come from product pages, chat or USDA.</p>'
     else:
         body = "\n".join(
             f'<img class="photo" src="{html.escape(photo)}">' for photo in photos
@@ -252,6 +276,7 @@ def render(
         f"{_conf_val(dto.reference.product, provenance.product_provenance)}</div>\n"
         f'<div class="meta">{_conf_val(f"${dto.reference.price:.2f}", provenance.price_provenance)} · '
         f"{_conf_val(_package_edge(dto), package_provenance)}</div>\n"
+        f"{_LEGEND}\n"
         "</div>"
     )
     return (
