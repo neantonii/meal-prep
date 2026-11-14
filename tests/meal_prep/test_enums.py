@@ -70,6 +70,7 @@ def test_recipe_category_vocabulary_is_pinned():
         RecipeCategory.MODULAR_CARB,
         RecipeCategory.MODULAR_COOKED_VEG,
         RecipeCategory.FRESH_SALAD_VEG,
+        RecipeCategory.ONE_DISH,
         RecipeCategory.BREAKFAST,
         RecipeCategory.SNACKS,
     }, (
