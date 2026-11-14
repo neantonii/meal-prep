@@ -153,10 +153,11 @@ by correcting the draft, never the service. Then run the repo gate per
 
 Show the card. With a preview pane, open
 `recipe_cards/<category>/<slug>.html` there. Without one (cloud sessions;
-the phone viewer shows HTML as source), screenshot it and send the PNG:
+the phone viewer shows HTML as source), screenshot it and send the PNGs,
+one per screen:
 
 ```sh
-node .agents/skills/meal-ingredient/scripts/screenshot.js recipe_cards/<category>/<slug>.html .agent_tmp/card-<slug>.png
+node .agents/skills/meal-ingredient/scripts/screenshot.js recipe_cards/<category>/<slug>.html .agent_tmp/card-<slug>
 ```
 
 Present the card with a read-back: per-serving macros, cost, yield, and

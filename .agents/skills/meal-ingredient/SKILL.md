@@ -175,10 +175,10 @@ extract the card's own validation report (grep the HTML for
 card with unacknowledged errors.
 
 Without a preview pane (cloud sessions; the phone viewer shows HTML as
-source), screenshot the card and send the PNG:
+source), screenshot the card and send the PNGs, one per screen:
 
 ```sh
-node .agents/skills/meal-ingredient/scripts/screenshot.js .agent_tmp/review-<slug>.html .agent_tmp/review-<slug>.png
+node .agents/skills/meal-ingredient/scripts/screenshot.js .agent_tmp/review-<slug>.html .agent_tmp/review-<slug>
 ```
 
 Present the read-back with the card: panel-literal values (white) vs your
@@ -320,10 +320,12 @@ as cross-check reference otherwise.
   attachments off disk: saves the latest one from OpenHands' conversation
   store (`python scripts/extract_chat_image.py .agent_tmp/label` → prints
   the saved path). Not needed in Claude Code.
-- **`scripts/screenshot.js`** — PNG of a local HTML page (review card or
-  recipe card) for sessions without a preview pane:
-  `node scripts/screenshot.js <page.html> <out.png>` (preinstalled
-  Playwright).
+- **`scripts/screenshot.js`** — a local HTML page (review card or recipe
+  card) as one PNG per screen of a named device (default: the owner's
+  MacBook Air M1 Retina; any Playwright device name works), for sessions
+  without a preview pane: `node scripts/screenshot.js <page.html>
+  <out-prefix> [device]` → `<out-prefix>-1.png`, `-2.png`, … Send all of
+  them, in order.
 - **`scripts/validate_ingredient.py`** — enrich one entry via the real
   pipeline and print `check_ingredient` warnings. Usage:
   `python scripts/validate_ingredient.py data/ingredients/<aisle>.yaml --id <slug>`.
