@@ -395,6 +395,36 @@
       to: kg
       factor: 2.27
 
+- id: white-boiling-potatoes
+  name: White Boiling Potatoes
+  step_name: white potato
+  aisle: produce
+  storage: ambient
+  shelf_life_days: 21
+
+  reference:
+    brand: Compliments
+    product: Compliments White Boiling Potatoes 2.27 kg
+    price: 4.99
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 69.0
+    protein_g: 1.68
+    fat_g: 0.1
+    carbs_g: 15.71
+    fiber_g: 2.4
+    saturated_fat_g: 0.026
+    sugars_g: 1.15
+    sodium_mg: 16.0
+    potassium_mg: 407.0
+
+  conversions:
+    - from: package
+      to: kg
+      factor: 2.27
+
 - id: campari-tomatoes
   name: Campari Tomatoes
   step_name: Campari tomato

@@ -95,6 +95,39 @@
       to: g
       factor: 14.2
 
+- id: brick-cream-cheese
+  name: Cream Cheese Brick
+  step_name: cream cheese
+  aisle: dairy
+  storage: refrigerated
+  shelf_life_days: 10
+
+  reference:
+    brand: Compliments
+    product: Compliments Cream Cheese Brick 250 g
+    price: 3.99
+
+  macros:
+    unit: tbsp
+    amount: 2
+    calories_kcal: 100.0
+    protein_g: 3.0
+    fat_g: 9.0
+    carbs_g: 1.0
+    fiber_g: 0.0
+    saturated_fat_g: 6.0
+    sugars_g: 1.0
+    sodium_mg: 90.0
+    potassium_mg: 30.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 250
+    - from: tbsp
+      to: g
+      factor: 15
+
 - id: greek-yogurt-2pct
   name: Greek Yogurt 2% Plain
   step_name: Greek yogurt
