@@ -36,8 +36,9 @@ class RecipeStorage(BaseModel):
     fridge_days: int = Field(
         ...,
         gt=0,
-        description="Maximum safe refrigerated shelf life in days; must not exceed "
-        "the shortest shelf_life_days of the recipe's ingredients",
+        description="Days the cooked batch keeps refrigerated (food-safety "
+        "guidance for cooked leftovers); independent of the raw ingredients' "
+        "shelf_life_days",
     )
     freezer_friendly: bool = Field(
         ..., description="Whether the cooked batch can be frozen"

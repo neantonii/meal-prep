@@ -84,7 +84,7 @@
           "type": "boolean"
         },
         "fridge_days": {
-          "description": "Maximum safe refrigerated shelf life in days; must not exceed the shortest shelf_life_days of the recipe's ingredients",
+          "description": "Days the cooked batch keeps refrigerated (food-safety guidance for cooked leftovers); independent of the raw ingredients' shelf_life_days",
           "exclusiveMinimum": 0,
           "title": "Fridge Days",
           "type": "integer"
