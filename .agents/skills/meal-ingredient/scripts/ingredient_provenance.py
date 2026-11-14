@@ -4,7 +4,8 @@ The agent stages two files per review: a catalog entry in ``IngredientDTO``
 shape (the exact mapping that graduates into ``data/ingredients/``) and a
 provenance file validated here. The renderer cross-checks the two
 (``check_against``), enriches via the real pipeline, and colors each value
-white (``panel``), yellow (``staged``), or green (``usda``).
+bold white (``panel``), white (``fetched``), yellow (``staged``), or green
+(``usda``).
 
 Provenance has no defaults — every rendered value carries the agent's call.
 It never enters the DTO or the catalog YAML.
@@ -26,9 +27,15 @@ from meal_prep.dtos.ingredient import IngredientDTO  # noqa: E402
 
 
 class Provenance(StrEnum):
-    """Where a staged value came from: label literal, agent judgment, or USDA."""
+    """Where a staged value came from: label literal, agent judgment, or USDA.
+
+    ``fetched`` is a label value read from a retailer or brand product page
+    by ``fetch_product.py`` (pages the lookup reports as retrieved), not from
+    a photo the user sent.
+    """
 
     PANEL = "panel"
+    FETCHED = "fetched"
     STAGED = "staged"
     USDA = "usda"
 
