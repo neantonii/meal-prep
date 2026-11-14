@@ -72,20 +72,26 @@
   depends on lands).
   - Only a PR the agent opened, only once the owner has approved its
     current head, with CI green and no open review threads. Any push after
-    the approval (fix, rebase) needs a fresh approval before merging.
-  - Rebase merge (squash is refused on `master`), pinned to the approved
-    head: `gh pr merge <n> --rebase --match-head-commit <sha>`.
+    the approval (fix, local rebase) needs a fresh approval before merging.
+  - **Behind `master` without conflicts:** don't rebase locally. Use
+    GitHub's "Update branch"
+    (`PUT /repos/neantonii/meal-prep/pulls/<n>/update-branch`). It keeps the
+    owner's approval (no fresh approval needed) and merges `master` in,
+    which the rebase merge drops, so `master` stays linear. Wait for CI on
+    the updated head. Rebase locally only for conflicts (then a fresh
+    approval is needed).
+  - Rebase merge (squash is refused on `master`), pinned to the head CI
+    passed on: `gh pr merge <n> --rebase --match-head-commit <sha>`.
   - Order: when approved PRs depend on each other or touch the same files
     (two `VERSION` bumps included), merge one at a time in dependency
     order. After each merge, check that the next PR is still mergeable and
-    green on the new `master`; if it needs a rebase, rebase, push and wait
-    for re-approval.
+    green on the new `master`; if it is behind, update it as above.
   - A merge deploys within the hour (README, "Every merge to `master`
     reaches the host"). A PR that needs a manual step on the host is
     merged only when the owner says so.
-  - Never push to `master`; never merge `master` into a branch (rebase
-    instead); never merge PRs the agent didn't open (Dependabot's, the
-    owner's) unless asked.
+  - Never push to `master`; never merge `master` into a branch by hand
+    (GitHub's "Update branch" is the one exception); never merge PRs the
+    agent didn't open (Dependabot's, the owner's) unless asked.
 - Agents never modify anything under `.github/` (workflows, the dependency
   policy script, Dependabot config) unless the user explicitly asks for that
   change. GitHub does not enforce this: the agent account (`neantonii-bot`)
