@@ -560,6 +560,36 @@
   custom_units:
     slice: [slice, slices]
 
+- id: cheese-garlic-croutons
+  name: Cheese & Garlic Croutons
+  step_name: croutons
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 180
+
+  reference:
+    brand: Compliments
+    product: Compliments Croutons Cheese & Garlic 145 g
+    price: 3.49
+
+  macros:
+    unit: g
+    amount: 7
+    calories_kcal: 30.0
+    protein_g: 1.0
+    fat_g: 1.0
+    carbs_g: 5.0
+    fiber_g: 0.35
+    saturated_fat_g: 0.4
+    sugars_g: 0.31
+    sodium_mg: 60.0
+    potassium_mg: 10.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 145
+
 - id: canned-pinto-beans
   name: Canned Pinto Beans
   step_name: pinto beans
