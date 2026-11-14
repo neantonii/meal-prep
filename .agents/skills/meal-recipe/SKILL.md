@@ -125,9 +125,12 @@ body with `@ingredient{quantity%unit}` amounts, `#cookware` tokens, and
 `@flour{1 1/2%cup}`)
 (`~chill{8%hour}`, never bare `~8%hour`: braceless timers fail validation).
 See an existing `.cook` file for the
-shape — never re-specify it here. `fridge_days` must be `<=` the minimum
-ingredient shelf life (see the sanity-checks reference of the
-meal-ingredient skill).
+shape — never re-specify it here. `fridge_days` is how long the *cooked*
+batch keeps in the fridge, not how long its raw ingredients keep before
+cooking (`shelf_life_days`, which matters for shopping and prep timing).
+Use food-safety guidance for cooked leftovers: 3–4 days for cooked meat,
+poultry and mixed dishes, less for fish and seafood (2–3) and anything
+with raw dressing or fresh dairy toppings stored mixed in.
 
 Write body prose for a human cook, not a lab notebook: plain-text liquid
 amounts use the friendliest unit (`1 liter`, not `1000 ml`; `1 tbsp`,
