@@ -15,7 +15,7 @@ import os
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from fastapi import FastAPI, Request, Response
 from fastapi.exception_handlers import request_validation_exception_handler
@@ -27,8 +27,10 @@ from meal_prep.library import load_library
 from meal_prep.migrations import migrate
 from meal_prep.server.api_models import CatalogEntry
 from meal_prep.server.cards import cards_router
-from meal_prep.server.diary_routes import diary_router
+from meal_prep.server.diary_routes import diary_router, usuals_router
 from meal_prep.server.editing import Editor
+from meal_prep.server.estimate import CachedEstimator, Estimator
+from meal_prep.server.estimate_routes import estimate_router
 from meal_prep.server.journal import Journal
 from meal_prep.server.session_routes import session_router
 from meal_prep.server.store import DiaryStore
@@ -42,11 +44,14 @@ def create_app(
     recipes_dir: Path,
     diary_dir: Path,
     today: Callable[[], datetime.date] = datetime.date.today,
+    estimator: Estimator | Literal["env"] | None = "env",
 ) -> FastAPI:
     """Build the diary server over explicit directories (no CWD fallback).
 
     ``today`` splits Plan (after it) from Log (it and earlier); the server's
-    local date unless a test pins it.
+    local date unless a test pins it. ``estimator`` makes AI estimates of
+    takeout meals: configured from the environment (``"env"``, off without
+    an API key), a given one (tests), or ``None`` (off).
     """
     data_dir, recipes_dir, diary_dir = (
         Path(data_dir),
@@ -163,6 +168,12 @@ def create_app(
         }
 
     app.include_router(diary_router(editor))
+    app.include_router(usuals_router(editor))
+    if estimator == "env":
+        estimator = Estimator.from_env()
+    app.include_router(
+        estimate_router(None if estimator is None else CachedEstimator(estimator))
+    )
     app.include_router(session_router(editor))
     app.include_router(cards_router(library))
 
