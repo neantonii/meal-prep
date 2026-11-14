@@ -63,6 +63,36 @@
       factor: 450
 
 
+- id: extra-lean-ground-chicken
+  name: Extra Lean Ground Chicken
+  step_name: ground chicken
+  aisle: meat
+  storage: refrigerated
+  shelf_life_days: 2
+
+  reference:
+    brand: Compliments
+    product: Compliments Ground Chicken Extra Lean 450 g
+    price: 7.49
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 140.0
+    protein_g: 20.0
+    fat_g: 7.0
+    carbs_g: 0.0
+    fiber_g: 0.0
+    saturated_fat_g: 2.0
+    sugars_g: 0.0
+    sodium_mg: 85.0
+    potassium_mg: 225.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 450
+
 - id: extra-lean-ground-beef
   name: Extra Lean Ground Beef
   step_name: ground beef
@@ -87,6 +117,36 @@
     sugars_g: 0.0
     sodium_mg: 66.0
     potassium_mg: 340.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 454
+
+- id: lean-ground-pork
+  name: Lean Ground Pork
+  step_name: ground pork
+  aisle: meat
+  storage: refrigerated
+  shelf_life_days: 3
+
+  reference:
+    brand: Compliments
+    product: Compliments Pork Ground Lean 454 g
+    price: 6.99
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 210.0
+    protein_g: 18.0
+    fat_g: 15.0
+    carbs_g: 0.0
+    fiber_g: 0.0
+    saturated_fat_g: 6.0
+    sugars_g: 0.0
+    sodium_mg: 45.0
+    potassium_mg: 350.0
 
   conversions:
     - from: package
