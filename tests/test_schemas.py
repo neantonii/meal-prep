@@ -61,3 +61,28 @@ def test_committed_schemas_match_dtos():
                 f"schemas/{name}.schema.json is stale — "
                 f"run python scripts/refresh_schemas.py and commit the diff:\n{diff}"
             )
+
+
+def _undescribed(schema: dict[str, object]) -> list[str]:
+    """Models and fields of ``schema`` that carry no description (#39)."""
+    missing = [] if "description" in schema else ["<root>"]
+    defs = schema.get("$defs", {})
+    assert isinstance(defs, dict)
+    nodes: dict[str, object] = {"<root>": schema, **defs}
+    for name, node in nodes.items():
+        assert isinstance(node, dict)
+        if name != "<root>" and "enum" not in node and "description" not in node:
+            missing.append(name)
+        for field, prop in node.get("properties", {}).items():
+            if "description" not in prop:
+                missing.append(f"{name}.{field}")
+    return missing
+
+
+def test_every_schema_field_is_described():
+    # The schemas are the authoring contract the skills read: a model or field
+    # without a description leaves its rule unstated. Enums describe
+    # themselves through their values.
+    for name, dto in _DTOS.items():
+        missing = _undescribed(dto.model_json_schema())
+        assert not missing, f"{name}: no description on {missing}"

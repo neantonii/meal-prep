@@ -105,10 +105,17 @@ type DiaryEntryDTO = Annotated[
     Annotated[RecipeEntryDTO, Tag("recipe")]
     | Annotated[TakeoutEntryDTO, Tag("takeout")],
     Discriminator(_entry_kind),
+    Field(
+        description="One diary entry: a recipe serving when it names a "
+        "`recipe`, otherwise a takeout meal"
+    ),
 ]
 
 
 class DiaryDayDTO(BaseModel):
+    """One logged day: entries per mealtime. A mealtime that was not logged
+    is absent (never an empty list); a day logs at least one mealtime."""
+
     model_config = ConfigDict(extra="forbid")
 
     date: datetime.date = Field(..., description="Calendar day this entry records")
@@ -146,6 +153,9 @@ class DiaryDayDTO(BaseModel):
 
 
 class DiaryWeekDTO(BaseModel):
+    """A diary week, ``diary/<week>.yaml``: what was eaten, day by day, with
+    the numbers frozen when each entry was logged."""
+
     model_config = ConfigDict(extra="forbid")
 
     week: str = Field(

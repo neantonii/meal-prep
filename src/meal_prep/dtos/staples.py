@@ -16,6 +16,8 @@ from meal_prep.dtos._normalize import normalize_slug
 
 
 class StaplesDTO(BaseModel):
+    """Ingredients always on hand, ``diary/staples.yaml``."""
+
     model_config = ConfigDict(extra="forbid")
 
     always_have: list[str] = Field(

@@ -20,8 +20,15 @@ def _coerce_quantity(v: object) -> object:
 
 Quantity = Annotated[float, BeforeValidator(_coerce_quantity)]
 
+_UNIT_RULE = "trimmed and lowercased on load"
+
 
 class ReferenceInfo(BaseModel):
+    """The store product this entry stands for: brand, title and shelf price.
+
+    One entry is one product for now (docs/spikes/ingredient-vs-product.md).
+    """
+
     model_config = ConfigDict(extra="forbid")
 
     brand: str = Field(..., description="Brand name, e.g. Compliments")
@@ -41,7 +48,10 @@ class MacrosInfoDTO(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     unit: str = Field(
-        ..., min_length=1, description="Serving basis unit, e.g. 'g' or 'cup'"
+        ...,
+        min_length=1,
+        description="Serving basis unit, e.g. 'g' or 'cup', as printed on the "
+        f"label; {_UNIT_RULE}. Must be gram-reachable through `conversions`",
     )
     amount: Quantity = Field(
         ..., gt=0, description="Serving basis quantity, e.g. 100, 0.123 or '2/3'"
@@ -84,10 +94,21 @@ class MacrosInfoDTO(BaseModel):
 
 
 class UnitConversion(BaseModel):
+    """One edge of the entry's conversion graph: ``1 from = factor * to``.
+
+    Every unit a recipe or the macros basis uses must reach grams through
+    these edges (standard edges such as ``kg -> g`` come from
+    data/units.yaml). An edge from a unit to itself is rejected.
+    """
+
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
-    from_unit: str = Field(..., alias="from", description="Source measurement unit")
-    to_unit: str = Field(..., alias="to", description="Target measurement unit")
+    from_unit: str = Field(..., alias="from", description=f"Source unit; {_UNIT_RULE}")
+    to_unit: str = Field(
+        ...,
+        alias="to",
+        description=f"Target unit; {_UNIT_RULE}; must differ from `from`",
+    )
     factor: Quantity = Field(
         ..., gt=0, description="Multiplier such that 1 from_unit = factor * to_unit"
     )
@@ -118,7 +139,10 @@ class IngredientDTO(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str = Field(
-        ..., description="Canonical unique slug, e.g. 'boneless-chicken-breast'"
+        ...,
+        description="Unique id across all aisle files, e.g. "
+        "'boneless-chicken-breast': a lowercase kebab-case slug (alphanumeric "
+        "words separated by single hyphens; trimmed and lowercased on load)",
     )
     name: str = Field(
         ...,
@@ -132,18 +156,32 @@ class IngredientDTO(BaseModel):
         description="Prose noun for flowing instruction text (e.g. 'chicken breast') — "
         "lowercase and concise. Required; never derived from `name`.",
     )
-    aisle: Aisle = Field(..., description="Supermarket aisle (closed vocabulary)")
+    aisle: Aisle = Field(
+        ...,
+        description="Supermarket aisle (closed vocabulary); must equal the aisle "
+        "file the entry lives in",
+    )
     storage: StorageType = Field(..., description="Storage temperature classification")
     shelf_life_days: int = Field(
         ..., gt=0, description="Mandatory shelf life in days under this storage mode"
     )
 
-    reference: ReferenceInfo
-    macros: MacrosInfoDTO
+    reference: ReferenceInfo = Field(
+        ..., description="The store product: brand, title and shelf price"
+    )
+    macros: MacrosInfoDTO = Field(
+        ...,
+        description="Nutrition as printed on the label, per the label's own "
+        "serving basis",
+    )
     custom_units: dict[str, list[str]] = Field(
         default_factory=dict,
-        description="Explicitly registered non-standard units (canonical -> aliases), in the "
-        "same shape as the standard `allowed` map in units.yaml.",
+        description="Non-standard units (canonical -> aliases), in the same "
+        "shape as the standard `allowed` map in units.yaml (list the canonical "
+        "among its own aliases, by convention). The canonical is a kebab-case "
+        "slug; aliases are trimmed and lowercased, with no duplicates. No unit "
+        "name may collide with a standard unit. Each needs a `-> g` path in "
+        "`conversions`.",
     )
     conversions: list[UnitConversion] = Field(
         default_factory=list,

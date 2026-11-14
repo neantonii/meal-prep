@@ -1,5 +1,6 @@
 {
   "additionalProperties": false,
+  "description": "Ingredients always on hand, ``diary/staples.yaml``.",
   "properties": {
     "always_have": {
       "description": "Ingredient ids always on hand, in every session",

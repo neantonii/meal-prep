@@ -1,5 +1,6 @@
 {
   "additionalProperties": false,
+  "description": "A fixed set of recipes eaten together, ``meals/<id>.yaml``.",
   "properties": {
     "id": {
       "description": "Unique slug matching the file stem",
