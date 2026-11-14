@@ -7,7 +7,7 @@ from datetime import date
 from meal_prep.enums import RecipeCategory
 from meal_prep.logbook import render_log_week, render_log_week_page
 from meal_prep.models.ingredient import MacrosInfo
-from meal_prep.models.log import LogDay, LogEntry, LogWeek
+from meal_prep.models.log import LogDay, LogEntry, LogWeek, RecipeLogEntry
 from meal_prep.models.recipe import Recipe
 from meal_prep.models.session import PrepSession
 
@@ -42,8 +42,8 @@ def _recipe(recipe_id: str = "oatmeal") -> Recipe:
     )
 
 
-def _entry(recipe_id: str = "oatmeal", title: str = "Oatmeal") -> LogEntry:
-    return LogEntry(
+def _entry(recipe_id: str = "oatmeal", title: str = "Oatmeal") -> RecipeLogEntry:
+    return RecipeLogEntry(
         entry_id="e1", recipe_id=recipe_id, title=title, cost=1.5, macros=_macros()
     )
 
@@ -111,7 +111,7 @@ def test_page_relativizes_card_links_to_output_dir(tmp_path):
 
 
 def test_report_badges_entries_linked_to_a_prep_session():
-    linked = LogEntry(
+    linked = RecipeLogEntry(
         entry_id="e2",
         recipe_id="oatmeal",
         title="Oatmeal",
@@ -124,3 +124,11 @@ def test_report_badges_entries_linked_to_a_prep_session():
     assert '<span class="session-badge">prep Sun 1 Nov</span>' in html
     assert 'session-badge">' not in render_log_week(_week(linked))
     assert "prep ?" in render_log_week(_week(linked), sessions={})
+
+
+def test_takeout_entries_show_without_a_card_link():
+    from meal_prep.models.log import TakeoutLogEntry
+
+    takeout = TakeoutLogEntry(entry_id="t1", title="Pho", macros=_macros())
+    page = render_log_week(_week(takeout))
+    assert "Pho" in page and 'class="session-badge"' not in page
