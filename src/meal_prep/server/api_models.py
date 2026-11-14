@@ -4,10 +4,11 @@ mirrors them)."""
 from __future__ import annotations
 
 import datetime
+import re
 import uuid
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from meal_prep.enums import Mealtime
 
@@ -237,10 +238,31 @@ class NewTakeoutEntries(BaseModel):
     items: list[TakeoutFields] = Field(..., min_length=1, max_length=20)
 
 
-class EstimateRequest(BaseModel):
-    """What was eaten, as typed (messy is fine)."""
+# A photo as the browser sends it: a small JPEG, PNG or WebP data URL.
+_PHOTO = re.compile(r"data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+")
+_PHOTO_MAX = 2_000_000  # characters of base64, about 1.5 MB
 
-    text: str = Field(..., min_length=1, max_length=1000)
+
+class EstimateRequest(BaseModel):
+    """What was eaten, as typed (messy is fine), and/or up to 3 photos of
+    the meal, a menu or a receipt."""
+
+    text: str = Field(default="", max_length=1000)
+    images: list[str] = Field(default_factory=list, max_length=3)
+
+    @field_validator("images")
+    @classmethod
+    def validate_images(cls, images: list[str]) -> list[str]:
+        for url in images:
+            if len(url) > _PHOTO_MAX or not _PHOTO.fullmatch(url):
+                raise ValueError("Each photo must be a JPEG, PNG or WebP under 1.5 MB")
+        return images
+
+    @model_validator(mode="after")
+    def validate_something(self) -> EstimateRequest:
+        if not self.text.strip() and not self.images:
+            raise ValueError("Describe the meal or add a photo")
+        return self
 
 
 class EstimatedItemOut(BaseModel):

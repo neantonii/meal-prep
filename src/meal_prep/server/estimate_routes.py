@@ -32,12 +32,13 @@ def estimate_router(estimator: CachedEstimator | None) -> APIRouter:
                 status_code=503, detail="AI estimates are off: no API key set"
             )
         try:
-            reply = estimator.estimate(body.text)
+            reply = estimator.estimate(body.text, body.images)
         except EstimateError as e:
             raise HTTPException(status_code=502, detail=str(e)) from e
         logger.info(
-            "estimated %r: %s",
+            "estimated %r (%d photos): %s",
             body.text[:80],
+            len(body.images),
             ", ".join(f"{i.name} {i.kcal:.0f}" for i in reply.items),
         )
         return EstimateOut(

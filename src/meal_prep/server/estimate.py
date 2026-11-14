@@ -20,6 +20,7 @@ call.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -28,6 +29,7 @@ import threading
 import urllib.error
 import urllib.request
 from collections import OrderedDict
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -120,7 +122,9 @@ _SCHEMA: dict[str, Any] = {
 def _prompt(country: str) -> str:
     return f"""You estimate the nutrition of meals someone ate, for a food diary.
 The user describes what they ate, often messily: misspelled, several items in
-one line, details left out. Split it into menu items, the separate things
+one line, details left out. They may attach photos of the meal, a menu or a
+receipt: read item names, sizes and prices from them where visible (a
+receipt's prices are what was paid). Split it into menu items, the separate things
 one would order or be served, and estimate each one.
 Everything was eaten as served (takeout, restaurant, someone else's
 cooking): a weight is always the weight of the food as served.
@@ -187,13 +191,20 @@ class Estimator:
             country=os.environ.get("MEAL_PREP_ESTIMATE_COUNTRY", "Canada"),
         )
 
-    def request(self, text: str) -> dict[str, Any]:
-        """The chat completions request body for ``text``."""
+    def request(self, text: str, images: Sequence[str] = ()) -> dict[str, Any]:
+        """The chat completions request body for ``text`` and ``images``
+        (``data:`` URLs of photos)."""
+        content: str | list[dict[str, Any]] = text
+        if images:
+            content = [
+                {"type": "text", "text": text or "Estimate the meal in the photos."},
+                *({"type": "image_url", "image_url": {"url": url}} for url in images),
+            ]
         return {
             "model": self.model,
             "messages": [
                 {"role": "system", "content": _prompt(self.country)},
-                {"role": "user", "content": text},
+                {"role": "user", "content": content},
             ],
             "temperature": 0.2,
             "response_format": {
@@ -217,11 +228,11 @@ class Estimator:
             reply: dict[str, Any] = json.load(response)
             return reply
 
-    def estimate(self, text: str) -> EstimateReply:
-        """Split and estimate ``text``; ``EstimateError`` with a user-facing
-        message when the service or its reply fails."""
+    def estimate(self, text: str, images: Sequence[str] = ()) -> EstimateReply:
+        """Split and estimate ``text`` and its photos; ``EstimateError`` with
+        a user-facing message when the service or its reply fails."""
         try:
-            reply = self.call(self.request(text))
+            reply = self.call(self.request(text, images))
         except urllib.error.HTTPError as e:
             detail = e.read().decode(errors="replace")[:300]
             logger.warning("estimate failed: HTTP %s %s", e.code, detail)
@@ -246,8 +257,12 @@ class Estimator:
             ) from e
 
 
-def cache_key(text: str) -> str:
-    return re.sub(r"\s+", " ", text).strip().casefold()
+def cache_key(text: str, images: Sequence[str] = ()) -> str:
+    """The description with case and spacing ignored, plus each photo's
+    hash."""
+    words = re.sub(r"\s+", " ", text).strip().casefold()
+    photos = [hashlib.sha256(url.encode()).hexdigest() for url in images]
+    return "|".join([words, *photos])
 
 
 class CachedEstimator:
@@ -261,14 +276,14 @@ class CachedEstimator:
         self._cache: OrderedDict[str, EstimateReply] = OrderedDict()
         self._lock = threading.Lock()
 
-    def estimate(self, text: str) -> EstimateReply:
-        key = cache_key(text)
+    def estimate(self, text: str, images: Sequence[str] = ()) -> EstimateReply:
+        key = cache_key(text, images)
         with self._lock:
             hit = self._cache.get(key)
             if hit is not None:
                 self._cache.move_to_end(key)
                 return hit
-        reply = self.estimator.estimate(text)
+        reply = self.estimator.estimate(text, images)
         with self._lock:
             self._cache[key] = reply
             self._cache.move_to_end(key)

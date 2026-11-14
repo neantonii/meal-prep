@@ -259,8 +259,9 @@ export const api = {
   /** Whether AI estimates are on (the host has an API key). */
   estimateStatus: () => request<{ available: boolean; model: string | null }>("/api/estimate"),
   /** Split a messy description into items with estimated numbers. */
-  estimate: (text: string) =>
-    send<{ items: EstimatedItem[] }>("POST", "/api/estimate", false, { text }),
+  /** `images`: photos as data URLs (meal, menu or receipt), up to 3. */
+  estimate: (text: string, images: string[] = []) =>
+    send<{ items: EstimatedItem[] }>("POST", "/api/estimate", false, { text, images }),
   removeEntry: (week: string, id: string, admin: boolean) =>
     send<DiaryWeek>("DELETE", `/api/diary/${week}/entries/${id}`, admin),
   moveEntry: (week: string, id: string, where: Placement, admin: boolean) =>
