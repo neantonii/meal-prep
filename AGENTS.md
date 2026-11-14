@@ -181,6 +181,36 @@ The second command prints nothing when no added version is vulnerable.
 - Never edit the check, its workflow, or Dependabot config to get green
   (see the `.github/` rule above).
 
+**Dependabot PRs** (handled when the owner asks)
+- **Policy check, per PR.** Dependabot PRs skip `dependency-policy`, so run
+  the same checks on every version the PR adds, **indirect packages
+  included**: the age check (`release_age.py` above, `BASE_SHA`/`HEAD_SHA`
+  set to the PR's base and head) and the dependency-graph compare call for
+  advisories. A PR that fails either is **closed** with a comment naming
+  the package, its age or advisory, and the rule (e.g. #183: fastapi
+  0.143.0 was old enough but pulled in `opentelemetry-api` 1.45.2, then 15
+  days old).
+- **Security updates skip the age check.** A Dependabot security update
+  (its description names the advisory it fixes) may be younger than 30
+  days, along with what it pulls in; it still gets the advisory check, so
+  no version it adds may itself be vulnerable.
+- **One at a time.** `master` requires checks on an up-to-date branch, so
+  each merge makes the others stale. For each passing PR, in order of risk
+  (UI types, then libraries, then linters):
+  1. Update the branch with GitHub's "Update branch"
+     (`PUT /repos/neantonii/meal-prep/pulls/<n>/update-branch`). It merges
+     `master` in; the rebase merge drops that merge commit, so `master`
+     stays linear. Don't ask Dependabot to rebase by comment (it had no
+     effect), and never force-push to its branches.
+  2. Wait for CI on the updated head: the real test, against current code.
+  3. Approve with a one-line policy summary (packages, ages, no advisories,
+     CI green), then rebase-merge pinned to that head SHA.
+- **Approval.** When asked to handle Dependabot PRs, the agent may approve
+  and merge each one that passes, without asking per PR; the branch rules
+  accept the agent's approval. A failing PR is closed, never approved.
+- **Versioning.** Dependency bumps don't touch `VERSION` (not
+  user-visible).
+
 Background: Dependabot proposes version updates after a cooldown (30 days
 patch/minor, 90 days major) and opens security updates immediately; packages
 that become vulnerable later surface as Dependabot alerts. CI runs
