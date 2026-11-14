@@ -153,10 +153,10 @@ For every item:
   realistic range. Use the brand's published values for {country} menus when
   you know them (source "published"), otherwise typical values ("typical"),
   or "guess" when the item itself is vague.
-- price: a typical current price for that quantity in Canadian dollars (CAD),
-  before tax: the menu price at a {country} location when it's a restaurant
-  item, a typical store or restaurant price otherwise. A rough estimate is
-  fine; 0 only for something free (tap water, a sauce packet included).
+- price: the current price for that quantity in Canadian dollars (CAD), before
+  tax: what the item costs on the menu at a {country} location for a
+  restaurant item, or in a store otherwise. Use the receipt's price when a
+  photo shows one. 0 only for something free (tap water, an included sauce).
 - question: when something the user didn't say changes the numbers a lot
   (which drink, which brand, the size, a sauce), ask it
   in one short question that says what is at stake, e.g. "Which drink? A

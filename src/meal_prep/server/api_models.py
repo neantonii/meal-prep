@@ -238,9 +238,11 @@ class NewTakeoutEntries(BaseModel):
     items: list[TakeoutFields] = Field(..., min_length=1, max_length=20)
 
 
-# A photo as the browser sends it: a small JPEG, PNG or WebP data URL.
-_PHOTO = re.compile(r"data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+")
-_PHOTO_MAX = 2_000_000  # characters of base64, about 1.5 MB
+# A photo as the browser sends it: normally a JPEG it has shrunk to a few
+# hundred KB; a HEIC/HEIF the browser can't read (desktop Chrome, Firefox) is
+# sent as is, so the limit leaves room for a full-size iPhone photo.
+_PHOTO = re.compile(r"data:image/(jpeg|png|webp|heic|heif);base64,[A-Za-z0-9+/=]+")
+_PHOTO_MAX = 16_000_000  # characters of base64, about 12 MB
 
 
 class EstimateRequest(BaseModel):
@@ -255,7 +257,9 @@ class EstimateRequest(BaseModel):
     def validate_images(cls, images: list[str]) -> list[str]:
         for url in images:
             if len(url) > _PHOTO_MAX or not _PHOTO.fullmatch(url):
-                raise ValueError("Each photo must be a JPEG, PNG or WebP under 1.5 MB")
+                raise ValueError(
+                    "Each photo must be a JPEG, PNG, WebP or HEIC under 12 MB"
+                )
         return images
 
     @model_validator(mode="after")

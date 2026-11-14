@@ -130,8 +130,9 @@ export default function OtherForm({ date, meal, initial, onSave, onClose }: Prop
     try {
       const shrunk = await Promise.all(images.map(shrinkPhoto));
       setPhotos((cur) => [...cur, ...shrunk].slice(0, MAX_PHOTOS));
-    } catch {
-      setProblem("Couldn't read that photo: try a JPEG or PNG");
+    } catch (e) {
+      const reason = e instanceof Error && e.message.includes("12 MB") ? e.message : "try a JPEG or PNG";
+      setProblem(`Couldn't use that photo: ${reason}`);
     }
   };
 
@@ -227,7 +228,7 @@ export default function OtherForm({ date, meal, initial, onSave, onClose }: Prop
                   <label className="add-photo" title="Meal, menu or receipt: you can also drop or paste photos here">
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/*,.heic,.heif"
                       multiple
                       onChange={(e) => {
                         if (e.target.files) void addPhotos(e.target.files);
