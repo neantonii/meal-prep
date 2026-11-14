@@ -27,6 +27,9 @@
   (→ `weekly_plan/diary-2026-W43.html`; regenerates cards, relativizes
   links). Never hand-roll the load/prepare/render chain inline — the script
   is the entry point.
+- **Regenerate cards**: `uv run python scripts/render_cards.py [<recipe-id>...]`
+  (validates the library, rewrites `recipe_cards/` and `ingredient_cards/`;
+  named recipes get a per-portion read-back).
 - **Skills**: authoring workflows live in `.agents/skills/` (`meal-recipe`,
   `meal-ingredient`, `meal-usda`); `.claude/skills` symlinks there so
   Claude Code discovers them. Read the matching `SKILL.md` before adding or
