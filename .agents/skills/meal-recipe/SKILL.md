@@ -41,14 +41,16 @@ Take the user's starting point — a rough idea, a pasted draft, a photo of
 a dish — and reason it into a cookable recipe: cuisine logic, technique
 order, balanced macros for the category, realistic batch size. The user is
 not a confident cook, so the agent carries the cooking judgment: always
-look up similar recipes online (use the browser) and ground technique,
-order, times, temps, and ratios in what working recipes do — never wing
-it from priors alone. If search engines block (captcha/login wall), skip
-straight to curl: fetch 2–3 candidate recipe pages and extract their
-JSON-LD (`<script type="application/ld+json">`) for technique, ratios,
-and times — do not burn actions retrying the search box. Agree the shape
-with the user before touching
-files: title, category (`modular_protein`, `modular_carb`,
+look up similar recipes online and ground technique, order, times, temps,
+and ratios in what working recipes do — never wing it from priors alone.
+Research from the sites in `references/recipe-sites.md`; the file says
+how to read each one (JSON-LD or page text). Before the first lookup,
+check that the environment allows every host the file marks `allowed`
+(see the file's "Before researching" step) and ask for any that are
+missing. Find candidate pages with web search, fetch 2–3 with curl. A site
+not on the list goes through that file's "Adding a site" step first.
+
+Agree the shape with the user before touching files: title, category (`modular_protein`, `modular_carb`,
 `modular_cooked_veg`, `fresh_salad_veg`, `one_dish`, `breakfast`, `snacks`),
 servings, and the ingredient list with quantities in concrete units. Paste the agreed list
 as an FYI — no formal sign-off needed — with 2–3 similar recipes cited
