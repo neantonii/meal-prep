@@ -62,6 +62,11 @@
 - Before raising a PR, squash local iterations into meaningful chunks —
   one commit per logical change. Only keep genuinely separate commits;
   never one commit per edit.
+- When a PR is ready, request the owner's review (`neantonii`), so it shows
+  in their GitHub review queue (REST:
+  `POST /repos/neantonii/meal-prep/pulls/<n>/requested_reviewers`).
+  Request it again after any push that needs a fresh approval (fixes,
+  rebases, squashes; see Merging).
 - Merging: the owner's approval is the gate; after it, the agent may merge
   its own PR when it judges the time right (e.g. hold it until a PR it
   depends on lands).
