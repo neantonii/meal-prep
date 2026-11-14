@@ -20,7 +20,7 @@ export default function Palette({ groups }: Props) {
       />
       {groups.map((g) => (
         <details className="cat" key={g.category} open>
-          <summary>{g.category}</summary>
+          <summary title={g.description}>{g.label}</summary>
           {g.recipes
             .filter((r) => r.title.toLowerCase().includes(query.toLowerCase()))
             .map((r) => (

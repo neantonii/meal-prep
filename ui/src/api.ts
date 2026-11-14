@@ -13,6 +13,10 @@ export interface CatalogEntry {
 
 export interface CatalogGroup {
   category: string;
+  /** display name, the same as the recipe cards' badge */
+  label: string;
+  /** what belongs in the category, for a hover hint */
+  description: string;
   recipes: CatalogEntry[];
 }
 
@@ -114,6 +118,8 @@ export interface SessionItem {
   card_url: string | null;
   /** the recipe's category; null once the recipe no longer exists */
   category: string | null;
+  /** the category's display name; null once the recipe no longer exists */
+  category_label: string | null;
   batches: number;
   servings: number;
   /** made: batches x servings */

@@ -17,6 +17,7 @@ from meal_prep.models.log import LogEntry, TakeoutLogEntry
 from meal_prep.models.recipe import Recipe
 from meal_prep.models.session import NeedShare as ModelNeedShare
 from meal_prep.models.session import PrepSession
+from meal_prep.renderer import category_display_name
 from meal_prep.server.api_models import (
     AisleNeeds,
     DiaryDay,
@@ -180,6 +181,9 @@ def _session_out(
                     recipe.category.value
                     if (recipe := library.recipes.get(item.recipe_id))
                     else None
+                ),
+                category_label=(
+                    category_display_name(recipe.category) if recipe else None
                 ),
                 batches=item.batches,
                 servings=item.servings,

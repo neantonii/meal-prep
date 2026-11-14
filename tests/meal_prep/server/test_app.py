@@ -49,6 +49,8 @@ def test_version_comes_from_the_image(
 def test_catalog_grouped(client: TestClient):
     body = client.get("/api/catalog").json()
     assert [g["category"] for g in body["groups"]] == list(RecipeCategory)
+    assert body["groups"][0]["label"] == "Protein"
+    assert all(g["label"] and g["description"] for g in body["groups"])
     total = sum(len(g["recipes"]) for g in body["groups"])
     assert total > 0
     entry = body["groups"][0]["recipes"][0]

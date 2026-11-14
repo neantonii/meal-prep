@@ -25,6 +25,7 @@ from fastapi.staticfiles import StaticFiles
 from meal_prep.enums import RecipeCategory
 from meal_prep.library import load_library
 from meal_prep.migrations import migrate
+from meal_prep.renderer import category_description, category_display_name
 from meal_prep.server.api_models import CatalogEntry
 from meal_prep.server.cards import cards_router
 from meal_prep.server.diary_routes import diary_router, usuals_router
@@ -161,6 +162,8 @@ def create_app(
             "groups": [
                 {
                     "category": c.value,
+                    "label": category_display_name(c),
+                    "description": category_description(c),
                     "recipes": [e.model_dump() for e in groups[c.value]],
                 }
                 for c in RecipeCategory
