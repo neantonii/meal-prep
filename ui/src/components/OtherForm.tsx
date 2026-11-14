@@ -57,7 +57,7 @@ const rowFromEstimate = (item: EstimatedItem): Row =>
       protein_g: item.protein_g,
       carbs_g: item.carbs_g,
       fat_g: item.fat_g,
-      cost: null,
+      cost: item.price,
     },
     item,
   );

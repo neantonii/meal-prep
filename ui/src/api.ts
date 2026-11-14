@@ -71,6 +71,8 @@ export interface EstimatedItem {
   carbs_g: number;
   fat_g: number;
   fiber_g: number;
+  /** rough typical price in CAD */
+  price: number;
   source: "published" | "typical" | "guess";
   assumptions: string[];
 }

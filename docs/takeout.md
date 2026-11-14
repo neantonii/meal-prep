@@ -59,8 +59,8 @@ screen) opens the takeout form. It adds a whole order at once:
 3. **+ type an item**: a blank row.
 
 Every row is editable: name, kcal, protein, carbs and fat (required; "Add"
-stays off until they are in) and cost (optional). An AI row also shows, while
-you review, its calories range, the quantity, where the numbers come from
+stays off until they are in) and cost (optional; pre-filled with a rough
+price for AI rows). An AI row also shows, while you review, its calories range, the quantity, where the numbers come from
 (menu values, typical or guess), what it assumed, and its question when
 something you didn't say changes the numbers. None of that is saved. "Add 4"
 saves every row as its own entry, in order.
@@ -88,6 +88,9 @@ with:
   what you said and add nothing you didn't. `brand` too (a brand mentioned
   once applies to the whole order);
 - `quantity`, `kcal` with `kcal_low`/`kcal_high`, protein, carbs, fat, fiber;
+- `price`: a rough typical price in CAD before tax (the menu price for the
+  configured country), pre-filled as the row's cost. Costs in the app are
+  illustrative, so a rough figure is enough; edit it to what you paid;
 - `source`: `published` (the brand's menu values for the configured
   country, Canada), `typical` or `guess`;
 - `question`: one short question with what is at stake ("Which drink? A
