@@ -57,7 +57,9 @@ screen) opens the takeout form. It adds a whole order at once:
    drop or paste them onto the description), and press Estimate (or
    Ctrl/⌘+Enter). Each item comes back as its own row. Estimating again
    replaces the rows not corrected by hand. Photos are shrunk in the browser
-   (to 1280 px, JPEG) and sent only with the estimate, never stored.
+   (to 1280 px, JPEG) and sent only with the estimate, never stored. A HEIC
+   the browser can't read (desktop Chrome, Firefox; Safari and the iPhone's
+   picker can) is sent as is, up to 12 MB: Gemini reads HEIC itself.
 2. **Add a meal you had before**: type to search your history; a pick adds
    its row.
 3. **+ type an item**: a blank row.
@@ -129,7 +131,7 @@ Google use prompts to improve its products; a paid key doesn't.
 - `GET /api/usuals`: the repeats, as above.
 - `GET /api/estimate`: whether estimates are on, and the model.
 - `POST /api/estimate`: `{text, images}` -> `{items}`. `images`: up to 3
-  JPEG/PNG/WebP `data:` URLs under 1.5 MB each; text or a photo is required
+  JPEG/PNG/WebP/HEIC `data:` URLs under 12 MB each; text or a photo is required
   (422 otherwise; 503 when estimates are off, 502 when the service fails).
 - Week page entries carry `kind`: `recipe` (with `recipe`, `card_url`,
   `session`, `fiber_g`, `cost`) or `takeout` (with `cost`, `null` when

@@ -135,12 +135,22 @@ def test_photos_go_to_the_model_with_the_text(tmp_path: Path):
     assert len(fake.sent) == 2  # type: ignore[attr-defined]
 
 
+def test_heic_photos_are_accepted_as_sent(tmp_path: Path):
+    # Browsers that can't read HEIC (desktop Chrome, Firefox) send it as is.
+    fake = FakeEstimator(_reply(ITEM))
+    heic = "data:image/heic;base64," + "A" * 64
+    response = _client(tmp_path, fake).post("/api/estimate", json={"images": [heic]})
+    assert response.status_code == 200, response.text
+    [body] = fake.sent  # type: ignore[attr-defined]
+    assert body["messages"][-1]["content"][1]["image_url"]["url"] == heic
+
+
 @pytest.mark.parametrize(
     "body",
     [
         {"text": "  "},  # nothing to estimate
         {"images": ["https://example.com/pho.jpg"]},  # not a data URL
-        {"images": ["data:image/gif;base64,AAAA"]},  # not JPEG, PNG or WebP
+        {"images": ["data:image/gif;base64,AAAA"]},  # not JPEG, PNG, WebP or HEIC
         {"images": [PHOTO] * 4},  # more than 3
     ],
 )
