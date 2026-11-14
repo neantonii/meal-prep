@@ -213,13 +213,8 @@ def render(
         + "\n</div>"
     )
     facts = [
-        _conf_fact(
-            "Aisle / storage",
-            f"{dto.aisle.value} / {dto.storage.value}",
-            provenance.aisle_provenance
-            if provenance.aisle_provenance == provenance.storage_provenance
-            else Provenance.STAGED,
-        ),
+        _conf_fact("category (aisle)", dto.aisle.value, provenance.aisle_provenance),
+        _conf_fact("storage", dto.storage.value, provenance.storage_provenance),
         _conf_fact(
             "Shelf life",
             f"{dto.shelf_life_days} days",
