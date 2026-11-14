@@ -11,8 +11,20 @@ import {
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, sessionColor, shiftWeek, type CatalogGroup, type DiaryWeek, type Link, type Placement } from "./api";
+import {
+  api,
+  sessionColor,
+  shiftWeek,
+  type CatalogGroup,
+  type DiaryWeek,
+  type Link,
+  type Mealtime,
+  type Placement,
+  type TakeoutEntry,
+  type TakeoutFields,
+} from "./api";
 import { collision, droppedBelow, type DragData, type DropData } from "./dnd";
+import OtherForm from "./components/OtherForm";
 import Palette from "./components/Palette";
 import SessionPage from "./components/SessionPage";
 import SessionsBar from "./components/SessionsBar";
@@ -41,6 +53,10 @@ export default function App() {
   // Placeholder sessions added with "+ session", per week; saved once they
   // get a recipe.
   const [extraDates, setExtraDates] = useState<Record<string, string[]>>({});
+  // The takeout form: where it adds, or the entry it edits.
+  const [other, setOther] = useState<{ date: string; meal: Mealtime; entry: TakeoutEntry | null } | null>(
+    null,
+  );
   // Entry changes run one at a time, in the order they were made.
   const queue = useRef<Promise<void>>(Promise.resolve());
 
@@ -121,6 +137,25 @@ export default function App() {
   const handleAdd = (recipe: string, where: Placement, session: Link) =>
     change((w) => api.addEntry(w, recipe, where, session, admin));
   const handleRemove = (id: string) => change((w) => api.removeEntry(w, id, admin));
+  const handleSaveOther = (items: TakeoutFields[]) => {
+    if (!other || items.length === 0) return;
+    const { date, meal, entry } = other;
+    setOther(null);
+    change((w) =>
+      entry
+        ? api.editTakeout(w, entry.id, items[0], admin)
+        : api.addTakeout(w, { date, mealtime: meal }, items, admin),
+    );
+  };
+  /** A takeout entry as the form takes it. */
+  const fieldsOf = ({ title, kcal, protein_g, carbs_g, fat_g, cost }: TakeoutEntry): TakeoutFields => ({
+    title,
+    kcal,
+    protein_g,
+    carbs_g,
+    fat_g,
+    cost,
+  });
   const handleMove = (id: string, where: Placement) =>
     change((w) => api.moveEntry(w, id, where, admin));
 
@@ -271,11 +306,22 @@ export default function App() {
               monday={state.days[0]?.date ?? ""}
               admin={admin}
               onRemove={handleRemove}
+              onAddOther={(date, meal) => setOther({ date, meal, entry: null })}
+              onEditOther={(entry, date, meal) => setOther({ date, meal, entry })}
             />
           )}
         </section>
         <Palette groups={groups} />
       </main>
+      {other && (
+        <OtherForm
+          date={other.date}
+          meal={other.meal}
+          initial={other.entry ? fieldsOf(other.entry) : null}
+          onSave={handleSaveOther}
+          onClose={() => setOther(null)}
+        />
+      )}
       <DragOverlay dropAnimation={null}>
         {dragging && <div className="drag-preview">{dragging.title}</div>}
       </DragOverlay>

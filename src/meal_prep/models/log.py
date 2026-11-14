@@ -7,9 +7,11 @@ directly. Each mealtime resolves to entries in authored order (duplicates
 preserved — each entry is one serving) with summed cost/macros aggregates,
 with no hidden state.
 
-A ``LogEntry`` carries its own title, cost and macros: the numbers frozen when
-the entry was logged (#107), never looked up in current recipes. Its
-``session_id`` names the prep session it came from (``models.session``).
+A ``LogEntry`` is a ``RecipeLogEntry`` or a ``TakeoutLogEntry``. Either
+carries its own title, cost and macros: the numbers frozen when the entry was
+logged (#107), never looked up in current recipes. A recipe entry's
+``session_id`` names the prep session it came from (``models.session``); a
+takeout entry has none, and its unknown cost counts as 0 in sums.
 
 Frozen dataclass value objects: no collaborators, no I/O, no mutation.
 Methods are pure functions of the fields alone. All amounts are raw floats
@@ -27,16 +29,31 @@ from meal_prep.models.ingredient import MacrosInfo
 
 
 @dataclass(frozen=True, slots=True)
-class LogEntry:
-    """One logged serving: its id, which recipe, its frozen per-serving
-    title, cost and macros, and the prep session it came from (if any)."""
+class RecipeLogEntry:
+    """A logged serving of a catalog recipe: its frozen per-serving title,
+    cost and macros, and the prep session it came from (if any)."""
 
     entry_id: str
-    recipe_id: str
     title: str
-    cost: float
     macros: MacrosInfo
+    recipe_id: str
+    cost: float
     session_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class TakeoutLogEntry:
+    """A logged meal that isn't a recipe (takeout, eating out). Its cost is
+    ``None`` when unknown; nutrients it doesn't know are 0 in ``macros``."""
+
+    entry_id: str
+    title: str
+    macros: MacrosInfo
+    cost: float | None = None
+
+
+# One logged serving: a recipe or a takeout meal.
+type LogEntry = RecipeLogEntry | TakeoutLogEntry
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,13 +65,14 @@ class LoggedMeal:
 
     @property
     def recipe_ids(self) -> tuple[str, ...]:
-        """Recipe ids in order (duplicates preserved)."""
-        return tuple(entry.recipe_id for entry in self.entries)
+        """Recipe ids in order (duplicates preserved; takeout skipped)."""
+        return tuple(e.recipe_id for e in self.entries if isinstance(e, RecipeLogEntry))
 
     @property
     def cost(self) -> float:
-        """Meal cost at one serving per entry (raw; renderer rounds)."""
-        return sum(entry.cost for entry in self.entries)
+        """Meal cost at one serving per entry (raw; renderer rounds); an
+        unknown takeout cost counts as 0."""
+        return sum(entry.cost or 0.0 for entry in self.entries)
 
     @property
     def macros(self) -> MacrosInfo:
@@ -88,6 +106,10 @@ class LogDay:
         return tuple(
             meal for mealtime in Mealtime if (meal := self.meal(mealtime)) is not None
         )
+
+    def entries(self) -> tuple[LogEntry, ...]:
+        """All entries of the day, mealtime by mealtime."""
+        return tuple(entry for meal in self.meals() for entry in meal.entries)
 
     @property
     def cost(self) -> float:
