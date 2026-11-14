@@ -2,6 +2,7 @@
   "$defs": {
     "DiaryDayDTO": {
       "additionalProperties": false,
+      "description": "One logged day: entries per mealtime. A mealtime that was not logged\nis absent (never an empty list); a day logs at least one mealtime.",
       "properties": {
         "breakfast": {
           "anyOf": [
@@ -85,6 +86,7 @@
       "type": "object"
     },
     "DiaryEntryDTO": {
+      "description": "One diary entry: a recipe serving when it names a `recipe`, otherwise a takeout meal",
       "oneOf": [
         {
           "$ref": "#/$defs/RecipeEntryDTO"
@@ -346,6 +348,7 @@
     }
   },
   "additionalProperties": false,
+  "description": "A diary week, ``diary/<week>.yaml``: what was eaten, day by day, with\nthe numbers frozen when each entry was logged.",
   "properties": {
     "days": {
       "description": "Logged days in date order",

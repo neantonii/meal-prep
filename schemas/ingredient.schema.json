@@ -110,7 +110,7 @@
           "title": "Sugars G"
         },
         "unit": {
-          "description": "Serving basis unit, e.g. 'g' or 'cup'",
+          "description": "Serving basis unit, e.g. 'g' or 'cup', as printed on the label; trimmed and lowercased on load. Must be gram-reachable through `conversions`",
           "minLength": 1,
           "title": "Unit",
           "type": "string"
@@ -130,6 +130,7 @@
     },
     "ReferenceInfo": {
       "additionalProperties": false,
+      "description": "The store product this entry stands for: brand, title and shelf price.\n\nOne entry is one product for now (docs/spikes/ingredient-vs-product.md).",
       "properties": {
         "brand": {
           "description": "Brand name, e.g. Compliments",
@@ -167,6 +168,7 @@
     },
     "UnitConversion": {
       "additionalProperties": false,
+      "description": "One edge of the entry's conversion graph: ``1 from = factor * to``.\n\nEvery unit a recipe or the macros basis uses must reach grams through\nthese edges (standard edges such as ``kg -> g`` come from\ndata/units.yaml). An edge from a unit to itself is rejected.",
       "properties": {
         "factor": {
           "description": "Multiplier such that 1 from_unit = factor * to_unit",
@@ -175,12 +177,12 @@
           "type": "number"
         },
         "from": {
-          "description": "Source measurement unit",
+          "description": "Source unit; trimmed and lowercased on load",
           "title": "From",
           "type": "string"
         },
         "to": {
-          "description": "Target measurement unit",
+          "description": "Target unit; trimmed and lowercased on load; must differ from `from`",
           "title": "To",
           "type": "string"
         }
@@ -199,7 +201,7 @@
   "properties": {
     "aisle": {
       "$ref": "#/$defs/Aisle",
-      "description": "Supermarket aisle (closed vocabulary)"
+      "description": "Supermarket aisle (closed vocabulary); must equal the aisle file the entry lives in"
     },
     "conversions": {
       "description": "Unit conversions. The reserved `package` node's retail edge is authored here as `{from: package, to: <unit>, factor: <amount>}`.",
@@ -216,17 +218,18 @@
         },
         "type": "array"
       },
-      "description": "Explicitly registered non-standard units (canonical -> aliases), in the same shape as the standard `allowed` map in units.yaml.",
+      "description": "Non-standard units (canonical -> aliases), in the same shape as the standard `allowed` map in units.yaml (list the canonical among its own aliases, by convention). The canonical is a kebab-case slug; aliases are trimmed and lowercased, with no duplicates. No unit name may collide with a standard unit. Each needs a `-> g` path in `conversions`.",
       "title": "Custom Units",
       "type": "object"
     },
     "id": {
-      "description": "Canonical unique slug, e.g. 'boneless-chicken-breast'",
+      "description": "Unique id across all aisle files, e.g. 'boneless-chicken-breast': a lowercase kebab-case slug (alphanumeric words separated by single hyphens; trimmed and lowercased on load)",
       "title": "Id",
       "type": "string"
     },
     "macros": {
-      "$ref": "#/$defs/MacrosInfoDTO"
+      "$ref": "#/$defs/MacrosInfoDTO",
+      "description": "Nutrition as printed on the label, per the label's own serving basis"
     },
     "name": {
       "description": "Label-style noun for tables and lists (e.g. 'Boneless, Skinless Chicken Breast') \u2014 capitalized, slightly more verbose.",
@@ -235,7 +238,8 @@
       "type": "string"
     },
     "reference": {
-      "$ref": "#/$defs/ReferenceInfo"
+      "$ref": "#/$defs/ReferenceInfo",
+      "description": "The store product: brand, title and shelf price"
     },
     "shelf_life_days": {
       "description": "Mandatory shelf life in days under this storage mode",

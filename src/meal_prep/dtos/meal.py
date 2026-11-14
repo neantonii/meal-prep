@@ -14,6 +14,8 @@ from meal_prep.dtos._normalize import normalize_slug
 
 
 class MealDTO(BaseModel):
+    """A fixed set of recipes eaten together, ``meals/<id>.yaml``."""
+
     model_config = ConfigDict(extra="forbid")
 
     id: str = Field(..., description="Unique slug matching the file stem")

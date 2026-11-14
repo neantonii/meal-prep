@@ -98,6 +98,9 @@ class SessionItemDTO(BaseModel):
 
 
 class PrepSessionDTO(BaseModel):
+    """A prep session, ``diary/sessions/<YYYY-MM-DD>.yaml``: the recipes cooked on
+    one day, with the numbers frozen when each was added."""
+
     model_config = ConfigDict(extra="forbid")
 
     id: uuid.UUID = Field(..., description="Session id (UUID); never changes")
