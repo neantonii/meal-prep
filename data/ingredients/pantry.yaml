@@ -231,6 +231,39 @@
       to: g
       factor: 180.0
 
+- id: parboiled-rice
+  name: White Parboiled Rice
+  step_name: rice
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 365
+
+  reference:
+    brand: Compliments
+    product: Compliments White Parboiled Rice 2 kg
+    price: 6.29
+
+  macros:
+    unit: cup
+    amount: 1/4
+    calories_kcal: 160.0
+    protein_g: 3.0
+    fat_g: 0.5
+    carbs_g: 36.0
+    fiber_g: 1.0
+    saturated_fat_g: 0.0
+    sugars_g: 0.0
+    sodium_mg: 0.0
+    potassium_mg: 75.0
+
+  conversions:
+    - from: package
+      to: kg
+      factor: 2
+    - from: cup
+      to: g
+      factor: 180
+
 - id: rice-stick-noodles
   name: Rice Stick Noodles
   step_name: rice stick noodle
