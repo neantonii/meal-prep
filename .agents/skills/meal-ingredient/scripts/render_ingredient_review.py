@@ -12,10 +12,12 @@ values — the page can never show unvalidated numbers.
 
 Usage (run from the repo root so data/ and src/ resolve):
     python .agents/skills/meal-ingredient/scripts/render_ingredient_review.py \\
-        <draft.yaml> <provenance.yaml> <photo|-> <out.html>
+        <draft.yaml> <provenance.yaml> <photo[,photo...]|-> <out.html>
 
-Pass ``-`` as the photo when none exists (fresh meat or produce bought
-without a label photo); the card then says so in place of the image.
+Several photos (a product page split over screenshots) are given comma-
+separated and shown in order. Pass ``-`` when none exists (fresh meat or
+produce bought without a label photo); the card then says so in place of
+the image.
 """
 
 from __future__ import annotations
@@ -134,30 +136,32 @@ def _panel(title: str, sub: str, body: str) -> str:
     return f'<div class="panel"><h2>{html.escape(title)}</h2>\n{sub_html}{body}</div>'
 
 
-def _photo_panel(photo: str | None, title: str = "") -> str:
+def _photo_panel(photos: list[str], title: str = "") -> str:
     head = f"<h2>{html.escape(title)}</h2>\n" if title else ""
-    if photo is None:
+    if not photos:
         body = '<p class="basis">No photo: every value comes from chat or USDA.</p>'
     else:
-        body = f'<img class="photo" src="{html.escape(photo)}">'
+        body = "\n".join(
+            f'<img class="photo" src="{html.escape(photo)}">' for photo in photos
+        )
     return f'<div class="panel">{head}{body}</div>'
 
 
-def _error_page(title: str, errors: list[str], photo: str | None) -> str:
+def _error_page(title: str, errors: list[str], photos: list[str]) -> str:
     items = "\n".join(f'<p class="err">- {html.escape(e)}</p>' for e in errors)
     return (
         "<!DOCTYPE html>\n<html><head><meta charset='UTF-8'>"
         f"<title>Label review — {html.escape(title)}</title>"
         f"<style>{_CSS}</style></head><body><div class='container'>"
         f"<h1>Label review — {html.escape(title)}</h1>"
-        f"{_photo_panel(photo, 'Original label')}"
+        f"{_photo_panel(photos, 'Original label')}"
         f'<div class="panel"><h2>Validation errors</h2>\n{items}</div>'
         "</div></body></html>"
     )
 
 
 def render(
-    dto: IngredientDTO, provenance: IngredientProvenance, photo_src: str | None
+    dto: IngredientDTO, provenance: IngredientProvenance, photos: list[str]
 ) -> str:
     """Enrich via the real pipeline and render DTO + model as HTML.
 
@@ -168,7 +172,7 @@ def render(
     try:
         ing = prepare_ingredient(dto, units)
     except ValueError as e:
-        return _error_page(dto.id, [str(e)], photo_src)
+        return _error_page(dto.id, [str(e)], photos)
 
     m = dto.macros
     basis_g = (
@@ -255,7 +259,7 @@ def render(
         f"<title>{html.escape(dto.name)}</title>"
         f"<style>{_CSS}</style></head><body><div class='container'>"
         f"{head}"
-        f"{_photo_panel(photo_src)}"
+        f"{_photo_panel(photos)}"
         f"{_panel('Nutrition', _basis_subline(m.unit, m.amount, basis_g), macro_grid)}"
         f"{_panel('Details', '', facts_html)}"
         f"{conversions_html}"
@@ -263,29 +267,33 @@ def render(
     )
 
 
-def _photo_data_uri(photo_path: str) -> str | None:
+def _photo_data_uris(photo_arg: str) -> list[str]:
     """Embed photo bytes so the HTML is self-contained.
 
     A repo-relative `src` breaks wherever the preview panel does not serve
-    the working tree; a data URI renders anywhere.
+    the working tree; a data URI renders anywhere. ``-`` means no photo.
     """
-    if photo_path == "-":
-        return None
-    suffix = Path(photo_path).suffix.lower().lstrip(".") or "png"
-    raw = Path(photo_path).read_bytes()
-    return f"data:image/{suffix};base64,{base64.b64encode(raw).decode()}"
+    if photo_arg == "-":
+        return []
+    uris = []
+    for photo_path in photo_arg.split(","):
+        suffix = Path(photo_path).suffix.lower().lstrip(".") or "png"
+        mime = "jpeg" if suffix == "jpg" else suffix
+        raw = Path(photo_path).read_bytes()
+        uris.append(f"data:image/{mime};base64,{base64.b64encode(raw).decode()}")
+    return uris
 
 
 def main() -> int:
     draft_raw = yaml.safe_load(Path(sys.argv[1]).read_text(encoding="utf-8"))
     prov_raw = yaml.safe_load(Path(sys.argv[2]).read_text(encoding="utf-8"))
-    photo_src = _photo_data_uri(sys.argv[3])
+    photos = _photo_data_uris(sys.argv[3])
     out = Path(sys.argv[4])
     try:
         dto = IngredientDTO.model_validate(draft_raw)
     except ValidationError as e:
         errs = [f"{'.'.join(map(str, x['loc']))}: {x['msg']}" for x in e.errors()]
-        out.write_text(_error_page("invalid draft", errs, photo_src), encoding="utf-8")
+        out.write_text(_error_page("invalid draft", errs, photos), encoding="utf-8")
         print(f"draft errors: {errs}")
         return 1
     try:
@@ -293,7 +301,7 @@ def main() -> int:
     except ValidationError as e:
         errs = [f"{'.'.join(map(str, x['loc']))}: {x['msg']}" for x in e.errors()]
         out.write_text(
-            _error_page("invalid provenance", errs, photo_src), encoding="utf-8"
+            _error_page("invalid provenance", errs, photos), encoding="utf-8"
         )
         print(f"provenance errors: {errs}")
         return 1
@@ -301,12 +309,12 @@ def main() -> int:
         provenance.check_against(dto)
     except ValueError as e:
         out.write_text(
-            _error_page("draft/provenance mismatch", [str(e)], photo_src),
+            _error_page("draft/provenance mismatch", [str(e)], photos),
             encoding="utf-8",
         )
         print(f"mismatch: {e}")
         return 1
-    page = render(dto, provenance, photo_src)
+    page = render(dto, provenance, photos)
     out.write_text(page, encoding="utf-8")
     print(f"review written to {out}")
     return 0

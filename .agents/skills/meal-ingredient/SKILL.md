@@ -37,16 +37,16 @@ Do not batch multiple unrelated ingredients in one pass.
 - The review card (`scripts/render_ingredient_review.py`) renders the
   staged draft as HTML next to the label photo: `python
   scripts/render_ingredient_review.py <draft.yaml> <provenance.yaml>
-  <photo> <out.html>` (run from the repo root). It validates the entry as
+  <photo[,photo...]|-> <out.html>` (run from the repo root). It validates the entry as
   an `IngredientDTO`, cross-checks the provenance file
   (`scripts/ingredient_provenance.py` — per-value `panel`/`staged`/`usda`
   markers, nothing else), gates on `prepare_ingredient` (gram
   reachability), and renders values from the DTO with color from
   provenance — a draft, provenance, or enrichment failure renders
   errors instead of values. The page owns formatting only; no domain
-  check may live in it. Always open it with `show_preview` the moment it
-  renders — never report transcription results without the card
-  beside them.
+  check may live in it. Always show it the moment it renders (§2: preview
+  pane, or a screenshot) — never report transcription results without the
+  card beside them.
 - Write YAML only. Never edit `src/`, `data/units.yaml`, or
   `data/equipment.yaml` from this flow. Aisles are a closed enum in
   `src/meal_prep/enums.py` (`Aisle`) — to use one, set the `aisle` field to a
@@ -61,10 +61,12 @@ Do not batch multiple unrelated ingredients in one pass.
 ### 1. Transcribe the label
 
 Ask the user to upload a picture of the Nutrition Facts panel (usually a
-grocery-webpage screenshot — panel plus page context). Transcribe it with
-the built-in `inspect_image_with_vision` tool (`image_index: 0` on the
-latest user message) — never ask the user to transcribe what vision can
-read. Use this prompt verbatim:
+grocery-webpage screenshot — panel plus page context; often several
+screenshots of one page). Read the images with your own vision (in Claude
+Code they are already in context), following the spec below — never ask
+the user to transcribe what you can read.
+
+The transcription spec:
 
 > This is a screenshot from a grocery webpage showing a food product.
 > Transcribe the Nutrition Facts panel exactly as printed. Reply with ONLY
@@ -145,9 +147,13 @@ Propose `id` (kebab-case slug; collision-check with `grep -rn
 sibling style), `step_name` (lowercase concise), `storage`, `shelf_life_days`,
 and conversion edges (§3), all as best guesses. The card also needs the
 photo bytes on disk (vision reads from the message, the renderer reads a
-file), so save it fresh every run with `extract_chat_image.py` — never
-reuse a stale file from `.agent_tmp/`, and never fabricate image bytes
-(no placeholders, no 1px PNGs) to satisfy the renderer. Request the photo
+file), so copy them into `.agent_tmp/` fresh every run from wherever the
+harness saves attachments (Claude Code names each saved path, under
+`~/.claude/uploads/`, in the message; for a harness that keeps them off
+disk, see `extract_chat_image.py` below). Never reuse a stale file from `.agent_tmp/`, and never
+fabricate image bytes (no placeholders, no 1px PNGs) to satisfy the
+renderer. A product page split over several screenshots goes to the renderer as a
+comma-separated list, shown in order; no stitching. Request the photo
 first; when the user has none (fresh meat or produce sold by weight often
 has no page to screenshot), pass `-` as the photo: the card says so, every
 user-given fact stages `staged`, and the macros come from USDA. Use
@@ -156,20 +162,24 @@ distinct per-run filenames
 sessions):
 
 ```sh
-python .agents/skills/meal-ingredient/scripts/extract_chat_image.py .agent_tmp/label-<slug>
-python .agents/skills/meal-ingredient/scripts/render_ingredient_review.py .agent_tmp/draft-<slug>.yaml .agent_tmp/provenance-<slug>.yaml .agent_tmp/label-<slug>.png .agent_tmp/review-<slug>.html
+cp ~/.claude/uploads/<session>/<file>.png .agent_tmp/label-<slug>-1.png
+uv run python .agents/skills/meal-ingredient/scripts/render_ingredient_review.py .agent_tmp/draft-<slug>.yaml .agent_tmp/provenance-<slug>.yaml .agent_tmp/label-<slug>-1.png,.agent_tmp/label-<slug>-2.png .agent_tmp/review-<slug>.html
 ```
 
-The renderer embeds the photo as a data URI, so the HTML renders wherever
-the preview opens. Pass the extracted file path (with its real extension,
-as printed by the script); never a bare filename.
-Open with `show_preview` the moment it renders. Before presenting,
+The renderer embeds the photos as data URIs, so the HTML renders wherever
+it opens. Pass each file with its real extension; never a bare filename.
+Open the card the moment it renders, in the preview pane when there is
+one. Before presenting,
 extract the card's own validation report (grep the HTML for
 "Validation errors") and fix or disclose every error — never present a
 card with unacknowledged errors.
 
-Without `show_preview` (cloud sessions), screenshot the page with
-Playwright and send the PNG: the phone viewer shows HTML as source.
+Without a preview pane (cloud sessions; the phone viewer shows HTML as
+source), screenshot the card and send the PNG:
+
+```sh
+node .agents/skills/meal-ingredient/scripts/screenshot.js .agent_tmp/review-<slug>.html .agent_tmp/review-<slug>.png
+```
 
 Present the read-back with the card: panel-literal values (white) vs your
 guesses (yellow) vs USDA-sourced values (green, with the cited FDC ID),
@@ -306,12 +316,14 @@ as cross-check reference otherwise.
 
 ### Scripts
 
-- **`scripts/extract_chat_image.py`** — saves the latest user-attached
-  chat image to disk for the review card (vision reads from the message;
-  the renderer needs a file): `python scripts/extract_chat_image.py
-  .agent_tmp/label` → saves `.agent_tmp/label.<fmt>`, prints path + bytes.
-  Nonzero exit = no image found. Stdlib only; chat attachments never land
-  on disk, so never search the filesystem for uploads.
+- **`scripts/extract_chat_image.py`** — for a harness that keeps chat
+  attachments off disk: saves the latest one from OpenHands' conversation
+  store (`python scripts/extract_chat_image.py .agent_tmp/label` → prints
+  the saved path). Not needed in Claude Code.
+- **`scripts/screenshot.js`** — PNG of a local HTML page (review card or
+  recipe card) for sessions without a preview pane:
+  `node scripts/screenshot.js <page.html> <out.png>` (preinstalled
+  Playwright).
 - **`scripts/validate_ingredient.py`** — enrich one entry via the real
   pipeline and print `check_ingredient` warnings. Usage:
   `python scripts/validate_ingredient.py data/ingredients/<aisle>.yaml --id <slug>`.
@@ -321,8 +333,8 @@ as cross-check reference otherwise.
   the staged DTO via `check_against()`; provenance never enters the DTO.
   The source of truth for the provenance shape.
 - **`scripts/render_ingredient_review.py`** — side-by-side review card:
-  staged entry YAML + provenance YAML + label photo in, standalone HTML
-  out. Validates the entry as `IngredientDTO`, cross-checks provenance,
+  staged entry YAML + provenance YAML + label photos (comma-separated, or
+  `-` for none) in, standalone HTML out. Validates the entry as `IngredientDTO`, cross-checks provenance,
   gates on `prepare_ingredient`, renders values from the DTO with color
   from provenance per the §4 contract.
 - **`schemas/ingredient.schema.json`** (repo-level) — committed field schema
