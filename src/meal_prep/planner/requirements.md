@@ -23,11 +23,11 @@ Week-agnostic. Drafted together, section by section.
 
 ## Lunch
 
-- L1: 1 modular protein + 1 modular carb + 1 modular cooked veg.
+- L1: 1 modular protein + 1 modular carb + 1 modular cooked veg, or 1 one-dish meal.
 
 ## Dinner
 
-- D1: 1 modular protein + 1 modular carb + 1 fresh salad.
+- D1: 1 modular protein + 1 modular carb + 1 fresh salad, or 1 one-dish meal.
 
 ## Pairing rules
 

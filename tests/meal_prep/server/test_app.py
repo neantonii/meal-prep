@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from meal_prep.enums import RecipeCategory
 from meal_prep.server.app import create_app
 from meal_prep.server.weeks import current_week, week_dates
 
@@ -47,7 +48,7 @@ def test_version_comes_from_the_image(
 
 def test_catalog_grouped(client: TestClient):
     body = client.get("/api/catalog").json()
-    assert len(body["groups"]) == 6
+    assert [g["category"] for g in body["groups"]] == list(RecipeCategory)
     total = sum(len(g["recipes"]) for g in body["groups"])
     assert total > 0
     entry = body["groups"][0]["recipes"][0]

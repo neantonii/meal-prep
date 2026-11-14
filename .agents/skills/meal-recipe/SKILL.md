@@ -49,13 +49,22 @@ JSON-LD (`<script type="application/ld+json">`) for technique, ratios,
 and times — do not burn actions retrying the search box. Agree the shape
 with the user before touching
 files: title, category (`modular_protein`, `modular_carb`,
-`modular_cooked_veg`, `fresh_salad_veg`, `breakfast`, `snacks`), servings, and the
-ingredient list with quantities in concrete units. Paste the agreed list
+`modular_cooked_veg`, `fresh_salad_veg`, `one_dish`, `breakfast`, `snacks`),
+servings, and the ingredient list with quantities in concrete units. Paste the agreed list
 as an FYI — no formal sign-off needed — with 2–3 similar recipes cited
 (URL + what was borrowed: technique, ratios, times/temps). No citations,
 no draft: the lookup is the proof the research happened. Every
 quantity's unit must already be gram-reachable on its catalog entry, or
 be reachable via an edge the agent judges worth authoring (see §2).
+
+A `one_dish` recipe is a whole lunch or dinner cooked as one batch (soup,
+stew, stuffed vegetables, casserole) and replaces a modular plate (protein
++ carb + veg). Its portion must land in the plate band: roughly
+550–750 kcal, at least 45 g protein, 50–85 g carbs, at most 30 g fat.
+Short of it (soups usually are), raise the meat or add a serving-time
+extra inside the recipe itself (a sourdough slice or croutons, a spoon of
+yogurt or cream cheese), so the card's per-portion macros are the whole
+meal.
 
 ### 2. Match ingredients, report, fill gaps
 

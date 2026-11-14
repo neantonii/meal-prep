@@ -55,6 +55,8 @@ def category_display_name(category: RecipeCategory) -> str:
             return "Modular Side (Cooked Veg)"
         case RecipeCategory.FRESH_SALAD_VEG:
             return "Fresh Vegetables & Salads"
+        case RecipeCategory.ONE_DISH:
+            return "One-Dish Meals"
         case RecipeCategory.BREAKFAST:
             return "Breakfast"
         case RecipeCategory.SNACKS:
@@ -74,6 +76,11 @@ def category_description(category: RecipeCategory) -> str:
             return "Cooked vegetable sides (green beans, cauliflower, corn & peas)"
         case RecipeCategory.FRESH_SALAD_VEG:
             return "Raw crunchy salads and fresh veg (vitaminka, cucumber-tomato)"
+        case RecipeCategory.ONE_DISH:
+            return (
+                "Whole meal cooked as one batch, extras included "
+                "(soups, stews, stuffed vegetables, casseroles)"
+            )
         case RecipeCategory.BREAKFAST:
             return "Quick-cook morning meals (oatmeal, eggs & toast)"
         case RecipeCategory.SNACKS:

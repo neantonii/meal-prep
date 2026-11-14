@@ -18,7 +18,8 @@ How should the domain model represent these, if at all?
 
 - **Roles exist only as recipe folders.** `recipes/<category>/` gives each
   recipe one category (`modular_protein`, `modular_carb`,
-  `modular_cooked_veg`, `fresh_salad_veg`, `breakfast`, `snacks`).
+  `modular_cooked_veg`, `fresh_salad_veg`, `one_dish`, `breakfast`,
+  `snacks`). A `one_dish` recipe is a whole plate cooked as one batch.
 - **Bundles are coded but unused.** `MealDTO` / `Meal`, the `meals/*.yaml`
   adapter, `prepare_meal()` and `Library.meals` all exist and are tested, but no
   `meals/` folder is authored and no caller passes `meals_dir` to

@@ -31,6 +31,7 @@ class RecipeCategory(StrEnum):
     MODULAR_CARB = "modular_carb"
     MODULAR_COOKED_VEG = "modular_cooked_veg"
     FRESH_SALAD_VEG = "fresh_salad_veg"
+    ONE_DISH = "one_dish"
     BREAKFAST = "breakfast"
     SNACKS = "snacks"
 
