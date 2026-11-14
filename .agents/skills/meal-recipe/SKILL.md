@@ -138,26 +138,26 @@ phrasing from a sibling recipe — match its technique, not its units.
 
 ### 4. Validate, regenerate cards, show
 
-Validate by loading the library (raises on unknown ingredient,
-unregistered unit, unknown cookware) and print the per-portion numbers
-for the read-back:
+Validate and regenerate every card with the one script; name the recipe
+to get its per-portion numbers for the read-back and a check of its card
+for timer residue (a stray `%` from a malformed `~timer`):
 
 ```sh
-uv run python -c "from pathlib import Path; from meal_prep.library import load_library; r = load_library(Path('data'), Path('recipes')).recipes['<slug>']; print(r.servings, r.portion_cooked_g, r.cost_per_portion, r.per_serving_macros)"
+uv run python scripts/render_cards.py <slug>
 ```
 
-Fix `ValueError`s by correcting the draft, never the service. Then run
-the repo gate per `AGENTS.md`, regenerate all cards (force-cleans stale
-ones), grep the new card for stray `%` strings (unparsed timer residue),
-and open the new card with `show_preview`:
+Loading the library is the validation (unknown ingredient, unregistered
+unit, unknown cookware raise before anything is written). Fix `ValueError`s
+by correcting the draft, never the service. Then run the repo gate per
+`AGENTS.md`.
+
+Show the card. With a preview pane, open
+`recipe_cards/<category>/<slug>.html` there. Without one (cloud sessions;
+the phone viewer shows HTML as source), screenshot it and send the PNG:
 
 ```sh
-mkdir -p recipe_cards ingredient_cards
-uv run python -c "from pathlib import Path; from meal_prep import renderer; from meal_prep.library import load_library; from meal_prep.ingredient_cards import render_all_ingredient_cards; lib = load_library(Path('data'), Path('recipes')); render_all_ingredient_cards(lib.ingredients.values(), Path('ingredient_cards')); renderer.render_all_recipe_cards(lib.recipes.values(), Path('recipe_cards'), ingredient_cards_dir=Path('ingredient_cards'))"
+node .agents/skills/meal-ingredient/scripts/screenshot.js recipe_cards/<category>/<slug>.html .agent_tmp/card-<slug>.png
 ```
-
-Without `show_preview` (cloud sessions), screenshot the page with
-Playwright and send the PNG: the phone viewer shows HTML as source.
 
 Present the card with a read-back: per-serving macros, cost, yield, and
 which cooking judgments were guesses. Iterate on feedback, or commit when
