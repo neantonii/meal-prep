@@ -27,6 +27,9 @@ const OWN_DEVICES = {
   },
 };
 const DEFAULT_DEVICE = MACBOOK;
+// Browser zoom: 0.8 shows the page as at 80% zoom, so more fits on a
+// screen; the PNG keeps the device's pixel size.
+const ZOOM = 0.8;
 const MAX_SCREENS = 8; // a longer page is a sign to screenshot a part of it
 
 (async () => {
@@ -41,11 +44,20 @@ const MAX_SCREENS = 8; // a longer page is a sign to screenshot a part of it
     process.exit(2);
   }
   const browser = await chromium.launch();
-  const context = await browser.newContext({ ...device });
+  const zoomed = {
+    width: Math.round(device.viewport.width / ZOOM),
+    height: Math.round(device.viewport.height / ZOOM),
+  };
+  const context = await browser.newContext({
+    ...device,
+    viewport: zoomed,
+    screen: zoomed,
+    deviceScaleFactor: device.deviceScaleFactor * ZOOM,
+  });
   const tab = await context.newPage();
   await tab.goto("file://" + path.resolve(page));
 
-  const screen = device.viewport.height;
+  const screen = zoomed.height;
   const total = await tab.evaluate(() => document.documentElement.scrollHeight);
   const screens = Math.min(Math.ceil(total / screen), MAX_SCREENS);
   for (let i = 0; i < screens; i++) {
