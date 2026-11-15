@@ -131,6 +131,39 @@
       to: g
       factor: 1.1
 
+- id: canned-diced-tomatoes
+  name: Canned Diced Tomatoes, No Salt Added
+  step_name: diced tomatoes
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 730
+
+  reference:
+    brand: Compliments
+    product: Compliments Balance Canned Diced Tomatoes No Salt Added 796 ml
+    price: 2.00
+
+  macros:
+    unit: ml
+    amount: 125
+    calories_kcal: 25.0
+    protein_g: 2.0
+    fat_g: 0.0
+    carbs_g: 5.0
+    fiber_g: 1.0
+    saturated_fat_g: 0.0
+    sugars_g: 3.0
+    sodium_mg: 10.0
+    potassium_mg: 250.0
+
+  conversions:
+    - from: package
+      to: ml
+      factor: 796
+    - from: ml
+      to: g
+      factor: 1.0
+
 - id: dijon-mustard
   name: Prepared Dijon Mustard
   step_name: dijon mustard
