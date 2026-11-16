@@ -8,7 +8,8 @@ All locations are explicit parameters (CWD-relative by default); nothing is
 derived from the script's own path.
 Writes schemas/diary.schema.json, schemas/ingredient.schema.json,
 schemas/meal.schema.json, schemas/recipe.schema.json,
-schemas/session.schema.json and schemas/staples.schema.json.
+schemas/session.schema.json, schemas/staples.schema.json,
+schemas/unassigned.schema.json and schemas/bin.schema.json.
 Run after any DTO change and commit the diff; tests/test_schemas.py
 fails CI when the committed files drift from the live models.
 """
@@ -24,15 +25,18 @@ from meal_prep.dtos.log import DiaryWeekDTO
 from meal_prep.dtos.meal import MealDTO
 from meal_prep.dtos.recipe import RecipeDTO
 from meal_prep.dtos.session import PrepSessionDTO
+from meal_prep.dtos.slots import BinDTO, UnassignedDTO
 from meal_prep.dtos.staples import StaplesDTO
 
 _DTOS = {
+    "bin": BinDTO,
     "diary": DiaryWeekDTO,
     "ingredient": IngredientDTO,
     "meal": MealDTO,
     "recipe": RecipeDTO,
     "session": PrepSessionDTO,
     "staples": StaplesDTO,
+    "unassigned": UnassignedDTO,
 }
 
 

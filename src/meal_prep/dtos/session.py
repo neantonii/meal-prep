@@ -90,6 +90,14 @@ class SessionItemDTO(BaseModel):
     ingredients: list[SessionIngredientDTO] = Field(
         ..., description="Ingredient lines of one batch, when added"
     )
+    # Added for the frozen mark on meals (docs/freezer.md); missing in older
+    # files.
+    fridge_days: int | None = Field(
+        default=None, ge=0, description="Days the cooked dish keeps in the fridge"
+    )
+    freezer_friendly: bool | None = Field(
+        default=None, description="Whether the cooked dish can be frozen"
+    )
 
     @field_validator("recipe")
     @classmethod

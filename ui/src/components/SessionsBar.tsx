@@ -1,7 +1,7 @@
-import { useDndContext, useDroppable } from "@dnd-kit/core";
+import { useDndContext, useDraggable, useDroppable } from "@dnd-kit/core";
 import { useEffect, useRef, useState } from "react";
 import type { Session, SessionItem } from "../api";
-import { dayLabel, mealsLabel, sessionColor } from "../api";
+import { dayLabel, mealsLabel, sessionColor, spareOf } from "../api";
 import type { DragData, DropData } from "../dnd";
 
 interface Props {
@@ -14,24 +14,24 @@ interface Props {
   extraDates: string[];
   admin: boolean;
   onAddDate: (date: string) => void;
-  onRemoveItem: (session: string, recipe: string) => void;
-  onDelete: (session: string) => void;
+  /** Remove one batch of a recipe (its portions come out of Unassigned). */
+  onRemoveBatch: (session: string, recipe: string) => void;
   /** Open the session's own page. */
   onOpenDetails: (session: string) => void;
 }
 
-/** A session as a drop target (its chip or open panel): a meal dropped on
- * it relinks to it; an empty placeholder day gets its session created.
- * `hint` is true while a meal hovers. The drop itself is handled in App's
- * onDragEnd. */
+/** A session as a drop target (its chip or open panel): a recipe line
+ * dragged from another session moves here with all its meals; an empty
+ * placeholder day gets its session created. `hint` is true while such a
+ * line hovers. The drop itself is handled in App's onDragEnd. */
 function useSessionDrop(where: string, date: string, session: string | null) {
   const { setNodeRef, isOver } = useDroppable({
     id: `${where}:${date}`,
     data: { kind: "session", date, session } satisfies DropData,
   });
   const { active } = useDndContext();
-  const kind = (active?.data.current as DragData | undefined)?.kind;
-  const hint = isOver && kind === "entry";
+  const from = active?.data.current as DragData | undefined;
+  const hint = isOver && from?.kind === "item" && from.session !== session;
   return { setNodeRef, hint };
 }
 
@@ -39,13 +39,16 @@ function batchLabel(batches: number): string {
   return `${batches} batch${batches === 1 ? "" : "es"}`;
 }
 
-/** Warning for an underused batch: portions made but not planned/eaten. */
+/** Portions no meal accounts for. Every portion is a meal (on a day,
+ * unassigned or binned), so this only shows when something went wrong: an
+ * interrupted edit, a hand-edited file, or a session from before portions
+ * were meals. */
 function Spare({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
     <span
       className="spare"
-      title={`${count} portion${count === 1 ? "" : "s"} made but not linked to a meal`}
+      title={`${count} portion${count === 1 ? "" : "s"} no meal accounts for: something went wrong`}
     >
       ⚠ {count} spare
     </span>
@@ -119,7 +122,7 @@ function SessionChip({
 }: Props & { session: Session; open: boolean; onToggle: () => void }) {
   const { id, date, mode, items } = session;
   const { setNodeRef, hint } = useSessionDrop("session-chip", date, id);
-  const spare = items.reduce((n, it) => n + it.portions - it.eaten, 0);
+  const spare = items.reduce((n, it) => n + Math.max(0, spareOf(it)), 0);
   return (
     <button
       ref={setNodeRef}
@@ -133,7 +136,7 @@ function SessionChip({
       <span className={`mode-tag ${mode}`}>{mode}</span>
       <span className="muted">
         {hint
-          ? "drop to link here"
+          ? "drop to cook it here"
           : items.length === 0
             ? "empty"
             : `${items.length} recipe${items.length === 1 ? "" : "s"}`}
@@ -152,14 +155,13 @@ function SessionPanel({
   today,
   monday,
   admin,
-  onRemoveItem,
-  onDelete,
+  onRemoveBatch,
   onOpenDetails,
 }: Props & { session: Session; onClose: () => void }) {
   const { id, date, mode } = session;
   // What the rules allow here (the server has the final say): today's
-  // session is still open, as the prep happens during its day.
-  const canGrow = admin || mode === "plan" || date === today;
+  // session is still planned, as the prep happens during its day.
+  const planned = admin || mode === "plan" || date === today;
   const { setNodeRef, hint } = useSessionDrop("session-panel", date, id);
   const panel = useRef<HTMLDivElement | null>(null);
 
@@ -196,16 +198,11 @@ function SessionPanel({
         <span className={`mode-tag ${mode}`}>{mode}</span>
         <span className="muted">
           {hint
-            ? "drop to link this meal here"
+            ? "drop to cook this recipe in this session"
             : `${session.items.length} recipe${session.items.length === 1 ? "" : "s"} · ${portions} portions`}
         </span>
         <span className="session-actions">
           {id && <button onClick={() => onOpenDetails(id)}>Details →</button>}
-          {id && (
-            <button title="Delete session" onClick={() => onDelete(id)}>
-              delete
-            </button>
-          )}
           <button className="x" title="Close (Esc)" onClick={onClose}>
             ×
           </button>
@@ -213,7 +210,9 @@ function SessionPanel({
       </div>
       {session.items.length === 0 ? (
         <span className="empty-slot">
-          {canGrow ? "nothing yet: drop a meal on this chip to prep it in this session" : "nothing prepped"}
+          {planned
+            ? "nothing yet: a recipe dropped on a day lands in its cycle's session; drag a recipe row here from another session to cook it on this day"
+            : "nothing prepped"}
         </span>
       ) : (
         <div className="session-items">
@@ -223,7 +222,13 @@ function SessionPanel({
                 {items[0].category_label ?? "other (recipe removed)"}
               </div>
               {items.map((it) => (
-                <ItemRow key={it.recipe} it={it} session={id} onRemoveItem={onRemoveItem} />
+                <ItemRow
+                  key={it.recipe}
+                  it={it}
+                  session={id}
+                  planned={planned}
+                  onRemoveBatch={onRemoveBatch}
+                />
               ))}
             </div>
           ))}
@@ -245,40 +250,75 @@ function byCategory(items: SessionItem[]): [string | null, SessionItem[]][] {
   return groups;
 }
 
-/** One recipe of the open session: batches, portions, the meals it feeds. */
+/** Where the portions that are on no day are: "2 unassigned · 1 binned". */
+function elsewhere(it: SessionItem): string {
+  return [it.unassigned > 0 && `${it.unassigned} unassigned`, it.binned > 0 && `${it.binned} binned`]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** One recipe of the open session: batches, portions and where they are.
+ * Its title is a handle: drag it onto a day to cook one more batch here,
+ * or onto another session to move the whole line there. */
 function ItemRow({
   it,
   session,
-  onRemoveItem,
+  planned,
+  onRemoveBatch,
 }: {
   it: SessionItem;
   session: string | null;
-  onRemoveItem: Props["onRemoveItem"];
+  planned: boolean;
+  onRemoveBatch: Props["onRemoveBatch"];
 }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `item:${session}:${it.recipe}`,
+    disabled: session === null,
+    data: {
+      kind: "item",
+      session: session ?? "",
+      recipe: it.recipe,
+      title: it.title,
+    } satisfies DragData,
+  });
+  const meals = [mealsLabel(it.meals), elsewhere(it)].filter(Boolean).join(" · ");
   return (
-    <div className="session-item">
-      {it.card_url ? (
-        <a className="item-title" href={it.card_url} target="_blank" rel="noreferrer" title={it.title}>
-          {it.title}
-        </a>
-      ) : (
-        <span className="item-title" title={`${it.title} (recipe no longer exists)`}>
-          {it.title}
-        </span>
-      )}
+    <div className={`session-item${isDragging ? " dragging" : ""}`}>
+      <span
+        ref={setNodeRef}
+        className="item-handle"
+        title="Drag to a day to cook one more batch here, or to another session to move this recipe there"
+        {...attributes}
+        {...listeners}
+      >
+        {it.card_url ? (
+          <a className="item-title" href={it.card_url} target="_blank" rel="noreferrer" title={it.title}>
+            {it.title}
+          </a>
+        ) : (
+          <span className="item-title" title={`${it.title} (recipe no longer exists)`}>
+            {it.title}
+          </span>
+        )}
+      </span>
       <span className="item-amount">
         {batchLabel(it.batches)} · {it.portions} portion{it.portions === 1 ? "" : "s"}
       </span>
-      <span className="item-meals" title="Meals this recipe feeds">
-        {mealsLabel(it.meals) || "no meals"}
+      <span className="item-meals" title="Where this recipe's portions are">
+        {meals || "no meals"}
       </span>
-      <Spare count={it.portions - it.eaten} />
+      <Spare count={spareOf(it)} />
       <button
         className="x"
-        title="Remove from session"
-        onClick={() => session && onRemoveItem(session, it.recipe)}
+        disabled={!planned}
+        title={
+          planned
+            ? "Remove one batch: its portions must be unassigned first"
+            : "Already cooked: Admin can remove a batch"
+        }
+        onClick={() => session && onRemoveBatch(session, it.recipe)}
       >
-        ×
+        − batch
       </button>
     </div>
   );

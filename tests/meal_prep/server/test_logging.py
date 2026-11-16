@@ -54,18 +54,18 @@ def test_entry_changes_are_logged(
     )
     client = TestClient(app)
     body = {
-        "date": "2026-10-19",
+        "date": "2026-10-20",
         "mealtime": "dinner",
         "recipe": "boiled-roasted-buckwheat",
     }
     with caplog.at_level(logging.INFO, logger=LOGGER_NAME):
         week = client.post("/api/diary/2026-W43/entries", json=body).json()
-        entry_id = week["days"][0]["meals"][0]["entries"][0]["id"]
+        entry_id = week["days"][1]["meals"][0]["entries"][0]["id"]
         client.patch(
             f"/api/diary/2026-W43/entries/{entry_id}",
-            json={"date": "2026-10-20", "mealtime": "lunch"},
+            json={"date": "2026-10-21", "mealtime": "lunch"},
         )
         client.delete(f"/api/diary/2026-W43/entries/{entry_id}")
-    assert "added boiled-roasted-buckwheat to 2026-10-19 dinner" in caplog.text
-    assert f"moved entry {entry_id} to 2026-10-20 lunch" in caplog.text
+    assert "added boiled-roasted-buckwheat to 2026-10-20 dinner" in caplog.text
+    assert f"moved entry {entry_id} to 2026-10-21 lunch" in caplog.text
     assert f"removed entry {entry_id} from 2026-W43" in caplog.text

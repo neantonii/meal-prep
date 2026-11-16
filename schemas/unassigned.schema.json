@@ -1,0 +1,132 @@
+{
+  "$defs": {
+    "RecipeEntryDTO": {
+      "additionalProperties": false,
+      "description": "A serving of a catalog recipe: every number frozen when it was logged\n(#107), and the prep session it came from, if any.",
+      "properties": {
+        "calories_kcal": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Calories Kcal",
+          "type": "number"
+        },
+        "carbs_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Carbs G",
+          "type": "number"
+        },
+        "cost": {
+          "description": "Cost of one serving, in CAD",
+          "minimum": 0,
+          "title": "Cost",
+          "type": "number"
+        },
+        "fat_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Fat G",
+          "type": "number"
+        },
+        "fiber_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Fiber G",
+          "type": "number"
+        },
+        "id": {
+          "description": "Entry id (UUID); never changes",
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "potassium_mg": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Potassium Mg",
+          "type": "number"
+        },
+        "protein_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Protein G",
+          "type": "number"
+        },
+        "recipe": {
+          "description": "Id of the recipe that was eaten",
+          "title": "Recipe",
+          "type": "string"
+        },
+        "saturated_fat_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Saturated Fat G",
+          "type": "number"
+        },
+        "session": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Id of the prep session this serving came from; absent when not from a session",
+          "title": "Session"
+        },
+        "sodium_mg": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Sodium Mg",
+          "type": "number"
+        },
+        "sugars_g": {
+          "description": "Per serving, when logged",
+          "minimum": 0,
+          "title": "Sugars G",
+          "type": "number"
+        },
+        "title": {
+          "description": "Title when logged",
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "calories_kcal",
+        "protein_g",
+        "fat_g",
+        "carbs_g",
+        "recipe",
+        "cost",
+        "fiber_g",
+        "saturated_fat_g",
+        "sugars_g",
+        "sodium_mg",
+        "potassium_mg"
+      ],
+      "title": "RecipeEntryDTO",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Portions with no day yet, ``diary/unassigned.yaml``.",
+  "properties": {
+    "meals": {
+      "description": "Portions of prep sessions that are on no day; each names its session",
+      "items": {
+        "$ref": "#/$defs/RecipeEntryDTO"
+      },
+      "title": "Meals",
+      "type": "array"
+    }
+  },
+  "title": "UnassignedDTO",
+  "type": "object"
+}

@@ -17,12 +17,15 @@ Enrich DTOs into frozen models. Allowed imports: `dtos`, `models`, `engines`,
 - `logs.py` — diary weeks into `LogWeek`, from their frozen entries only.
 - `diary.py` — single-entry diary editing: an entry's numbers are frozen once,
   when it is added; remove, move, reorder and relink never recompute them.
-- `sessions.py` — prep session items: frozen once, when added (numbers and
-  one batch's ingredient lines, with aisle and retail package);
+- `sessions.py` — prep session items: frozen once, when added (numbers, how
+  the dish keeps, and one batch's ingredient lines, with aisle and retail
+  package); `portion_entry` makes the meal of one portion from an item;
   `prepare_session` builds the model, whose `needs()` is the ingredient list.
-- `prep.py` — prep-session rules and editing modes (`docs/prep-sessions.md`):
-  every edit works on the whole diary (links span weeks) and returns the
-  documents to write; refusals raise `RuleError` with a user-facing message.
+- `prep.py` — prep-session rules and editing modes (`docs/prep-sessions.md`,
+  `docs/freezer.md`): every portion of a batch is a meal on a day, in the
+  unassigned slot or in the bin. Every edit works on the whole diary (links
+  span weeks) and returns the documents to write; refusals raise
+  `RuleError` with a user-facing message.
 - `heuristics.py` — warn-only opinions, never gating.
 
 ## Chesterton's Fences

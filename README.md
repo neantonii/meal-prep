@@ -170,17 +170,20 @@ before.
 
 Prep sessions (`docs/prep-sessions.md`) live next to the weeks, one file per
 session day (`diary/sessions/2026-11-01.yaml`), created on first use; their
-items are frozen the same way. Diary entries link to the session they came
-from (auto-linked on every drop). Meals settle once their prep cycle ends
-(the day after the next Sun/Tue/Thu session day), and the header's Admin
-switch amends history; see `docs/prep-sessions.md`.
+items are frozen the same way. Putting a recipe on a day cooks a batch in
+its cycle's session, and every portion of a batch is a meal: on a day, in
+the unassigned list (`diary/unassigned.yaml`) or in the bin
+(`diary/bin.yaml`); see `docs/freezer.md`. Meals settle once their prep
+cycle ends (the day after the next Sun/Tue/Thu session day), and the
+header's Admin switch amends history.
 
-**Edit journal.** Every diary edit (adding, moving, removing or relinking a
-meal, removing a session item, checklist ticks) appends one JSON line to
+**Edit journal.** Every diary edit (adding, moving or removing a meal,
+also to and from the unassigned list and the bin; removing a batch, moving
+a recipe to another session, checklist ticks) appends one JSON line to
 `diary/.journal/<YYYY-MM>.jsonl`: when, the server's "today", Admin or not,
 the request, the outcome (refused and rejected requests too, malformed ones
 included, with their message), and what the edit
-did: each meal's place and session before and after, and each session item
+did: each meal's place (a day or a slot) and session before and after, and each session item
 whose batches changed (`[before, after]`, `null` = not in the session). It
 records events, not the diary's state. To see how a session got its
 batches:
@@ -195,8 +198,8 @@ exposing it). The container has a health check on `/api/health`
 (`docker ps` shows `healthy`).
 
 Backup/restore: the diary is plain YAML, one file per week
-(`diary/2026-W43.yaml`) plus one per prep session (`diary/sessions/`); back
-up the whole directory:
+(`diary/2026-W43.yaml`) plus one per prep session (`diary/sessions/`) and
+the two slot files; back up the whole directory:
 
 ```sh
 rsync -a /srv/meal-prep/diary/ /backup/meal-prep/diary/

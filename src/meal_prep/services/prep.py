@@ -1,23 +1,28 @@
 """Prep-session rules: the edits that keep the diary and sessions aligned.
 
-``docs/prep-sessions.md`` is the spec. A linked diary entry must align with
-its session (the session lists its recipe, the entry is on or after the
-session's date, links never exceed an item's portions). Meals belong to prep
-cycles (the preset session days); a cycle's meals lock the day after the
-next session day. A session follows its meals only while open (today or
-later), growing and shrinking; a closed one gives free portions only. Admin edits locked meals and grows
-closed sessions.
+``docs/prep-sessions.md`` and ``docs/freezer.md`` are the spec. Every
+portion of a session batch is a meal with a home: a day (a week file), the
+unassigned slot or the bin. A recipe meal gets its session when it is
+created and keeps it; only a whole recipe line moves to another session.
+Batches are stored: they change when a batch is added (a recipe dropped on
+a day), removed, or two lines merge. The one hard rule is that the meals
+linked to an item never exceed its portions, and a meal on a day is never
+before its session.
 
-Every edit works on a whole-diary snapshot (all weeks and all sessions,
-since links span weeks) and returns a ``Change``: the week and session
-documents to write or delete. Storage is the caller's job. A refused edit
-raises ``RuleError`` with a message meant for the user.
+Meals belong to prep cycles (the preset session days); a cycle's meals lock
+the day after the next session day. A session dated before today is cooked:
+its batches are a fact. Admin ignores both (settled and cooked) and nothing
+else.
+
+Every edit works on a whole-diary snapshot (all weeks, all sessions and the
+two slots, since links span weeks) and returns a ``Change``: the documents
+to write or delete. Storage is the caller's job. A refused edit raises
+``RuleError`` with a message meant for the user.
 """
 
 from __future__ import annotations
 
 import datetime
-import math
 import uuid
 from collections import Counter
 from collections.abc import Iterable, Iterator, Mapping, Sequence
@@ -26,15 +31,17 @@ from enum import StrEnum
 from typing import Literal
 
 from meal_prep.dtos.log import (
+    DiaryEntryDTO,
     DiaryWeekDTO,
     RecipeEntryDTO,
     TakeoutEntryDTO,
 )
 from meal_prep.dtos.session import PrepSessionDTO, SessionItemDTO
+from meal_prep.dtos.slots import BinnedEntryDTO
 from meal_prep.enums import Mealtime
 from meal_prep.models.recipe import Recipe
 from meal_prep.services import diary as entries
-from meal_prep.services.sessions import freeze_item, whole_servings
+from meal_prep.services.sessions import freeze_item, portion_entry
 
 # Default prep days, as ``date.weekday()``: Sunday, Tuesday, Thursday.
 DEFAULT_SESSION_WEEKDAYS = frozenset({6, 1, 3})
@@ -42,7 +49,22 @@ DEFAULT_SESSION_WEEKDAYS = frozenset({6, 1, 3})
 # dinner and snacks belong to its cycle; breakfast and lunch to the one before.
 EVENING = frozenset({Mealtime.DINNER, Mealtime.SNACKS})
 
-type Link = uuid.UUID | Literal["auto"] | None
+# The two homes without a date (``docs/freezer.md``).
+type Slot = Literal["unassigned", "bin"]
+
+
+@dataclass(frozen=True, slots=True)
+class Day:
+    """A place on a day; ``position`` is the index in the slot (``None``
+    appends)."""
+
+    date: datetime.date
+    mealtime: Mealtime
+    position: int | None = None
+
+
+# Where a meal can be put.
+type Place = Day | Slot
 
 
 class Mode(StrEnum):
@@ -73,8 +95,9 @@ class Policy:
         return Mode.LOG if any(day <= self.today for day in days) else Mode.PLAN
 
     def session_open(self, day: datetime.date) -> bool:
-        """A session on ``day`` can still take new meals and grow: from today
-        on (the prep happens during the session's day), or any day in Admin."""
+        """A session on ``day`` is still planned, so its batches can change:
+        from today on (the prep happens during the session's day), or any
+        day in Admin. Otherwise it is cooked: a fact."""
         return self.admin or day >= self.today
 
     def locked(self, date: datetime.date, mealtime: Mealtime) -> bool:
@@ -87,18 +110,24 @@ class Policy:
 
 @dataclass(frozen=True, slots=True)
 class Diary:
-    """Every diary week (by week id) and every session (by id)."""
+    """Every diary week (by week id), every session (by id) and the two
+    slots without a date."""
 
     weeks: Mapping[str, DiaryWeekDTO]
     sessions: Mapping[uuid.UUID, PrepSessionDTO]
+    unassigned: Sequence[RecipeEntryDTO] = ()
+    bin: Sequence[BinnedEntryDTO] = ()
 
 
 @dataclass(frozen=True, slots=True)
 class Change:
-    """Documents to write; ``None`` deletes that week or session."""
+    """Documents to write; ``None`` deletes that week or session, and
+    leaves a slot as it is."""
 
     weeks: Mapping[str, DiaryWeekDTO | None] = field(default_factory=dict)
     sessions: Mapping[uuid.UUID, PrepSessionDTO | None] = field(default_factory=dict)
+    unassigned: Sequence[RecipeEntryDTO] | None = None
+    bin: Sequence[BinnedEntryDTO] | None = None
 
 
 def day_label(date: datetime.date) -> str:
@@ -141,6 +170,12 @@ def next_session_day(day: datetime.date) -> datetime.date:
     return day
 
 
+def week_id(date: datetime.date) -> str:
+    """The ISO week ``date`` falls in, as a week file names it."""
+    year, number, _ = date.isocalendar()
+    return f"{year}-W{number:02d}"
+
+
 @dataclass(frozen=True, slots=True)
 class Linked:
     """A recipe entry linked to a prep session, and where it was eaten."""
@@ -152,9 +187,10 @@ class Linked:
 
 
 def linked_entries(weeks: Iterable[DiaryWeekDTO]) -> Iterator[Linked]:
-    """Every entry linked to a prep session, over all ``weeks``, in date and
-    mealtime order within each week. Only recipe entries link (takeout never
-    does): session code loops over this and never sees takeout."""
+    """Every entry on a day linked to a prep session, over all ``weeks``, in
+    date and mealtime order within each week. Only recipe entries link
+    (takeout never does): session code loops over this and never sees
+    takeout."""
     for week in weeks:
         for day in week.days:
             for mealtime in Mealtime:
@@ -166,7 +202,7 @@ def linked_entries(weeks: Iterable[DiaryWeekDTO]) -> Iterator[Linked]:
 def linked_meals(
     weeks: Iterable[DiaryWeekDTO],
 ) -> dict[tuple[uuid.UUID, str], list[tuple[datetime.date, Mealtime]]]:
-    """The meals linked per (session id, recipe id), over all ``weeks``, in
+    """The meals on days per (session id, recipe id), over all ``weeks``, in
     date and mealtime order."""
     meals: dict[tuple[uuid.UUID, str], list[tuple[datetime.date, Mealtime]]] = {}
     for link in linked_entries(weeks):
@@ -178,30 +214,46 @@ def linked_meals(
     return meals
 
 
-def link_counts(weeks: Iterable[DiaryWeekDTO]) -> Counter[tuple[uuid.UUID, str]]:
-    """Linked entries per (session id, recipe id), over all ``weeks``."""
-    return Counter((link.session, link.entry.recipe) for link in linked_entries(weeks))
+def slot_counts(
+    meals: Iterable[RecipeEntryDTO],
+) -> Counter[tuple[uuid.UUID, str]]:
+    """Meals of a slot per (session id, recipe id)."""
+    return Counter((m.session, m.recipe) for m in meals if m.session is not None)
+
+
+def claim_counts(diary: Diary) -> Counter[tuple[uuid.UUID, str]]:
+    """Meals per (session id, recipe id), wherever they are: on days, in
+    the unassigned slot and in the bin."""
+    counts = Counter(
+        (link.session, link.entry.recipe)
+        for link in linked_entries(diary.weeks.values())
+    )
+    counts.update(slot_counts(diary.unassigned))
+    counts.update(slot_counts(diary.bin))
+    return counts
 
 
 def _portions(item: SessionItemDTO) -> int:
     return item.batches * item.servings
 
 
-def _batches_for(portions: int, servings: int) -> int:
-    """Fewest whole batches that make ``portions`` (at least one)."""
-    return max(1, math.ceil(portions / servings))
+def _plural(count: int, noun: str) -> str:
+    return f"{count} {noun}{'' if count == 1 else 's'}"
 
 
 class _Draft:
     """A working copy of the diary that records what an edit changed."""
 
-    def __init__(self, diary: Diary, policy: Policy, recipes: Mapping[str, Recipe]):
+    def __init__(self, diary: Diary, policy: Policy):
         self.policy = policy
-        self.recipes = recipes
         self.weeks: dict[str, DiaryWeekDTO] = dict(diary.weeks)
         self.sessions: dict[uuid.UUID, PrepSessionDTO] = dict(diary.sessions)
+        self.unassigned: list[RecipeEntryDTO] = list(diary.unassigned)
+        self.bin: list[BinnedEntryDTO] = list(diary.bin)
         self._weeks_out: dict[str, DiaryWeekDTO | None] = {}
         self._sessions_out: dict[uuid.UUID, PrepSessionDTO | None] = {}
+        self._unassigned_out = False
+        self._bin_out = False
 
     # -- documents ----------------------------------------------------------
 
@@ -234,50 +286,38 @@ class _Draft:
         self.sessions.pop(session_id, None)
         self._sessions_out[session_id] = None
 
-    def change(self) -> Change:
-        self.derive_batches()
-        return Change(weeks=dict(self._weeks_out), sessions=dict(self._sessions_out))
+    def put_unassigned(self, meals: Iterable[RecipeEntryDTO]) -> None:
+        self.unassigned = list(meals)
+        self._unassigned_out = True
 
-    def derive_batches(self) -> None:
-        """An open session (today or later) follows its linked meals: each
-        item's batches are the fewest whole batches that cover its meals; an
-        item with no meals left is removed, and a session with no items left
-        is deleted. It shrinks as it grows (both on its own day too), so a
-        mis-drop can be taken back. Once the day has passed it stays as it
-        was: a record of what was made. Admin edits are left as they are."""
-        if self.policy.admin:
-            return
-        counts = link_counts(self.weeks.values())
-        for session in list(self.sessions.values()):
-            if not self.policy.session_open(session.date):
-                continue
-            items = []
-            for item in session.items:
-                meals = counts[(session.id, item.recipe)]
-                if meals == 0:
-                    continue
-                batches = _batches_for(meals, item.servings)
-                items.append(
-                    item
-                    if batches == item.batches
-                    else item.model_copy(update={"batches": batches})
-                )
-            if not items:
-                self.drop_session(session.id)
-            elif items != list(session.items):
-                self.put_session(session.model_copy(update={"items": items}))
+    def put_bin(self, meals: Iterable[BinnedEntryDTO]) -> None:
+        self.bin = list(meals)
+        self._bin_out = True
+
+    def change(self) -> Change:
+        return Change(
+            weeks=dict(self._weeks_out),
+            sessions=dict(self._sessions_out),
+            unassigned=tuple(self.unassigned) if self._unassigned_out else None,
+            bin=tuple(self.bin) if self._bin_out else None,
+        )
 
     # -- links ----------------------------------------------------------------
 
+    def snapshot(self) -> Diary:
+        return Diary(self.weeks, self.sessions, self.unassigned, self.bin)
+
     def count(self, session_id: uuid.UUID, recipe_id: str) -> int:
-        return link_counts(self.weeks.values())[(session_id, recipe_id)]
+        """Every meal of one recipe line, wherever it is."""
+        return claim_counts(self.snapshot())[(session_id, recipe_id)]
 
     def check(self, session_ids: Iterable[uuid.UUID | None]) -> None:
-        """Refuse unless every entry linked to ``session_ids`` aligns."""
+        """Refuse unless the meals linked to ``session_ids`` align: the
+        session lists their recipe, a meal on a day is not before it, and
+        an item never has more meals than portions."""
         wanted = {sid for sid in session_ids if sid is not None}
         if not wanted:
             return
-        counts: Counter[tuple[uuid.UUID, str]] = Counter()
         for link in linked_entries(self.weeks.values()):
             if link.session not in wanted:
                 continue
@@ -293,83 +333,20 @@ class _Draft:
                     f"{entry.title} on {day_label(date)} can't come from the "
                     f"later {label} session"
                 )
-            counts[(link.session, entry.recipe)] += 1
+        counts = claim_counts(self.snapshot())
         for sid in wanted:
             session = self.sessions.get(sid)
             if session is None:
                 continue
             for item in session.items:
                 made = _portions(item)
-                eaten = counts[(sid, item.recipe)]
-                if eaten > made:
+                meals = counts[(sid, item.recipe)]
+                if meals > made:
                     raise RuleError(
                         f"The {day_label(session.date)} session's {item.title} "
-                        f"is full: {made} portion{'' if made == 1 else 's'}, "
-                        f"{eaten} linked entries"
+                        f"is full: {_plural(made, 'portion')}, "
+                        f"{_plural(meals, 'meal')}"
                     )
-
-    def recipe(self, recipe_id: str) -> Recipe:
-        try:
-            return self.recipes[recipe_id]
-        except KeyError:
-            raise RuleError(f"Recipe '{recipe_id}' no longer exists") from None
-
-    def make_room(
-        self, session_id: uuid.UUID, recipe_id: str, entry_date: datetime.date
-    ) -> None:
-        """Let ``session_id`` take one more ``recipe_id`` (an explicit link).
-
-        Adds the item (1 batch) or raises its batches until one more portion
-        fits: for a session still in Plan, or any session in Admin (the link
-        is the deliberate correction). Today's session is still open: the
-        prep happens during its day. A session that already happened is
-        otherwise left alone and ``check`` reports the problem.
-        """
-        session = self.session(session_id)
-        if session.date > entry_date:
-            return  # check() explains: the session is later than the entry
-        if not self.policy.session_open(session.date):
-            return
-        item = _item(session, recipe_id)
-        needed = self.count(session_id, recipe_id) + 1
-        if item is None:
-            recipe = self.recipe(recipe_id)
-            batches = _batches_for(needed, whole_servings(recipe))
-            new_items = [*session.items, freeze_item(recipe, batches=batches)]
-        else:
-            if _portions(item) >= needed:
-                return
-            batches = _batches_for(needed, item.servings)
-            new_items = [
-                i.model_copy(update={"batches": batches}) if i is item else i
-                for i in session.items
-            ]
-        self.put_session(session.model_copy(update={"items": new_items}))
-
-    def auto_link(
-        self, recipe_id: str, date: datetime.date, mealtime: Mealtime
-    ) -> uuid.UUID | None:
-        """The session a recipe drop on ``date`` links to: the session on the
-        meal's cycle day (``cycle_day``). A free portion there, if any; else,
-        while that day is open (today or later), the session grows to fit,
-        created when needed; else ``None``. The same in Admin, and an earlier
-        cycle is never reached into (a manual link may pick one)."""
-        day = cycle_day(date, mealtime)
-        session = self.session_on(day)
-        if session is not None:
-            item = _item(session, recipe_id)
-            if item is not None and self.count(session.id, recipe_id) < _portions(item):
-                return session.id
-        if day < self.policy.today:
-            return None
-        if session is not None:
-            self.make_room(session.id, recipe_id, date)
-            return session.id
-        created = PrepSessionDTO(
-            id=uuid.uuid4(), date=day, items=[freeze_item(self.recipe(recipe_id))]
-        )
-        self.put_session(created)
-        return created.id
 
 
 def _check_open(policy: Policy, date: datetime.date, mealtime: Mealtime) -> None:
@@ -378,6 +355,15 @@ def _check_open(policy: Policy, date: datetime.date, mealtime: Mealtime) -> None
         raise RuleError(
             f"{day_label(date)} {mealtime.value} is settled: its prep cycle "
             "ended (Admin can still change it)"
+        )
+
+
+def _check_planned(policy: Policy, session_date: datetime.date, what: str) -> None:
+    """Refuse a change to the batches of a cooked session."""
+    if not policy.session_open(session_date):
+        raise RuleError(
+            f"The {day_label(session_date)} session is already cooked: "
+            f"{what} is Admin only"
         )
 
 
@@ -392,41 +378,235 @@ def _week_of(draft: _Draft, week: str) -> DiaryWeekDTO:
     return dto
 
 
+def _session_of(draft: _Draft, entry: DiaryEntryDTO) -> PrepSessionDTO | None:
+    """The session a meal belongs to; ``None`` for takeout, for a recipe
+    meal without one (older files) and when the session is gone."""
+    if not isinstance(entry, RecipeEntryDTO) or entry.session is None:
+        return None
+    return draft.sessions.get(entry.session)
+
+
 # ---------------------------------------------------------------------------
-# Entry edits
+# Meals
 # ---------------------------------------------------------------------------
 
 
 def add_entry(
     diary: Diary,
     policy: Policy,
-    recipes: Mapping[str, Recipe],
     week: str,
     date: datetime.date,
     mealtime: Mealtime,
     recipe: Recipe,
     position: int | None = None,
-    link: Link = "auto",
+    session: uuid.UUID | None = None,
 ) -> tuple[Change, RecipeEntryDTO]:
-    """Add an entry for ``recipe``; ``link`` is a session id, ``None`` or
-    ``"auto"`` (a recipe drop: auto-linked, on any day, Admin or not)."""
+    """Cook one more batch of ``recipe`` and put one portion on a day; the
+    batch's other portions go to the unassigned slot.
+
+    The batch is added to ``session`` when given, otherwise to the session
+    on the meal's cycle day (``cycle_day``), created when that day has none.
+    Refused when that session is already cooked (Admin adds to any)."""
     _check_open(policy, date, mealtime)
-    draft = _Draft(diary, policy, recipes)
-    session: uuid.UUID | None
-    if link == "auto":
-        session = draft.auto_link(recipe.id, date, mealtime)
-    elif link is None:
-        session = None
+    draft = _Draft(diary, policy)
+    if session is not None:
+        target = draft.session(session)
+        if target.date > date:
+            raise RuleError(
+                f"{recipe.title} on {day_label(date)} can't come from the "
+                f"later {day_label(target.date)} session"
+            )
     else:
-        draft.session(link)  # must exist
-        draft.make_room(link, recipe.id, date)
-        session = link
-    dto, entry = entries.add_entry(
-        draft.week(week), week, date, mealtime, recipe, position, session
+        target_date = cycle_day(date, mealtime)
+        found = draft.session_on(target_date)
+        if found is None:
+            _check_planned(policy, target_date, "adding a batch")
+            found = PrepSessionDTO(
+                id=uuid.uuid4(), date=target_date, items=[freeze_item(recipe)]
+            )
+            draft.put_session(found)
+            entry = _spawn(draft, found, recipe.id)
+            return _place_new(draft, week, date, mealtime, position, entry)
+        target = found
+    _check_planned(policy, target.date, "adding a batch")
+    item = _item(target, recipe.id)
+    if item is None:
+        items = [*target.items, freeze_item(recipe)]
+    else:
+        items = [
+            i.model_copy(update={"batches": i.batches + 1}) if i is item else i
+            for i in target.items
+        ]
+    target = target.model_copy(update={"items": items})
+    draft.put_session(target)
+    entry = _spawn(draft, target, recipe.id)
+    return _place_new(draft, week, date, mealtime, position, entry)
+
+
+def _spawn(draft: _Draft, session: PrepSessionDTO, recipe_id: str) -> RecipeEntryDTO:
+    """Make the meals of one new batch: all but one go to the unassigned
+    slot; the one returned is for the caller to place."""
+    item = _item(session, recipe_id)
+    assert item is not None
+    made = [portion_entry(item, session.id) for _ in range(item.servings)]
+    if len(made) > 1:
+        draft.put_unassigned([*draft.unassigned, *made[1:]])
+    return made[0]
+
+
+def _place_new(
+    draft: _Draft,
+    week: str,
+    date: datetime.date,
+    mealtime: Mealtime,
+    position: int | None,
+    entry: RecipeEntryDTO,
+) -> tuple[Change, RecipeEntryDTO]:
+    dto, _ = entries.insert_entry(
+        draft.week(week), week, date, mealtime, entry, position
     )
     draft.put_week(week, dto)
-    draft.check([session])
+    draft.check([entry.session])
     return draft.change(), entry
+
+
+def take_unassigned(
+    diary: Diary,
+    policy: Policy,
+    recipe_id: str,
+    date: datetime.date,
+    mealtime: Mealtime,
+    position: int | None = None,
+) -> Change:
+    """Put one unassigned portion of ``recipe_id`` on a day: the one from
+    the latest session on or before that day. Refused when there is none."""
+    _check_open(policy, date, mealtime)
+    draft = _Draft(diary, policy)
+    found: list[tuple[datetime.date, RecipeEntryDTO]] = []
+    for meal in draft.unassigned:
+        session = _session_of(draft, meal)
+        if meal.recipe == recipe_id and session is not None:
+            found.append((session.date, meal))
+    if not found:
+        raise RuleError(f"There is no unassigned portion of '{recipe_id}'")
+    fitting = [f for f in found if f[0] <= date]
+    if not fitting:
+        first, meal = min(found, key=lambda f: f[0])
+        raise RuleError(
+            f"The unassigned {meal.title} is cooked on {day_label(first)}: "
+            f"it can't be eaten on {day_label(date)}"
+        )
+    _, meal = max(fitting, key=lambda f: f[0])
+    return _move(draft, meal.id, Day(date, mealtime, position))
+
+
+def move_meal(diary: Diary, policy: Policy, entry_id: uuid.UUID, to: Place) -> Change:
+    """Move one meal to a day, the unassigned slot or the bin, from wherever
+    it is. Its session never changes. A day before its session's date is
+    refused, as is a settled day (either end) outside Admin; only meals of
+    a prep session go to a slot."""
+    return _move(_Draft(diary, policy), entry_id, to)
+
+
+def remove_entry(
+    diary: Diary, policy: Policy, week: str, entry_id: uuid.UUID
+) -> Change:
+    """Take one meal off its day (unless settled). A portion of a prep
+    session goes to the unassigned slot: it only disappears with its batch.
+    Takeout, and a recipe meal without a session, is deleted."""
+    draft = _Draft(diary, policy)
+    current = _week_of(draft, week)
+    date, mealtime, entry = entries.find_entry(current, entry_id)
+    if _session_of(draft, entry) is not None:
+        return _move(draft, entry_id, "unassigned")
+    _check_open(policy, date, mealtime)
+    draft.put_week(week, entries.remove_entry(current, entry_id))
+    return draft.change()
+
+
+def _move(draft: _Draft, entry_id: uuid.UUID, to: Place) -> Change:
+    policy = draft.policy
+    entry: DiaryEntryDTO | None = None
+    source_week: str | None = None
+    for meal in draft.unassigned:
+        if meal.id == entry_id:
+            entry = meal
+            if to == "unassigned":
+                return Change()
+            draft.put_unassigned(m for m in draft.unassigned if m.id != entry_id)
+    for binned in draft.bin:
+        if binned.id == entry_id:
+            if to == "bin":
+                return Change()
+            # Out of the bin it is an ordinary meal again.
+            entry = RecipeEntryDTO.model_validate(binned.model_dump(exclude={"binned"}))
+            draft.put_bin(m for m in draft.bin if m.id != entry_id)
+    if entry is None:
+        for week, dto in draft.weeks.items():
+            try:
+                old_date, old_mealtime, entry = entries.find_entry(dto, entry_id)
+            except entries.EntryNotFoundError:
+                continue
+            source_week = week
+            _check_open(policy, old_date, old_mealtime)
+            break
+    if entry is None:
+        raise entries.EntryNotFoundError(f"No meal {entry_id}")
+    session = _session_of(draft, entry)
+
+    if isinstance(to, Day):
+        _check_open(policy, to.date, to.mealtime)
+        if session is not None and to.date < session.date:
+            raise RuleError(
+                f"{entry.title} is cooked on {day_label(session.date)}: it "
+                f"can't be eaten on {day_label(to.date)}"
+            )
+        target_week = week_id(to.date)
+        if source_week == target_week:
+            draft.put_week(
+                target_week,
+                entries.move_entry(
+                    draft.weeks[target_week],
+                    entry_id,
+                    to.date,
+                    to.mealtime,
+                    to.position,
+                ),
+            )
+        else:
+            if source_week is not None:
+                draft.put_week(
+                    source_week,
+                    entries.remove_entry(draft.weeks[source_week], entry_id),
+                )
+            dto, _ = entries.insert_entry(
+                draft.week(target_week),
+                target_week,
+                to.date,
+                to.mealtime,
+                entry,
+                to.position,
+            )
+            draft.put_week(target_week, dto)
+    else:
+        if session is None or not isinstance(entry, RecipeEntryDTO):
+            raise RuleError(
+                f"{entry.title} is not a portion of a prep session: it can "
+                "only be removed"
+            )
+        if source_week is not None:
+            draft.put_week(
+                source_week, entries.remove_entry(draft.weeks[source_week], entry_id)
+            )
+        if to == "unassigned":
+            draft.put_unassigned([*draft.unassigned, entry])
+        else:
+            binned = BinnedEntryDTO.model_validate(
+                {**entry.model_dump(), "binned": policy.today}
+            )
+            draft.put_bin([*draft.bin, binned])
+    draft.check([session.id] if session is not None else [])
+    return draft.change()
 
 
 def add_takeout_entries(
@@ -442,7 +622,7 @@ def add_takeout_entries(
     appends): a whole order at once. They never link to a session, so only
     the settled-meal lock applies."""
     _check_open(policy, date, mealtime)
-    draft = _Draft(diary, policy, {})
+    draft = _Draft(diary, policy)
     dto = draft.week(week)
     for offset, entry in enumerate(added):
         at = None if position is None else position + offset
@@ -457,7 +637,7 @@ def edit_takeout_entry(
 ) -> Change:
     """Replace a takeout entry's title and numbers, keeping its id and
     place; recipe entries stay frozen."""
-    draft = _Draft(diary, policy, {})
+    draft = _Draft(diary, policy)
     current = _week_of(draft, week)
     date, mealtime, old = entries.find_entry(current, entry.id)
     _check_open(policy, date, mealtime)
@@ -470,119 +650,8 @@ def edit_takeout_entry(
     return draft.change()
 
 
-def remove_entry(
-    diary: Diary, policy: Policy, week: str, entry_id: uuid.UUID
-) -> Change:
-    """Remove one entry unless it is settled. An open session shrinks to fit
-    the remaining meals; a closed one keeps the portion made (spare)."""
-    draft = _Draft(diary, policy, {})
-    current = _week_of(draft, week)
-    date, mealtime, _ = entries.find_entry(current, entry_id)
-    _check_open(policy, date, mealtime)
-    draft.put_week(week, entries.remove_entry(current, entry_id))
-    return draft.change()
-
-
-def move_entry(
-    diary: Diary,
-    policy: Policy,
-    recipes: Mapping[str, Recipe],
-    week: str,
-    entry_id: uuid.UUID,
-    date: datetime.date,
-    mealtime: Mealtime,
-    position: int | None = None,
-) -> Change:
-    """Move or reorder one entry (neither place settled), keeping its link
-    while it still holds. It is re-linked by the auto-link rule when the link
-    breaks (the entry now precedes its session) or when the meal follows its
-    cycle into a later one: it was linked to its own cycle's session, that
-    session is still open (nothing made yet to keep), and the new slot
-    belongs to a later cycle. A manual link elsewhere, or a portion of a
-    closed session, stays."""
-    draft = _Draft(diary, policy, recipes)
-    current = _week_of(draft, week)
-    old_date, old_mealtime, entry = entries.find_entry(current, entry_id)
-    _check_open(policy, old_date, old_mealtime)
-    _check_open(policy, date, mealtime)
-    moved = entries.move_entry(current, entry_id, date, mealtime, position)
-    draft.put_week(week, moved)
-    if not isinstance(entry, RecipeEntryDTO):
-        return draft.change()  # takeout never links
-    session = entry.session
-    linked = draft.sessions.get(session) if session is not None else None
-    if session is not None and (
-        linked is None
-        or linked.date > date
-        or (
-            policy.session_open(linked.date)
-            and linked.date == cycle_day(old_date, old_mealtime)
-            and cycle_day(date, mealtime) > linked.date
-        )
-    ):
-        unlinked = entries.set_entry_session(moved, entry_id, None)
-        draft.put_week(week, unlinked)
-        session = draft.auto_link(entry.recipe, date, mealtime)
-        draft.put_week(week, entries.set_entry_session(unlinked, entry_id, session))
-    draft.check([session])
-    return draft.change()
-
-
-def set_entry_session(
-    diary: Diary,
-    policy: Policy,
-    recipes: Mapping[str, Recipe],
-    week: str,
-    entry_id: uuid.UUID,
-    session: uuid.UUID | None,
-    session_date: datetime.date | None = None,
-) -> Change:
-    """Link one entry (not settled) to ``session`` (``None`` unlinks), or to
-    the session on ``session_date``, creating it with the entry's recipe when
-    that day has none yet (only while open). An open session grows to fit; a
-    closed one only gives a free portion (Admin grows any)."""
-    draft = _Draft(diary, policy, recipes)
-    current = _week_of(draft, week)
-    date, mealtime, entry = entries.find_entry(current, entry_id)
-    _check_open(policy, date, mealtime)
-    if not isinstance(entry, RecipeEntryDTO):
-        if session is None and session_date is None:
-            return Change()  # never linked: nothing to unlink
-        raise RuleError(
-            f"{entry.title} is takeout: takeout is never linked to a prep session"
-        )
-    recipe_id = entry.recipe
-    if session_date is not None:
-        existing = draft.session_on(session_date)
-        if existing is not None:
-            session = existing.id
-        elif not policy.session_open(session_date):
-            raise RuleError(
-                f"The {day_label(session_date)} session already happened: "
-                "adding to it is Admin only"
-            )
-        else:
-            created = PrepSessionDTO(
-                id=uuid.uuid4(),
-                date=session_date,
-                items=[freeze_item(draft.recipe(recipe_id))],
-            )
-            draft.put_session(created)
-            session = created.id
-    if entry.session == session:
-        return Change()
-    unlinked = entries.set_entry_session(current, entry_id, None)
-    draft.put_week(week, unlinked)
-    if session is not None:
-        draft.session(session)  # must exist
-        draft.make_room(session, recipe_id, date)
-        draft.put_week(week, entries.set_entry_session(unlinked, entry_id, session))
-    draft.check([session])
-    return draft.change()
-
-
 # ---------------------------------------------------------------------------
-# Session edits
+# Batches and sessions
 # ---------------------------------------------------------------------------
 
 
@@ -598,25 +667,153 @@ def _session_item(
     return session, item
 
 
-def remove_item(
+def _without_item(session: PrepSessionDTO, recipe_id: str) -> PrepSessionDTO | None:
+    """``session`` without one recipe line and its shopping ticks; ``None``
+    when nothing is left."""
+    items = [i for i in session.items if i.recipe != recipe_id]
+    if not items:
+        return None
+    have = {r: ings for r, ings in session.have.items() if r != recipe_id}
+    return session.model_copy(update={"items": items, "have": have})
+
+
+def remove_batch(
     diary: Diary, policy: Policy, session_id: uuid.UUID, recipe_id: str
 ) -> Change:
-    """Remove an item without linked entries; the last one deletes the
-    session."""
-    draft = _Draft(diary, policy, {})
+    """Remove one batch of a recipe from a session that is still planned
+    (Admin: any). The meals it no longer has portions for are taken from
+    the unassigned slot; refused while too many are on days or in the bin.
+    The last batch takes the recipe out of the session, and a session
+    without recipes is deleted. This is the only way a portion disappears.
+    """
+    draft = _Draft(diary, policy)
     session, item = _session_item(draft, session_id, recipe_id)
-    meals = linked_meals(draft.weeks.values()).get((session_id, recipe_id), [])
-    if meals:
-        where = ", ".join(f"{day_label(d)} {m.value}" for d, m in meals)
+    _check_planned(policy, session.date, "removing a batch")
+    left = (item.batches - 1) * item.servings
+    key = (session_id, recipe_id)
+    free = slot_counts(draft.unassigned)[key]
+    placed = draft.count(session_id, recipe_id) - free
+    if placed > left:
         raise RuleError(
-            f"{item.title} is still linked from {where}: "
-            "remove or unlink those meals first"
+            f"{_plural(placed, 'meal')} of {item.title} are on days or in the "
+            f"bin and {_plural(left, 'portion')} would be left: move "
+            f"{placed - left} to unassigned first"
         )
-    items = [i for i in session.items if i is not item]
-    if items:
+    drop = max(0, placed + free - left)
+    kept: list[RecipeEntryDTO] = []
+    for meal in draft.unassigned:
+        if drop and (meal.session, meal.recipe) == key:
+            drop -= 1
+        else:
+            kept.append(meal)
+    if len(kept) != len(draft.unassigned):
+        draft.put_unassigned(kept)
+    if item.batches > 1:
+        items = [
+            i.model_copy(update={"batches": i.batches - 1}) if i is item else i
+            for i in session.items
+        ]
         draft.put_session(session.model_copy(update={"items": items}))
     else:
+        rest = _without_item(session, recipe_id)
+        if rest is None:
+            draft.drop_session(session_id)
+        else:
+            draft.put_session(rest)
+    return draft.change()
+
+
+def move_item(
+    diary: Diary,
+    policy: Policy,
+    session_id: uuid.UUID,
+    recipe_id: str,
+    to_session: uuid.UUID | None = None,
+    to_date: datetime.date | None = None,
+) -> Change:
+    """Move a whole recipe line (every batch, every meal wherever it is) to
+    ``to_session``, or to the session on ``to_date``, created when that day
+    has none. Both sessions must still be planned (Admin: any), and no meal
+    on a day may be before the new date. When the target already cooks the
+    recipe the two lines merge: the batches add up and the target keeps its
+    numbers. Shopping ticks move along unless the lines merge."""
+    draft = _Draft(diary, policy)
+    source, item = _session_item(draft, session_id, recipe_id)
+    target: PrepSessionDTO | None
+    if to_session is not None:
+        target = draft.session(to_session)
+    elif to_date is not None:
+        target = draft.session_on(to_date)
+    else:
+        raise ValueError("Give the session or the day to move the recipe to")
+    target_date = target.date if target is not None else to_date
+    assert target_date is not None
+    if target is not None and target.id == session_id:
+        return Change()
+    _check_planned(policy, source.date, "moving a recipe")
+    _check_planned(policy, target_date, "moving a recipe")
+    for link in linked_entries(draft.weeks.values()):
+        if (link.session, link.entry.recipe) == (session_id, recipe_id) and (
+            link.date < target_date
+        ):
+            raise RuleError(
+                f"{item.title} on {day_label(link.date)} {link.mealtime.value} "
+                f"is before {day_label(target_date)}: move that meal first"
+            )
+
+    ticks = source.have.get(recipe_id)
+    if target is None:
+        target = PrepSessionDTO(
+            id=uuid.uuid4(),
+            date=target_date,
+            items=[item],
+            have={recipe_id: ticks} if ticks else {},
+        )
+    else:
+        existing = _item(target, recipe_id)
+        if existing is None:
+            have = {**target.have, recipe_id: ticks} if ticks else target.have
+            target = target.model_copy(
+                update={"items": [*target.items, item], "have": have}
+            )
+        else:
+            merged = existing.model_copy(
+                update={"batches": existing.batches + item.batches}
+            )
+            items = [merged if i is existing else i for i in target.items]
+            target = target.model_copy(update={"items": items})
+    draft.put_session(target)
+    rest = _without_item(source, recipe_id)
+    if rest is None:
         draft.drop_session(session_id)
+    else:
+        draft.put_session(rest)
+
+    def relinked[T: RecipeEntryDTO](meals: Sequence[T]) -> list[T] | None:
+        out = [
+            m.model_copy(update={"session": target.id})
+            if (m.session, m.recipe) == (session_id, recipe_id)
+            else m
+            for m in meals
+        ]
+        return out if out != list(meals) else None
+
+    if (unassigned := relinked(draft.unassigned)) is not None:
+        draft.put_unassigned(unassigned)
+    if (binned := relinked(draft.bin)) is not None:
+        draft.put_bin(binned)
+    for week, dto in list(draft.weeks.items()):
+        updated = dto
+        for day in dto.days:
+            for entry in day.entries():
+                if isinstance(entry, RecipeEntryDTO) and (
+                    entry.session,
+                    entry.recipe,
+                ) == (session_id, recipe_id):
+                    updated = entries.set_entry_session(updated, entry.id, target.id)
+        if updated is not dto:
+            draft.put_week(week, updated)
+    draft.check([target.id])
     return draft.change()
 
 
@@ -631,7 +828,7 @@ def set_have(
     ``(recipe_id, ingredient_id)`` pairs, on a session's shopping checklist.
     Allowed in every mode: it records what is at home, not what was made or
     eaten."""
-    draft = _Draft(diary, policy, {})
+    draft = _Draft(diary, policy)
     session = draft.session(session_id)
     ticked = {(r, i) for r, ings in session.have.items() for i in ings}
     if have:
@@ -649,8 +846,8 @@ def move_session(
     diary: Diary, policy: Policy, session_id: uuid.UUID, date: datetime.date
 ) -> Change:
     """Move a session to another free day (Plan: both days ahead; Admin);
-    every linked entry must stay on or after the new date."""
-    draft = _Draft(diary, policy, {})
+    every meal on a day must stay on or after the new date."""
+    draft = _Draft(diary, policy)
     session = draft.session(session_id)
     if session.date == date:
         return Change()
@@ -663,18 +860,4 @@ def move_session(
         raise RuleError(f"{day_label(date)} already has a session")
     draft.put_session(session.model_copy(update={"date": date}))
     draft.check([session_id])
-    return draft.change()
-
-
-def delete_session(diary: Diary, policy: Policy, session_id: uuid.UUID) -> Change:
-    """Delete a session that no entry links to (any mode)."""
-    draft = _Draft(diary, policy, {})
-    session = draft.session(session_id)
-    linked = sum(draft.count(session_id, item.recipe) for item in session.items)
-    if linked:
-        raise RuleError(
-            f"The {day_label(session.date)} session has {linked} linked "
-            f"entr{'y' if linked == 1 else 'ies'}: remove or unlink them first"
-        )
-    draft.drop_session(session_id)
     return draft.change()

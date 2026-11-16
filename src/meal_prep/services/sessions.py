@@ -2,11 +2,15 @@
 
 A session item's numbers — title, servings, per-serving cost and macros, and
 one batch's ingredient lines — are frozen exactly once, when the item is
-added (#107). Nothing here looks at current recipes afterwards.
+added (#107). Nothing here looks at current recipes afterwards; the meals of
+its portions copy the item's numbers (``portion_entry``).
 """
 
 from __future__ import annotations
 
+import uuid
+
+from meal_prep.dtos.log import RecipeEntryDTO
 from meal_prep.dtos.session import (
     PrepSessionDTO,
     SessionIngredientDTO,
@@ -55,6 +59,8 @@ def freeze_item(recipe: Recipe, batches: int = 1) -> SessionItemDTO:
         sugars_g=macros.sugars_g,
         sodium_mg=macros.sodium_mg,
         potassium_mg=macros.potassium_mg,
+        fridge_days=recipe.fridge_days,
+        freezer_friendly=recipe.freezer_friendly,
         ingredients=[
             SessionIngredientDTO(
                 ingredient=line.id,
@@ -71,6 +77,27 @@ def freeze_item(recipe: Recipe, batches: int = 1) -> SessionItemDTO:
             )
             for line in recipe.ingredients
         ],
+    )
+
+
+def portion_entry(item: SessionItemDTO, session: uuid.UUID) -> RecipeEntryDTO:
+    """A new meal for one portion of ``item``, linked to ``session``: the
+    numbers of the batch as it is cooked, not of today's recipe."""
+    return RecipeEntryDTO(
+        id=uuid.uuid4(),
+        session=session,
+        recipe=item.recipe,
+        title=item.title,
+        cost=item.cost,
+        calories_kcal=item.calories_kcal,
+        protein_g=item.protein_g,
+        fat_g=item.fat_g,
+        carbs_g=item.carbs_g,
+        fiber_g=item.fiber_g,
+        saturated_fat_g=item.saturated_fat_g,
+        sugars_g=item.sugars_g,
+        sodium_mg=item.sodium_mg,
+        potassium_mg=item.potassium_mg,
     )
 
 
@@ -112,6 +139,8 @@ def _item(dto: SessionItemDTO) -> SessionItem:
             )
             for line in dto.ingredients
         ),
+        fridge_days=dto.fridge_days,
+        freezer_friendly=dto.freezer_friendly,
     )
 
 

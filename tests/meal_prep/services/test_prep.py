@@ -1,5 +1,5 @@
 """Tests for the prep-session rules (``services/prep.py``,
-``docs/prep-sessions.md``)."""
+``docs/prep-sessions.md``, ``docs/freezer.md``)."""
 
 from __future__ import annotations
 
@@ -8,19 +8,22 @@ import uuid
 
 import pytest
 
-from meal_prep.dtos.log import RecipeEntryDTO
+from meal_prep.dtos.log import RecipeEntryDTO, TakeoutEntryDTO
 from meal_prep.dtos.session import PrepSessionDTO
 from meal_prep.enums import Aisle, Mealtime, RecipeCategory, StorageType
 from meal_prep.models.ingredient import MacrosInfo, Package
 from meal_prep.models.recipe import Recipe, RecipeIngredient
+from meal_prep.services import diary as entries
 from meal_prep.services import prep
-from meal_prep.services.prep import Change, Diary, Mode, Policy, RuleError
-from meal_prep.services.sessions import freeze_item, prepare_session
+from meal_prep.services.prep import Change, Day, Diary, Mode, Policy, RuleError
+from meal_prep.services.sessions import freeze_item, portion_entry, prepare_session
 
 D = datetime.date
 TODAY = D(2026, 10, 31)  # Saturday
 YESTERDAY = D(2026, 10, 30)
 SUN, MON, TUE, WED, THU = (D(2026, 11, day) for day in (1, 2, 3, 4, 5))
+LAST_THU = D(2026, 10, 29)
+LAST_SUN, LAST_MON, LAST_TUE = D(2026, 10, 25), D(2026, 10, 26), D(2026, 10, 27)
 WEEK = "2026-W45"  # Mon 2 Nov - Sun 8 Nov
 LAST_WEEK = "2026-W44"
 PLAN = Policy(today=TODAY)
@@ -79,7 +82,14 @@ def _apply(diary: Diary, change: Change) -> Diary:
             sessions.pop(sid, None)
         else:
             sessions[sid] = session
-    return Diary(weeks=weeks, sessions=sessions)
+    return Diary(
+        weeks=weeks,
+        sessions=sessions,
+        unassigned=(
+            diary.unassigned if change.unassigned is None else change.unassigned
+        ),
+        bin=diary.bin if change.bin is None else change.bin,
+    )
 
 
 def _session(date: D, *items: tuple[Recipe, int]) -> PrepSessionDTO:
@@ -94,24 +104,36 @@ def _with(*sessions: PrepSessionDTO) -> Diary:
     return Diary(weeks={}, sessions={s.id: s for s in sessions})
 
 
+def _week(date: D) -> str:
+    return prep.week_id(date)
+
+
 def _add(
     diary: Diary,
     date: D,
     recipe: Recipe = CHICKEN,
-    link: prep.Link = "auto",
+    session: uuid.UUID | None = None,
     policy: Policy = PLAN,
     meal: Mealtime = Mealtime.LUNCH,
 ) -> tuple[Diary, RecipeEntryDTO]:
-    week = _week(date)
     change, entry = prep.add_entry(
-        diary, policy, RECIPES, week, date, meal, recipe, link=link
+        diary, policy, _week(date), date, meal, recipe, session=session
     )
     return _apply(diary, change), entry
 
 
-def _week(date: D) -> str:
-    year, number, _ = date.isocalendar()
-    return f"{year}-W{number:02d}"
+def _take(
+    diary: Diary,
+    date: D,
+    recipe: Recipe = CHICKEN,
+    policy: Policy = PLAN,
+    meal: Mealtime = Mealtime.LUNCH,
+) -> Diary:
+    return _apply(diary, prep.take_unassigned(diary, policy, recipe.id, date, meal))
+
+
+def _move(diary: Diary, entry_id: uuid.UUID, to: prep.Place, policy=PLAN) -> Diary:
+    return _apply(diary, prep.move_meal(diary, policy, entry_id, to))
 
 
 def _only(diary: Diary) -> PrepSessionDTO:
@@ -119,9 +141,23 @@ def _only(diary: Diary) -> PrepSessionDTO:
     return session
 
 
-def _entry(diary: Diary, entry_id: uuid.UUID, week: str = WEEK) -> RecipeEntryDTO:
-    return next(
-        e for d in diary.weeks[week].days for e in d.entries() if e.id == entry_id
+def _on_days(diary: Diary) -> list[tuple[D, RecipeEntryDTO]]:
+    return [
+        (day.date, e)
+        for week in diary.weeks.values()
+        for day in week.days
+        for e in day.entries()
+    ]
+
+
+def _counts(diary: Diary, session: PrepSessionDTO, recipe: Recipe = CHICKEN):
+    """(on days, unassigned, binned) meals of one recipe line."""
+    key = (session.id, recipe.id)
+    days = sum(1 for _, e in _on_days(diary) if (e.session, e.recipe) == key)
+    return (
+        days,
+        prep.slot_counts(diary.unassigned)[key],
+        prep.slot_counts(diary.bin)[key],
     )
 
 
@@ -146,285 +182,6 @@ def test_portions_are_whole_batches_times_whole_servings():
     assert prepare_session(_session(SUN, (RICE, 2))).items[0].portions == 6
     with pytest.raises(ValueError, match="whole number"):
         freeze_item(_recipe("stew", servings=2.5))
-
-
-# -- freezing -----------------------------------------------------------------
-
-
-def test_items_freeze_numbers_and_one_batch_of_ingredients():
-    item = freeze_item(CHICKEN, batches=2)
-    assert (item.title, item.servings, item.batches) == ("Chicken", 4, 2)
-    assert item.cost == pytest.approx(3.0)
-    assert item.calories_kcal == pytest.approx(100.0)
-    [line] = item.ingredients
-    assert (line.ingredient, line.grams, line.cost) == ("chicken-breast", 600.0, 12.0)
-
-
-# -- adding entries -------------------------------------------------------------
-
-
-def test_auto_link_creates_the_default_session_before_the_entry():
-    diary, entry = _add(EMPTY, MON)
-    session = _only(diary)
-    assert session.date == SUN
-    assert entry.session == session.id
-    [item] = session.items
-    assert (item.recipe, item.batches) == ("chicken", 1)
-
-    # Sunday has no rice, so Wednesday's rice gets the nearer Tuesday session.
-    diary, wed = _add(diary, WED, RICE)
-    tue = next(s for s in diary.sessions.values() if s.date == TUE)
-    assert wed.session == tue.id
-
-
-def test_auto_link_never_picks_a_same_day_session():
-    diary, _ = _add(EMPTY, MON)  # creates Sunday's session
-    tue = _session(TUE, (CHICKEN, 1))
-    diary = Diary(weeks=diary.weeks, sessions={**diary.sessions, tue.id: tue})
-    diary, breakfast = _add(diary, TUE)
-    assert diary.sessions[breakfast.session].date == SUN  # type: ignore[index]
-
-
-def test_auto_link_takes_the_same_days_session_only_for_dinner():
-    tue = _session(TUE, (CHICKEN, 1))
-    diary = _with(tue)
-    diary, dinner = _add(diary, TUE, meal=Mealtime.DINNER)
-    assert dinner.session == tue.id  # auto-link: same day, dinner
-    diary, lunch = _add(diary, TUE)
-    assert diary.sessions[lunch.session].date == SUN  # type: ignore[index]
-    # A manual link may use the same day for any meal (Admin or not)...
-    diary, breakfast = _add(diary, TUE, link=tue.id, meal=Mealtime.BREAKFAST)
-    assert breakfast.session == tue.id
-    # ...and a meal moved onto its session's day keeps its link.
-    change = prep.move_entry(diary, PLAN, RECIPES, WEEK, dinner.id, TUE, Mealtime.LUNCH)
-    assert _entry(_apply(diary, change), dinner.id).session == tue.id
-
-
-def test_auto_link_runs_on_plan_days_in_admin_too():
-    diary, entry = _add(EMPTY, MON, policy=ADMIN)
-    assert diary.sessions[entry.session].date == SUN  # type: ignore[index]
-    _, logged = _add(EMPTY, TODAY, policy=ADMIN)
-    assert logged.session is None  # Log days: unlinked, Admin or not
-
-
-def test_auto_link_takes_a_free_portion_from_the_meals_own_cycle():
-    sun = _session(SUN, (CHICKEN, 1))  # 4 portions
-    diary, _ = _add(_with(sun), SUN, link=sun.id, meal=Mealtime.DINNER)
-    diary, mon = _add(diary, MON)
-    assert mon.session == sun.id  # Sunday's spare: Monday is in its cycle
-    # Tuesday is a prep day, so Wednesday's lunch is in Tuesday's cycle: its
-    # session is created rather than Sunday's spare borrowed.
-    diary, wed = _add(diary, WED)
-    assert diary.sessions[wed.session].date == TUE  # type: ignore[index]
-
-
-def test_auto_link_never_borrows_from_an_earlier_cycle():
-    # Last Tuesday's spare chicken stays put, however long it would keep:
-    # Monday's lunch is in Sunday's cycle, whose session is created.
-    last_tue = _session(D(2026, 10, 27), (CHICKEN, 1))
-    diary, entry = _add(_with(last_tue), MON)
-    assert diary.sessions[entry.session].date == SUN  # type: ignore[index]
-    assert diary.sessions[last_tue.id] == last_tue
-
-
-def test_auto_link_raises_batches_when_the_item_is_full():
-    diary = _with(_session(SUN, (CHICKEN, 1)))
-    for _ in range(4):
-        diary, _ = _add(diary, MON)
-    assert _only(diary).items[0].batches == 1
-    diary, entry = _add(diary, MON)
-    assert entry.session == _only(diary).id
-    assert _only(diary).items[0].batches == 2
-
-
-def test_explicit_link_in_plan_adds_the_missing_item():
-    sun = _session(SUN, (RICE, 1))
-    diary, _ = _add(_with(sun), MON, RICE, link=sun.id)
-    diary, entry = _add(diary, MON, link=sun.id)
-    assert entry.session == sun.id
-    assert [i.recipe for i in _only(diary).items] == ["rice", "chicken"]
-
-
-def test_explicit_link_refuses_a_later_session():
-    tue = _session(TUE, (CHICKEN, 1))
-    with pytest.raises(RuleError, match="later"):
-        _add(_with(tue), MON, link=tue.id)
-
-
-def test_todays_meals_can_move_to_and_from_todays_session():
-    # Today's dinner (Log) joins today's session, which grows to fit: the
-    # session picker and a drop on the session chip alike.
-    today = _session(TODAY, (RICE, 1))
-    # A rice meal keeps today's session: an open session follows its meals.
-    diary, _ = _add(_with(today), TODAY, RICE, link=today.id, meal=Mealtime.DINNER)
-    diary, dinner = _add(diary, TODAY, link=None, meal=Mealtime.DINNER)
-    change = prep.set_entry_session(
-        diary, PLAN, RECIPES, LAST_WEEK, dinner.id, today.id
-    )
-    diary = _apply(diary, change)
-    assert _entry(diary, dinner.id, LAST_WEEK).session == today.id
-    assert [i.recipe for i in diary.sessions[today.id].items] == ["rice", "chicken"]
-    diary, snack = _add(diary, TODAY, link=today.id, meal=Mealtime.SNACKS)
-    assert snack.session == today.id
-    # ...and leaves it again.
-    change = prep.set_entry_session(diary, PLAN, RECIPES, LAST_WEEK, dinner.id, None)
-    assert _entry(_apply(diary, change), dinner.id, LAST_WEEK).session is None
-    # Relinking to today creates today's session when it has none.
-    diary, lunch = _add(EMPTY, TODAY, link=None)
-    change = prep.set_entry_session(
-        diary, PLAN, RECIPES, LAST_WEEK, lunch.id, None, session_date=TODAY
-    )
-    linked = _entry(_apply(diary, change), lunch.id, LAST_WEEK).session
-    assert _apply(diary, change).sessions[linked].date == TODAY  # type: ignore[index]
-
-
-def test_explicit_link_cannot_fill_a_session_that_already_happened():
-    past = _session(YESTERDAY, (RICE, 1))
-    with pytest.raises(RuleError, match="has no Chicken"):
-        _add(_with(past), SUN, link=past.id)
-
-
-def test_admin_links_grow_any_session_to_fit():
-    sun = _session(SUN, (EGG, 1))
-    diary, entry = _add(_with(sun), MON, EGG, link=sun.id, policy=ADMIN)
-    assert entry.session == sun.id
-    diary, _ = _add(diary, MON, EGG, link=sun.id, policy=ADMIN)
-    assert diary.sessions[sun.id].items[0].batches == 2  # full: a batch added
-    # Even a session that already happened gains the missing recipe.
-    past = _session(TODAY, (RICE, 1))
-    diary, linked = _add(_with(past), TODAY, CHICKEN, link=past.id, policy=ADMIN)
-    assert linked.session == past.id
-    assert [i.recipe for i in diary.sessions[past.id].items] == ["rice", "chicken"]
-    # Admin palette drops are never auto-linked.
-    _, unlinked = _add(diary, TODAY, policy=ADMIN)
-    assert unlinked.session is None
-
-
-# -- removing, moving, relinking ------------------------------------------------
-
-
-def test_plan_items_without_meals_are_pruned():
-    sun = _session(SUN, (CHICKEN, 1))
-    diary, rice = _add(_with(sun), MON, RICE, link=sun.id)
-    diary, _ = _add(diary, MON, link=sun.id)
-    diary = _apply(diary, prep.remove_entry(diary, PLAN, WEEK, rice.id))
-    assert [i.recipe for i in diary.sessions[sun.id].items] == ["chicken"]
-    # A Plan session with no meals left disappears.
-    lone = _session(SUN, (EGG, 1))
-    diary, entry = _add(_with(lone), MON, EGG, link=lone.id)
-    diary = _apply(diary, prep.remove_entry(diary, PLAN, WEEK, entry.id))
-    assert diary.sessions == {} and WEEK not in diary.weeks
-
-
-def test_plan_batches_follow_the_meals_both_ways():
-    sun = _session(SUN, (CHICKEN, 1))  # 4 servings a batch
-    diary = _with(sun)
-    added = []
-    for _ in range(5):
-        diary, entry = _add(diary, MON, link=sun.id)
-        added.append(entry)
-    assert diary.sessions[sun.id].items[0].batches == 2
-    diary = _apply(diary, prep.remove_entry(diary, PLAN, WEEK, added[0].id))
-    assert diary.sessions[sun.id].items[0].batches == 1
-    for entry in added[1:]:
-        diary = _apply(diary, prep.remove_entry(diary, PLAN, WEEK, entry.id))
-    # No meals left: the session is gone.
-    assert sun.id not in diary.sessions
-
-
-def test_closed_batches_stay_as_made_when_meals_go():
-    past = _session(YESTERDAY, (EGG, 3))
-    diary, first = _add(_with(past), TODAY, EGG, link=past.id, policy=ADMIN)
-    diary = _apply(diary, prep.remove_entry(diary, PLAN, LAST_WEEK, first.id))
-    assert diary.sessions[past.id].items[0].batches == 3
-
-
-def test_todays_session_shrinks_back_as_it_grew():
-    # On its own day a session still grows to fit (the prep happens during
-    # the day), so it shrinks back too: a mis-drop can be taken back.
-    today = _session(TODAY, (EGG, 1))
-    diary, first = _add(_with(today), TODAY, EGG, link=today.id, meal=Mealtime.DINNER)
-    diary, extra = _add(diary, TODAY, EGG, link=today.id, meal=Mealtime.SNACKS)
-    assert diary.sessions[today.id].items[0].batches == 2
-    diary = _apply(diary, prep.remove_entry(diary, PLAN, LAST_WEEK, extra.id))
-    assert diary.sessions[today.id].items[0].batches == 1
-    diary = _apply(diary, prep.remove_entry(diary, PLAN, LAST_WEEK, first.id))
-    assert today.id not in diary.sessions
-
-
-def test_moving_before_the_session_relinks_in_plan():
-    tue = _session(TUE, (CHICKEN, 1))
-    diary, entry = _add(_with(tue), WED, link=tue.id)
-    change = prep.move_entry(diary, PLAN, RECIPES, WEEK, entry.id, MON, Mealtime.DINNER)
-    diary = _apply(diary, change)
-    moved = _entry(diary, entry.id)
-    assert moved.session is not None and moved.session != tue.id
-    assert diary.sessions[moved.session].date == SUN
-
-
-# -- session edits -------------------------------------------------------------
-
-
-def test_items_with_links_stay_and_the_last_item_deletes_the_session():
-    # A Log session keeps meal-less items (a record of what was made).
-    past = _session(TODAY, (CHICKEN, 1), (RICE, 1))
-    diary, _ = _add(_with(past), TODAY, link=past.id, policy=ADMIN)
-    with pytest.raises(RuleError, match="linked from Sat 31 Oct lunch"):
-        prep.remove_item(diary, PLAN, past.id, "chicken")
-    with pytest.raises(RuleError, match="linked"):
-        prep.delete_session(diary, PLAN, past.id)
-    diary = _apply(diary, prep.remove_item(diary, PLAN, past.id, "rice"))
-    assert [i.recipe for i in diary.sessions[past.id].items] == ["chicken"]
-    alone = _with(_session(TODAY, (RICE, 1)))
-    gone = prep.remove_item(alone, PLAN, _only(alone).id, "rice")
-    assert gone.sessions == {_only(alone).id: None}
-    with pytest.raises(prep.SessionNotFoundError):
-        prep.remove_item(alone, PLAN, _only(alone).id, "chicken")
-
-
-def test_moving_a_session_keeps_links_on_or_after_it():
-    sun = _session(SUN, (CHICKEN, 1))
-    tue = _session(TUE, (RICE, 1))
-    # Set up in Admin, so neither session is pruned before its meal lands.
-    diary, _ = _add(_with(sun, tue), WED, RICE, link=tue.id, policy=ADMIN)
-    diary, _ = _add(diary, TUE, link=sun.id, policy=ADMIN)
-    moved = _apply(diary, prep.move_session(diary, PLAN, sun.id, MON))
-    assert moved.sessions[sun.id].date == MON
-    with pytest.raises(RuleError, match="later"):
-        prep.move_session(diary, PLAN, sun.id, WED)
-    with pytest.raises(RuleError, match="already has"):
-        prep.move_session(diary, PLAN, sun.id, TUE)
-    past = _session(TODAY, (RICE, 1))
-    with pytest.raises(RuleError, match="haven't happened"):
-        prep.move_session(_with(past), PLAN, past.id, SUN)
-    assert prep.move_session(_with(past), ADMIN, past.id, SUN).sessions
-
-
-def test_relinking_to_an_empty_day_creates_its_session():
-    thu = _session(THU, (CHICKEN, 1))
-    fri = D(2026, 11, 6)
-    diary, entry = _add(_with(thu), fri, link=thu.id)
-    change = prep.set_entry_session(
-        diary, PLAN, RECIPES, WEEK, entry.id, None, session_date=TUE
-    )
-    diary = _apply(diary, change)
-    tue = next(s for s in diary.sessions.values() if s.date == TUE)
-    assert _entry(diary, entry.id).session == tue.id
-    assert [i.recipe for i in tue.items] == ["chicken"]
-    # A day that already happened, or one after the meal, is refused.
-    with pytest.raises(RuleError, match="already happened"):
-        prep.set_entry_session(diary, PLAN, RECIPES, WEEK, entry.id, None, YESTERDAY)
-    with pytest.raises(RuleError, match="later"):
-        sat = D(2026, 11, 7)
-        prep.set_entry_session(diary, PLAN, RECIPES, WEEK, entry.id, None, sat)
-
-
-# -- prep cycles, locks and the link model (#165) ------------------------------
-# The test calendar: today is Sat 31 Oct; preset session days are Sun 25,
-# Tue 27, Thu 29 Oct and Sun 1, Tue 3, Thu 5 Nov.
-
-LAST_THU = D(2026, 10, 29)
-LAST_SUN, LAST_MON, LAST_TUE = D(2026, 10, 25), D(2026, 10, 26), D(2026, 10, 27)
 
 
 def test_cycle_day_counts_a_session_days_own_evening():
@@ -453,127 +210,333 @@ def test_a_cycle_locks_the_day_after_the_next_session_day():
     assert not ADMIN.locked(LAST_MON, Mealtime.LUNCH)
 
 
-def test_settled_meals_need_admin_for_every_edit():
-    diary, entry = _add(EMPTY, LAST_MON, link=None, policy=ADMIN)
-    with pytest.raises(RuleError, match="settled"):
-        _add(diary, LAST_MON, link=None)
-    with pytest.raises(RuleError, match="settled"):
-        prep.remove_entry(diary, PLAN, LAST_WEEK, entry.id)
-    with pytest.raises(RuleError, match="settled"):
-        prep.move_entry(
-            diary, PLAN, RECIPES, LAST_WEEK, entry.id, TODAY, Mealtime.LUNCH
-        )
-    with pytest.raises(RuleError, match="settled"):
-        prep.set_entry_session(diary, PLAN, RECIPES, LAST_WEEK, entry.id, None)
-    prep.remove_entry(diary, ADMIN, LAST_WEEK, entry.id)  # Admin: fine
+# -- freezing the numbers -------------------------------------------------------
 
 
-def test_auto_link_runs_on_every_day_the_same_in_admin():
-    thu = _session(LAST_THU, (CHICKEN, 1))  # 4 portions, closed
-    for policy in (PLAN, ADMIN):
-        # Today's lunch and yesterday's take the closed session's spares.
-        diary, today = _add(_with(thu), TODAY, policy=policy)
-        diary, friday = _add(diary, YESTERDAY, policy=policy)
-        assert today.session == friday.session == thu.id
-        # Rice isn't in Thursday's session, which can't grow: unlinked, and
-        # Admin doesn't grow it either.
-        diary, rice = _add(diary, TODAY, RICE, policy=policy)
-        assert rice.session is None
-        assert diary.sessions[thu.id] == thu
+def test_items_freeze_numbers_and_one_batch_of_ingredients():
+    item = freeze_item(CHICKEN, batches=2)
+    assert (item.title, item.servings, item.batches) == ("Chicken", 4, 2)
+    assert item.cost == pytest.approx(3.0)
+    assert item.calories_kcal == pytest.approx(100.0)
+    assert (item.fridge_days, item.freezer_friendly) == (4, False)
+    [line] = item.ingredients
+    assert (line.ingredient, line.grams, line.cost) == ("chicken-breast", 600.0, 12.0)
 
 
-def test_auto_link_takes_only_free_portions_from_a_closed_session():
-    thu = _session(LAST_THU, (EGG, 1))  # one portion
-    diary, first = _add(_with(thu), YESTERDAY, EGG)
-    assert first.session == thu.id
-    diary, second = _add(diary, YESTERDAY, EGG)
-    assert second.session is None  # full: never a raise of Thursday's batches
-    assert diary.sessions[thu.id] == thu
+def test_a_portion_copies_the_numbers_of_its_batch():
+    item = freeze_item(CHICKEN).model_copy(update={"title": "As cooked", "cost": 9.0})
+    session_id = uuid.uuid4()
+    meal = portion_entry(item, session_id)
+    assert (meal.title, meal.cost, meal.recipe) == ("As cooked", 9.0, "chicken")
+    assert meal.session == session_id
+    assert meal.calories_kcal == item.calories_kcal
 
 
-def test_auto_link_puts_snacks_with_dinner_after_that_days_prep():
+# -- cooking a batch ------------------------------------------------------------
+
+
+def test_a_recipe_on_a_day_cooks_a_batch_and_the_rest_is_unassigned():
+    diary, entry = _add(EMPTY, MON)
+    session = _only(diary)
+    assert session.date == SUN  # Monday lunch is in Sunday's cycle
+    [item] = session.items
+    assert (item.recipe, item.batches) == ("chicken", 1)
+    assert entry.session == session.id
+    # Four portions: one on Monday, three with no day yet.
+    assert _counts(diary, session) == (1, 3, 0)
+    assert {m.title for m in diary.unassigned} == {"Chicken"}
+
+
+def test_another_drop_always_cooks_another_batch():
+    diary, _ = _add(EMPTY, MON)
+    diary, _ = _add(diary, TUE)  # same cycle: not one of the unassigned three
+    session = _only(diary)
+    assert session.items[0].batches == 2
+    assert _counts(diary, session) == (2, 6, 0)
+
+
+def test_a_one_portion_recipe_leaves_nothing_unassigned():
+    diary, _ = _add(EMPTY, MON, EGG)
+    assert diary.unassigned == ()
+    assert _counts(diary, _only(diary), EGG) == (1, 0, 0)
+
+
+def test_a_session_days_evening_belongs_to_that_days_cycle():
     diary, snack = _add(EMPTY, TUE, meal=Mealtime.SNACKS)
     assert diary.sessions[snack.session].date == TUE  # type: ignore[index]
     diary, lunch = _add(diary, TUE)
     assert diary.sessions[lunch.session].date == SUN  # type: ignore[index]
 
 
-def test_manual_links_take_closed_spares_and_grow_open_sessions():
-    last_sun = _session(LAST_SUN, (CHICKEN, 1))  # closed, 4 portions
-    diary, meal = _add(_with(last_sun), YESTERDAY, link=None)
-    # A past (still open) meal links to a closed session's spare...
-    change = prep.set_entry_session(
-        diary, PLAN, RECIPES, LAST_WEEK, meal.id, last_sun.id
+def test_a_cooked_session_takes_no_new_batch_except_in_admin():
+    # Today's lunch is in Thursday's cycle, and Thursday has passed.
+    with pytest.raises(RuleError, match="already cooked"):
+        _add(EMPTY, TODAY)
+    thu = _session(LAST_THU, (RICE, 1))
+    with pytest.raises(RuleError, match="already cooked"):
+        _add(_with(thu), TODAY)
+    # Admin treats it as planned again: the batch is added there.
+    diary, entry = _add(_with(thu), TODAY, policy=ADMIN)
+    assert entry.session == thu.id
+    assert [i.recipe for i in diary.sessions[thu.id].items] == ["rice", "chicken"]
+    assert _counts(diary, thu) == (1, 3, 0)
+    # A session day's own dinner is cooked that evening: still planned.
+    diary, dinner = _add(EMPTY, D(2026, 11, 1), meal=Mealtime.DINNER)
+    assert diary.sessions[dinner.session].date == SUN  # type: ignore[index]
+
+
+def test_a_named_session_cooks_the_batch_unless_it_is_later():
+    tue = _session(TUE, (RICE, 1))
+    _, entry = _add(_with(tue), WED, session=tue.id)
+    assert entry.session == tue.id
+    with pytest.raises(RuleError, match="later"):
+        _add(_with(tue), MON, session=tue.id)
+
+
+# -- using what exists ----------------------------------------------------------
+
+
+def test_taking_an_unassigned_portion_moves_it_and_cooks_nothing():
+    diary, _ = _add(EMPTY, MON)
+    session = _only(diary)
+    unassigned = {m.id for m in diary.unassigned}
+    diary = _take(diary, TUE)
+    assert _only(diary).items[0].batches == 1
+    assert _counts(diary, session) == (2, 2, 0)
+    [taken] = [e for date, e in _on_days(diary) if date == TUE]
+    assert taken.id in unassigned  # the same meal, not a new one
+
+
+def test_taking_picks_the_latest_session_that_fits_the_day():
+    diary, _ = _add(EMPTY, MON)  # Sunday's batch
+    diary, _ = _add(diary, WED)  # Tuesday's batch
+    sun, tue = sorted(diary.sessions.values(), key=lambda s: s.date)
+    diary = _take(diary, THU)
+    assert _counts(diary, tue) == (2, 2, 0)
+    assert _counts(diary, sun) == (1, 3, 0)
+    # Monday is before Tuesday's cooking: Sunday's portion.
+    diary = _take(diary, MON, meal=Mealtime.DINNER)
+    assert _counts(diary, sun) == (2, 2, 0)
+
+
+def test_taking_is_refused_when_nothing_fits():
+    with pytest.raises(RuleError, match="no unassigned portion"):
+        prep.take_unassigned(EMPTY, PLAN, "chicken", MON, Mealtime.LUNCH)
+    diary, _ = _add(EMPTY, WED)  # cooked on Tuesday
+    with pytest.raises(RuleError, match="can't be eaten on Mon"):
+        prep.take_unassigned(diary, PLAN, "chicken", MON, Mealtime.LUNCH)
+
+
+# -- moving meals -----------------------------------------------------------------
+
+
+def test_moving_a_meal_never_changes_its_session():
+    diary, entry = _add(EMPTY, WED)  # Tuesday's session
+    tue = _only(diary)
+    # Into a later cycle: still Tuesday's portion, and Thursday cooks nothing.
+    diary = _move(diary, entry.id, Day(THU, Mealtime.DINNER))
+    assert [(d, e.session) for d, e in _on_days(diary)] == [(THU, tue.id)]
+    assert list(diary.sessions) == [tue.id]
+    # Onto the session's own day is fine; before it is refused.
+    diary = _move(diary, entry.id, Day(TUE, Mealtime.BREAKFAST))
+    with pytest.raises(RuleError, match="cooked on Tue"):
+        prep.move_meal(diary, PLAN, entry.id, Day(MON, Mealtime.LUNCH))
+
+
+def test_a_meal_moves_to_another_week():
+    diary, entry = _add(EMPTY, MON)
+    diary = _move(diary, entry.id, Day(D(2026, 11, 10), Mealtime.LUNCH))
+    assert list(diary.weeks) == ["2026-W46"]
+    assert _on_days(diary)[0][1].id == entry.id
+
+
+def test_removing_a_meal_sends_its_portion_to_unassigned():
+    diary, entry = _add(EMPTY, MON)
+    session = _only(diary)
+    diary = _apply(diary, prep.remove_entry(diary, PLAN, WEEK, entry.id))
+    assert diary.weeks == {}
+    assert _counts(diary, session) == (0, 4, 0)
+    assert _only(diary).items[0].batches == 1  # the batch stays
+
+
+def test_removing_takeout_or_a_meal_without_a_session_deletes_it():
+    takeout = TakeoutEntryDTO(
+        id=uuid.uuid4(),
+        title="Pizza",
+        calories_kcal=800,
+        protein_g=30,
+        fat_g=30,
+        carbs_g=90,
     )
-    diary = _apply(diary, change)
-    assert _entry(diary, meal.id, LAST_WEEK).session == last_sun.id
-    # ...and unlinks again: the portion is spare once more.
-    change = prep.set_entry_session(diary, PLAN, RECIPES, LAST_WEEK, meal.id, None)
-    assert _entry(_apply(diary, change), meal.id, LAST_WEEK).session is None
-    # A closed session never grows: a recipe it lacks is refused...
-    diary, rice = _add(_with(last_sun), YESTERDAY, RICE, link=None)
-    with pytest.raises(RuleError, match="has no Rice"):
-        prep.set_entry_session(diary, PLAN, RECIPES, LAST_WEEK, rice.id, last_sun.id)
-    # ...unless Admin grows it on purpose.
-    change = prep.set_entry_session(
-        diary, ADMIN, RECIPES, LAST_WEEK, rice.id, last_sun.id
+    change = prep.add_takeout_entries(EMPTY, PLAN, WEEK, MON, Mealtime.LUNCH, [takeout])
+    diary = _apply(EMPTY, change)
+    week, old = entries.add_entry(diary.weeks[WEEK], WEEK, MON, Mealtime.LUNCH, CHICKEN)
+    diary = Diary(weeks={WEEK: week}, sessions={})  # as older files have them
+    for entry_id in (takeout.id, old.id):
+        with pytest.raises(RuleError, match="not a portion"):
+            prep.move_meal(diary, PLAN, entry_id, "unassigned")
+        diary = _apply(diary, prep.remove_entry(diary, PLAN, WEEK, entry_id))
+    assert diary.weeks == {} and diary.unassigned == ()
+
+
+def test_the_bin_keeps_the_portion_and_its_day():
+    diary, entry = _add(EMPTY, MON)
+    session = _only(diary)
+    diary = _move(diary, entry.id, "bin")
+    assert _counts(diary, session) == (0, 3, 1)
+    [binned] = diary.bin
+    assert (binned.id, binned.binned) == (entry.id, TODAY)
+    # An unassigned portion goes there the same way...
+    diary = _move(diary, diary.unassigned[0].id, "bin")
+    assert _counts(diary, session) == (0, 2, 2)
+    # ...and a binned one comes back out, to a day or to unassigned.
+    diary = _move(diary, entry.id, Day(TUE, Mealtime.LUNCH))
+    assert _counts(diary, session) == (1, 2, 1)
+    assert not hasattr(_on_days(diary)[0][1], "binned")
+    diary = _move(diary, diary.bin[0].id, "unassigned")
+    assert _counts(diary, session) == (1, 3, 0)
+    with pytest.raises(entries.EntryNotFoundError):
+        prep.move_meal(diary, PLAN, uuid.uuid4(), "bin")
+
+
+def test_settled_meals_need_admin_for_every_edit():
+    diary, entry = _add(EMPTY, LAST_MON, policy=ADMIN)
+    with pytest.raises(RuleError, match="settled"):
+        _add(diary, LAST_MON)
+    with pytest.raises(RuleError, match="settled"):
+        prep.take_unassigned(diary, PLAN, "chicken", LAST_MON, Mealtime.LUNCH)
+    with pytest.raises(RuleError, match="settled"):
+        prep.remove_entry(diary, PLAN, LAST_WEEK, entry.id)
+    for to in (Day(TODAY, Mealtime.LUNCH), "unassigned", "bin"):
+        with pytest.raises(RuleError, match="settled"):
+            prep.move_meal(diary, PLAN, entry.id, to)
+    # The slots never settle: a cooked session's unassigned portions move.
+    diary = _move(diary, diary.unassigned[0].id, "bin")
+    diary = _take(diary, TODAY)
+    prep.remove_entry(diary, ADMIN, LAST_WEEK, entry.id)  # Admin: fine
+
+
+def test_an_item_never_has_more_meals_than_portions():
+    diary, _ = _add(EMPTY, MON, EGG)
+    session = _only(diary)
+    extra = portion_entry(session.items[0], session.id)  # e.g. a hand edit
+    broken = Diary(diary.weeks, diary.sessions, unassigned=(extra,))
+    with pytest.raises(RuleError, match="full: 1 portion, 2 meals"):
+        prep.take_unassigned(broken, PLAN, "egg", TUE, Mealtime.LUNCH)
+
+
+# -- batches ------------------------------------------------------------------------
+
+
+def test_removing_a_batch_takes_its_unassigned_portions():
+    diary, _ = _add(EMPTY, MON)
+    diary, _ = _add(diary, TUE)  # two batches: 2 on days, 6 unassigned
+    session = _only(diary)
+    diary = _apply(diary, prep.remove_batch(diary, PLAN, session.id, "chicken"))
+    assert _only(diary).items[0].batches == 1
+    assert _counts(diary, session) == (2, 2, 0)
+
+
+def test_the_last_batch_needs_every_meal_unassigned_and_takes_the_session():
+    diary, entry = _add(EMPTY, MON)
+    session = _only(diary)
+    with pytest.raises(RuleError, match="move 1 to unassigned first"):
+        prep.remove_batch(diary, PLAN, session.id, "chicken")
+    # A binned portion blocks it just the same.
+    binned = _move(diary, entry.id, "bin")
+    with pytest.raises(RuleError, match="move 1 to unassigned first"):
+        prep.remove_batch(binned, PLAN, session.id, "chicken")
+    diary = _apply(diary, prep.remove_entry(diary, PLAN, WEEK, entry.id))
+    diary = _apply(diary, prep.remove_batch(diary, PLAN, session.id, "chicken"))
+    assert diary.sessions == {} and diary.unassigned == ()
+
+
+def test_removing_the_last_batch_of_one_recipe_keeps_the_others():
+    session = _session(SUN, (CHICKEN, 1), (RICE, 1))
+    session = session.model_copy(update={"have": {"chicken": ["chicken-breast"]}})
+    # No meals at all (a session from before portions were meals): fine.
+    diary = _apply(
+        _with(session), prep.remove_batch(_with(session), PLAN, session.id, "chicken")
     )
-    grown = _apply(diary, change).sessions[last_sun.id]
-    assert [i.recipe for i in grown.items] == ["chicken", "rice"]
-    # An open session grows to fit a manual link (Plan, as before).
+    left = _only(diary)
+    assert [i.recipe for i in left.items] == ["rice"]
+    assert left.have == {}
+    with pytest.raises(prep.SessionNotFoundError):
+        prep.remove_batch(diary, PLAN, session.id, "chicken")
+
+
+def test_a_cooked_batch_is_a_fact_except_in_admin():
+    thu = _session(LAST_THU, (CHICKEN, 1))
+    with pytest.raises(RuleError, match="already cooked"):
+        prep.remove_batch(_with(thu), PLAN, thu.id, "chicken")
+    diary = _apply(_with(thu), prep.remove_batch(_with(thu), ADMIN, thu.id, "chicken"))
+    assert diary.sessions == {}
+
+
+# -- moving a recipe line ------------------------------------------------------------
+
+
+def test_a_recipe_line_moves_with_every_meal():
+    diary, entry = _add(EMPTY, WED)  # Tuesday's session: 1 on Wed, 3 unassigned
+    diary, _ = _add(diary, WED, RICE)
+    tue = _only(diary)
+    diary = _move(diary, diary.unassigned[0].id, "bin")
+    diary = _apply(
+        diary,
+        prep.set_have(diary, PLAN, tue.id, [("chicken", "chicken-breast")], True),
+    )
+    # To a day without a session: it is created.
+    diary = _apply(diary, prep.move_item(diary, PLAN, tue.id, "chicken", to_date=SUN))
+    sun = next(s for s in diary.sessions.values() if s.date == SUN)
+    assert [i.recipe for i in sun.items] == ["chicken"]
+    assert sun.have == {"chicken": ["chicken-breast"]}
+    assert _counts(diary, sun) == (1, 2, 1)
+    assert [i.recipe for i in diary.sessions[tue.id].items] == ["rice"]
+    assert diary.sessions[tue.id].have == {}
+    assert next(e for _, e in _on_days(diary) if e.id == entry.id).session == sun.id
+
+
+def test_a_recipe_line_cannot_move_past_its_meals_or_out_of_a_cooked_session():
+    diary, _ = _add(EMPTY, MON)  # Sunday's session, eaten on Monday
+    sun = _only(diary)
+    with pytest.raises(RuleError, match="Mon 2 Nov lunch is before Tue 3 Nov"):
+        prep.move_item(diary, PLAN, sun.id, "chicken", to_date=TUE)
+    thu = _session(LAST_THU, (CHICKEN, 1))
+    with pytest.raises(RuleError, match="already cooked"):
+        prep.move_item(_with(thu), PLAN, thu.id, "chicken", to_date=SUN)
+    with pytest.raises(RuleError, match="already cooked"):
+        prep.move_item(_with(thu, sun), PLAN, sun.id, "chicken", to_session=thu.id)
+    with pytest.raises(ValueError, match="session or the day"):
+        prep.move_item(diary, PLAN, sun.id, "chicken")
+
+
+def test_moving_onto_a_session_that_cooks_the_recipe_merges_the_lines():
+    diary, _ = _add(EMPTY, WED)  # Tuesday
+    diary, _ = _add(diary, D(2026, 11, 6))  # Thursday
+    tue, thu = sorted(diary.sessions.values(), key=lambda s: s.date)
+    diary = _apply(
+        diary, prep.move_item(diary, PLAN, thu.id, "chicken", to_session=tue.id)
+    )
+    merged = _only(diary)
+    assert (merged.id, merged.items[0].batches) == (tue.id, 2)
+    assert _counts(diary, merged) == (2, 6, 0)
+    # Onto itself: nothing to do.
+    assert prep.move_item(diary, PLAN, tue.id, "chicken", to_session=tue.id) == Change()
+
+
+# -- sessions -----------------------------------------------------------------------
+
+
+def test_moving_a_session_keeps_its_meals_on_or_after_it():
+    diary, _ = _add(EMPTY, WED)  # Tuesday's session, eaten on Wednesday
+    tue = _only(diary)
+    with pytest.raises(RuleError, match="can't come from the later"):
+        prep.move_session(diary, PLAN, tue.id, THU)
+    moved = _apply(diary, prep.move_session(diary, PLAN, tue.id, MON))
+    assert _only(moved).date == MON
+    with pytest.raises(RuleError, match="haven't happened"):
+        prep.move_session(diary, PLAN, tue.id, YESTERDAY)
     sun = _session(SUN, (RICE, 1))
-    diary, _ = _add(_with(sun), MON, RICE, link=sun.id)  # keeps it planned
-    diary, entry = _add(diary, MON, link=None)
-    change = prep.set_entry_session(diary, PLAN, RECIPES, WEEK, entry.id, sun.id)
-    assert [i.recipe for i in _apply(diary, change).sessions[sun.id].items] == [
-        "rice",
-        "chicken",
-    ]
-
-
-def test_a_full_closed_session_refuses_a_manual_link():
-    thu = _session(LAST_THU, (EGG, 1))
-    diary, _ = _add(_with(thu), YESTERDAY, EGG, link=thu.id)
-    diary, other = _add(diary, YESTERDAY, EGG, link=None)
-    with pytest.raises(RuleError, match="full"):
-        prep.set_entry_session(diary, PLAN, RECIPES, LAST_WEEK, other.id, thu.id)
-
-
-def test_a_meal_moved_into_a_later_cycle_follows_it_while_open():
-    # Wednesday's lunch, linked to its own (open) Tuesday session, moves to
-    # Thursday's dinner: Thursday's cycle takes it, and Tuesday's session,
-    # left without meals, goes.
-    diary, entry = _add(EMPTY, WED)
-    tue = diary.sessions[entry.session]  # type: ignore[index]
-    assert tue.date == TUE
-    change = prep.move_entry(diary, PLAN, RECIPES, WEEK, entry.id, THU, Mealtime.DINNER)
-    diary = _apply(diary, change)
-    assert diary.sessions[_entry(diary, entry.id).session].date == THU  # type: ignore[index]
-    assert tue.id not in diary.sessions
-    # A manual link to another cycle's session stays put...
-    sun = _session(SUN, (CHICKEN, 1))
-    diary, manual = _add(_with(sun), WED, link=sun.id)
-    change = prep.move_entry(
-        diary, PLAN, RECIPES, WEEK, manual.id, THU, Mealtime.DINNER
-    )
-    assert _entry(_apply(diary, change), manual.id).session == sun.id
-    # ...and so does a portion of a closed session (food already made).
-    last_thu = _session(LAST_THU, (CHICKEN, 1))
-    diary, made = _add(_with(last_thu), YESTERDAY, link=last_thu.id)
-    change = prep.move_entry(
-        diary, PLAN, RECIPES, LAST_WEEK, made.id, TODAY, Mealtime.DINNER
-    )
-    assert _entry(_apply(diary, change), made.id, LAST_WEEK).session == last_thu.id
-
-
-def test_moving_keeps_a_link_that_holds_and_relinks_one_that_breaks():
-    tue = _session(TUE, (CHICKEN, 1))
-    diary, entry = _add(_with(tue), WED, link=tue.id)
-    change = prep.move_entry(diary, PLAN, RECIPES, WEEK, entry.id, THU, Mealtime.LUNCH)
-    diary = _apply(diary, change)
-    assert _entry(diary, entry.id).session == tue.id
-    # Before Tuesday the link breaks: auto-link re-links to Monday lunch's
-    # cycle session (Sunday, created as it is still open).
-    change = prep.move_entry(diary, PLAN, RECIPES, WEEK, entry.id, MON, Mealtime.LUNCH)
-    diary = _apply(diary, change)
-    assert diary.sessions[_entry(diary, entry.id).session].date == SUN  # type: ignore[index]
+    crowded = Diary(diary.weeks, {**diary.sessions, sun.id: sun}, diary.unassigned)
+    with pytest.raises(RuleError, match="already has a session"):
+        prep.move_session(crowded, PLAN, tue.id, SUN)

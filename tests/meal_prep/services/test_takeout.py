@@ -86,12 +86,10 @@ def test_takeout_never_links_to_a_session():
     )
     assert change.sessions == {}  # no session created, unlike a recipe drop
     state = Diary(weeks={WEEK: change.weeks[WEEK]}, sessions={})  # type: ignore[dict-item]
-    with pytest.raises(RuleError, match="never linked"):
-        prep.set_entry_session(state, PLAN, {}, WEEK, entry.id, None, TODAY)
-    assert prep.set_entry_session(state, PLAN, {}, WEEK, entry.id, None) == (
-        prep.Change()
-    )
-    moved = prep.move_entry(state, PLAN, {}, WEEK, entry.id, SAT, Mealtime.DINNER)
+    for slot in ("unassigned", "bin"):
+        with pytest.raises(RuleError, match="not a portion"):
+            prep.move_meal(state, PLAN, entry.id, slot)
+    moved = prep.move_meal(state, PLAN, entry.id, prep.Day(SAT, Mealtime.DINNER))
     assert moved.sessions == {}
 
 

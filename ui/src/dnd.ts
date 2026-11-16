@@ -11,15 +11,24 @@ import type { Mealtime } from "./api";
 
 /** What is being dragged. */
 export type DragData =
+  /** a recipe from the recipe panel: cooks a batch */
   | { kind: "recipe"; recipe: string; title: string }
+  /** a recipe line of a session: cooks a batch there, or moves the line */
   | { kind: "item"; session: string; recipe: string; title: string }
-  | { kind: "entry"; id: string; date: string; meal: Mealtime; index: number; title: string };
+  /** a meal on a day */
+  | { kind: "entry"; id: string; date: string; meal: Mealtime; index: number; title: string }
+  /** unassigned portions of a recipe; `id` is the one a slot move takes */
+  | { kind: "unassigned"; recipe: string; id: string; title: string }
+  /** a binned portion */
+  | { kind: "binned"; id: string; title: string };
 
 /** Where it can land. Meals are both dragged and dropped on (sortable). */
 export type DropData =
   | { kind: "slot"; date: string; meal: Mealtime }
   | { kind: "entry"; id: string; date: string; meal: Mealtime; index: number; title: string }
-  | { kind: "session"; date: string; session: string | null };
+  | { kind: "session"; date: string; session: string | null }
+  | { kind: "unassigned" }
+  | { kind: "bin" };
 
 export const slotId = (date: string, meal: Mealtime) => `slot:${date}:${meal}`;
 
