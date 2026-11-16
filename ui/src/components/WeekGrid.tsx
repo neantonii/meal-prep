@@ -162,12 +162,16 @@ function EntryRow({
   const incoming =
     isOver && from !== undefined && !(from.kind === "entry" && from.date === date && from.meal === meal);
 
+  // The meal's session, from its card: the page has one for every session
+  // a meal on it belongs to (undefined: takeout, or the session is gone).
+  const source =
+    entry.kind === "recipe" && entry.session ? sessions.find((s) => s.id === entry.session) : undefined;
+
   /** A date badge only when the source is not one of the page's four
    * standard sessions (Sun before, Tue, Thu, own Sun): those are told apart
    * by the edge color alone. */
   const badge = () => {
     if (entry.kind !== "recipe" || !entry.session) return null;
-    const source = sessions.find((s) => s.id === entry.session);
     if (source && STANDARD.has(sessionColor(source.date, monday))) return null;
     return (
       <span className={`badge ${colors[entry.session] ?? ""}`} title="From a session outside the four standard ones">
@@ -179,9 +183,6 @@ function EntryRow({
    * between. A dish that doesn't freeze well gets a warning instead. */
   const frozen = () => {
     if (entry.kind !== "recipe" || !entry.frozen) return null;
-    // The session's date, from its card (every session a meal on the page
-    // belongs to has one).
-    const source = sessions.find((s) => s.id === entry.session);
     const cooked = source ? `cooked ${dayLabel(source.date)}` : "cooked earlier";
     return entry.freezer_friendly === false ? (
       <span className="no-freeze" title={`Kept past its fridge life (${cooked}), and this dish doesn't freeze well`}>
