@@ -127,7 +127,7 @@ function BinnedRow({ meal }: { meal: BinnedMeal }) {
     <div
       ref={setNodeRef}
       className={`chip binned${isDragging ? " dragging" : ""}`}
-      title={`Binned ${dayLabel(meal.binned)}${meal.cooked ? `, cooked ${dayLabel(meal.cooked)}` : ""}. Drag back to a day or to Unassigned to undo.`}
+      title={`Binned ${dayLabel(meal.binned)}${meal.session_date ? `, cooked ${dayLabel(meal.session_date)}` : ""}. Drag back to a day or to Unassigned to undo.`}
       {...attributes}
       {...listeners}
     >

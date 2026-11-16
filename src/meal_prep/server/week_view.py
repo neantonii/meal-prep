@@ -123,7 +123,7 @@ def _needs_out(
 class _Batch:
     """What a meal needs to know about the recipe line it is a portion of."""
 
-    cooked: datetime.date
+    session_date: datetime.date
     fridge_days: int | None
     freezer_friendly: bool | None
 
@@ -166,12 +166,11 @@ def _entry_out(
         recipe=entry.recipe_id,
         card_url=_card_url(library.recipes.get(entry.recipe_id)),
         session=entry.session_id,
-        cooked=None if batch is None else batch.cooked.isoformat(),
         # Frozen is implied: eaten later than the dish keeps in the fridge.
         frozen=(
             batch is not None
             and batch.fridge_days is not None
-            and (date - batch.cooked).days > batch.fridge_days
+            and (date - batch.session_date).days > batch.fridge_days
         ),
         freezer_friendly=None if batch is None else batch.freezer_friendly,
         fiber_g=m.fiber_g,
@@ -262,7 +261,7 @@ def _bin_out(diary: prep.Diary) -> Bin:
                 cost=m.cost,
                 binned=m.binned.isoformat(),
                 session=str(m.session),
-                cooked=(
+                session_date=(
                     session.date.isoformat()
                     if m.session and (session := diary.sessions.get(m.session))
                     else None
