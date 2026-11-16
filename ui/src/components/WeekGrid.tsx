@@ -179,7 +179,10 @@ function EntryRow({
    * between. A dish that doesn't freeze well gets a warning instead. */
   const frozen = () => {
     if (entry.kind !== "recipe" || !entry.frozen) return null;
-    const cooked = entry.cooked ? `cooked ${dayLabel(entry.cooked)}` : "cooked earlier";
+    // The session's date, from its card (every session a meal on the page
+    // belongs to has one).
+    const source = sessions.find((s) => s.id === entry.session);
+    const cooked = source ? `cooked ${dayLabel(source.date)}` : "cooked earlier";
     return entry.freezer_friendly === false ? (
       <span className="no-freeze" title={`Kept past its fridge life (${cooked}), and this dish doesn't freeze well`}>
         ⚠

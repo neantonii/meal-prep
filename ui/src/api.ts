@@ -38,8 +38,6 @@ export interface RecipeEntry extends EntryBase {
   card_url: string | null;
   /** id of the prep session it came from */
   session: string | null;
-  /** that session's date */
-  cooked: string | null;
   /** eaten later than the dish keeps in the fridge: frozen in between */
   frozen: boolean;
   /** whether the dish freezes well; null when not recorded */
@@ -244,8 +242,8 @@ export interface BinnedMeal {
   /** the day it went to the bin */
   binned: string;
   session: string;
-  /** its session's date; null when the session is gone */
-  cooked: string | null;
+  /** null when the session is gone */
+  session_date: string | null;
 }
 
 /** Everything thrown away so far; `meals` latest first. */

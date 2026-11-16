@@ -183,7 +183,7 @@ def test_the_bin_and_back(client: TestClient, tmp_path: Path):
     assert _entries(week) == []
     [binned] = week["bin"]["meals"]
     assert (binned["id"], binned["binned"]) == (entry["id"], "2026-10-31")
-    assert binned["cooked"] == "2026-11-01"
+    assert binned["session_date"] == "2026-11-01"
     assert week["bin"]["count"] == 1
     assert week["bin"]["cost"] == pytest.approx(entry["cost"])
     [item] = _card(week, "2026-11-01")["items"]
@@ -222,15 +222,15 @@ def test_a_recipe_line_moves_to_another_session(client: TestClient):
 def test_meals_eaten_past_the_fridge_life_show_as_frozen(client: TestClient):
     week = _ok(_add(client, "2026-11-02"))
     [entry] = _entries(week)
-    assert (entry["frozen"], entry["cooked"]) == (False, "2026-11-01")
+    assert entry["frozen"] is False
     assert entry["freezer_friendly"] is not None
     # Two weeks later is past any fridge life: frozen in between.
     later = _ok(_take(client, "2026-11-16", week="2026-W47"))
     [thawed] = _entries(later)
     assert thawed["frozen"] is True
-    assert thawed["cooked"] == "2026-11-01"
-    # Its session shows on that page as an older card.
+    # Its session shows on that page as an older card, with its date.
     assert later["sessions"][0]["in_window"] is False
+    assert later["sessions"][0]["date"] == "2026-11-01"
 
 
 def test_older_files_load_and_show_a_spare_portion(client: TestClient, tmp_path: Path):

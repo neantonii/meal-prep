@@ -42,7 +42,6 @@ class RecipeEntryOut(_EntryOut):
     recipe: str
     card_url: str | None  # None when the recipe no longer exists
     session: str | None  # id of the prep session it came from
-    cooked: str | None  # that session's date
     # Eaten later than the dish keeps in the fridge, so frozen in between;
     # False when the session doesn't record its fridge life (older files).
     frozen: bool
@@ -213,7 +212,7 @@ class BinnedMeal(BaseModel):
     cost: float
     binned: str  # the day it went to the bin
     session: str
-    cooked: str | None  # its session's date; None when the session is gone
+    session_date: str | None  # None when the session is gone
 
 
 class Bin(BaseModel):
