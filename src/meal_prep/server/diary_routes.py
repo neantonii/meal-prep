@@ -1,6 +1,7 @@
-"""Diary routes: a week page and single-entry edits (add, remove, move,
-link to a prep session; add and edit takeout), plus the takeout meals eaten
-before (``/api/usuals``). The rules live in ``meal_prep.services.prep``.
+"""Diary routes: a week page and single-meal edits (cook a batch with one
+portion on a day, take an unassigned portion, move between days and the two
+slots, remove; add and edit takeout), plus the takeout meals eaten before
+(``/api/usuals``). The rules live in ``meal_prep.services.prep``.
 """
 
 from __future__ import annotations
@@ -13,11 +14,12 @@ from fastapi import APIRouter
 from meal_prep.dtos.log import TakeoutEntryDTO
 from meal_prep.server.api_models import (
     DiaryWeek,
-    EntryLink,
     EntryPlacement,
     NewEntry,
     NewTakeoutEntries,
+    SlotMove,
     TakeoutFields,
+    UnassignedTake,
     Usual,
 )
 from meal_prep.server.editing import Editor
@@ -65,7 +67,6 @@ def usuals_router(editor: Editor) -> APIRouter:
 
 def diary_router(editor: Editor) -> APIRouter:
     router = APIRouter(prefix="/api/diary")
-    recipes = editor.library.recipes
 
     @router.get("/{week}")
     def diary_get(week: str) -> DiaryWeek:
@@ -78,7 +79,6 @@ def diary_router(editor: Editor) -> APIRouter:
             change, entry = prep.add_entry(
                 diary,
                 editor.policy(admin),
-                recipes,
                 week,
                 body.date,
                 body.mealtime,
@@ -141,8 +141,39 @@ def diary_router(editor: Editor) -> APIRouter:
         params = {"entry": entry_id, **body.model_dump(mode="json")}
         return editor.edit(week, op, action="takeout.edit", params=params, admin=admin)
 
+    @router.post("/{week}/unassigned")
+    def unassigned_take(
+        week: str, body: UnassignedTake, admin: bool = False
+    ) -> DiaryWeek:
+        """Put an unassigned portion of a recipe on a day."""
+
+        def op(diary: prep.Diary) -> prep.Change:
+            change = prep.take_unassigned(
+                diary,
+                editor.policy(admin),
+                body.recipe,
+                body.date,
+                body.mealtime,
+                body.position,
+            )
+            logger.info(
+                "took unassigned %s for %s %s",
+                body.recipe,
+                body.date,
+                body.mealtime.value,
+            )
+            return change
+
+        params = body.model_dump(mode="json")
+        return editor.edit(
+            week, op, action="unassigned.take", params=params, admin=admin
+        )
+
     @router.delete("/{week}/entries/{entry_id}")
     def entry_remove(week: str, entry_id: uuid.UUID, admin: bool = False) -> DiaryWeek:
+        """Off its day: a session's portion goes to unassigned, anything
+        else is deleted."""
+
         def op(diary: prep.Diary) -> prep.Change:
             change = prep.remove_entry(diary, editor.policy(admin), week, entry_id)
             logger.info("removed entry %s from %s", entry_id, week)
@@ -156,16 +187,14 @@ def diary_router(editor: Editor) -> APIRouter:
     def entry_move(
         week: str, entry_id: uuid.UUID, body: EntryPlacement, admin: bool = False
     ) -> DiaryWeek:
+        """To a day, from another day or from a slot."""
+
         def op(diary: prep.Diary) -> prep.Change:
-            change = prep.move_entry(
+            change = prep.move_meal(
                 diary,
                 editor.policy(admin),
-                recipes,
-                week,
                 entry_id,
-                body.date,
-                body.mealtime,
-                body.position,
+                prep.Day(body.date, body.mealtime, body.position),
             )
             logger.info(
                 "moved entry %s to %s %s", entry_id, body.date, body.mealtime.value
@@ -175,28 +204,18 @@ def diary_router(editor: Editor) -> APIRouter:
         params = {"entry": entry_id, **body.model_dump(mode="json")}
         return editor.edit(week, op, action="entry.move", params=params, admin=admin)
 
-    @router.put("/{week}/entries/{entry_id}/session")
-    def entry_link(
-        week: str, entry_id: uuid.UUID, body: EntryLink, admin: bool = False
+    @router.put("/{week}/entries/{entry_id}/slot")
+    def entry_slot(
+        week: str, entry_id: uuid.UUID, body: SlotMove, admin: bool = False
     ) -> DiaryWeek:
+        """To the unassigned slot or the bin, from wherever it is."""
+
         def op(diary: prep.Diary) -> prep.Change:
-            change = prep.set_entry_session(
-                diary,
-                editor.policy(admin),
-                recipes,
-                week,
-                entry_id,
-                body.session,
-                body.session_date,
-            )
-            logger.info(
-                "linked entry %s to session %s",
-                entry_id,
-                body.session_date or body.session,
-            )
+            change = prep.move_meal(diary, editor.policy(admin), entry_id, body.slot)
+            logger.info("moved entry %s to %s", entry_id, body.slot)
             return change
 
         params = {"entry": entry_id, **body.model_dump(mode="json")}
-        return editor.edit(week, op, action="entry.link", params=params, admin=admin)
+        return editor.edit(week, op, action="entry.slot", params=params, admin=admin)
 
     return router

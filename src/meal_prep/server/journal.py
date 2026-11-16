@@ -5,7 +5,8 @@ the diary got into a state.
 pruned. It lives with the diary so backups carry it; the dot-folder keeps it
 out of migration backups and every loader. Each line holds when and in which
 mode the edit ran, what was asked, how it ended (a refusal keeps its
-message) and what it changed: every entry whose place or link moved and
+message) and what it changed: every meal whose place (a day, the
+unassigned slot, the bin) or link moved and
 each session item whose batches changed, as before -> after counts. Only
 the edit's own effects are written, never the diary's state. Writing it
 never fails an edit: a write error is logged and the edit stands.
@@ -18,7 +19,7 @@ import json
 import logging
 import os
 import uuid
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -84,12 +85,15 @@ def _kept(
     return {sid: s for sid, s in sessions.items() if s is not None}
 
 
-def _placements(week: DiaryWeekDTO | None) -> dict[uuid.UUID, tuple[Any, ...]]:
+type _Placed = dict[uuid.UUID, tuple[Any, ...]]
+
+
+def _placements(week: DiaryWeekDTO | None) -> _Placed:
     """Entry id -> (recipe, title, date, mealtime, session id); takeout has
     no recipe or session."""
     if week is None:
         return {}
-    placed: dict[uuid.UUID, tuple[Any, ...]] = {}
+    placed: _Placed = {}
     for day in week.days:
         for mealtime in Mealtime:
             for entry in getattr(day, mealtime.value) or ():
@@ -104,43 +108,59 @@ def _placements(week: DiaryWeekDTO | None) -> dict[uuid.UUID, tuple[Any, ...]]:
     return placed
 
 
+def _slot_placements(slot: str, meals: Iterable[RecipeEntryDTO]) -> _Placed:
+    """As ``_placements`` for a slot without a date: the slot's name stands
+    where the date and mealtime would be."""
+    return {m.id: (m.recipe, m.title, None, slot, m.session) for m in meals}
+
+
 def _place(
     found: tuple[Any, ...] | None, sessions: Mapping[uuid.UUID, PrepSessionDTO]
 ) -> Json | None:
     if found is None:
         return None
-    _, _, date, mealtime, session_id = found
+    _, _, date, where, session_id = found
     session = sessions.get(session_id) if session_id is not None else None
-    return {
-        "date": date.isoformat(),
-        "meal": mealtime.value,
+    linked = {
         "session": None if session_id is None else str(session_id),
         "session_date": None if session is None else session.date.isoformat(),
     }
+    if date is None:
+        return {"slot": where, **linked}
+    return {"date": date.isoformat(), "meal": where.value, **linked}
 
 
 def entry_changes(
     before: Diary, change: Change, sessions: Mapping[uuid.UUID, PrepSessionDTO]
 ) -> list[Json]:
-    """Entries added, removed, moved or relinked by ``change``."""
-    out: list[Json] = []
+    """Meals added, removed, moved (between days and the two slots) or
+    relinked by ``change``; a move across files is one record."""
+    old: _Placed = {}
+    new: _Placed = {}
     for week, after_dto in change.weeks.items():
-        old = _placements(before.weeks.get(week))
-        new = _placements(after_dto)
-        for entry_id in [*old, *(i for i in new if i not in old)]:
-            was, now = old.get(entry_id), new.get(entry_id)
-            if was == now:
-                continue
-            recipe, title = (now or was)[:2]  # type: ignore[index]
-            out.append(
-                {
-                    "id": str(entry_id),
-                    "recipe": recipe,
-                    "title": title,
-                    "before": _place(was, before.sessions),
-                    "after": _place(now, sessions),
-                }
-            )
+        old.update(_placements(before.weeks.get(week)))
+        new.update(_placements(after_dto))
+    if change.unassigned is not None:
+        old.update(_slot_placements("unassigned", before.unassigned))
+        new.update(_slot_placements("unassigned", change.unassigned))
+    if change.bin is not None:
+        old.update(_slot_placements("bin", before.bin))
+        new.update(_slot_placements("bin", change.bin))
+    out: list[Json] = []
+    for entry_id in [*old, *(i for i in new if i not in old)]:
+        was, now = old.get(entry_id), new.get(entry_id)
+        if was == now:
+            continue
+        recipe, title = (now or was)[:2]  # type: ignore[index]
+        out.append(
+            {
+                "id": str(entry_id),
+                "recipe": recipe,
+                "title": title,
+                "before": _place(was, before.sessions),
+                "after": _place(now, sessions),
+            }
+        )
     return out
 
 

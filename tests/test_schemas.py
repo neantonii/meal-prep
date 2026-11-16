@@ -12,33 +12,31 @@ import difflib
 import json
 from pathlib import Path
 
+from pydantic import BaseModel
+
 from meal_prep.dtos.ingredient import IngredientDTO
 from meal_prep.dtos.log import DiaryWeekDTO
 from meal_prep.dtos.meal import MealDTO
 from meal_prep.dtos.recipe import RecipeDTO
 from meal_prep.dtos.session import PrepSessionDTO
+from meal_prep.dtos.slots import BinDTO, UnassignedDTO
 from meal_prep.dtos.staples import StaplesDTO
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
 _DTOS = {
+    "bin": BinDTO,
     "diary": DiaryWeekDTO,
     "ingredient": IngredientDTO,
     "meal": MealDTO,
     "recipe": RecipeDTO,
     "session": PrepSessionDTO,
     "staples": StaplesDTO,
+    "unassigned": UnassignedDTO,
 }
 
 
-def _render(
-    dto: type[DiaryWeekDTO]
-    | type[IngredientDTO]
-    | type[MealDTO]
-    | type[RecipeDTO]
-    | type[PrepSessionDTO]
-    | type[StaplesDTO],
-) -> str:
+def _render(dto: type[BaseModel]) -> str:
     return json.dumps(dto.model_json_schema(), indent=2, sort_keys=True) + "\n"
 
 

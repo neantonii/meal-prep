@@ -97,6 +97,9 @@ class SessionItem:
     cost: float  # per serving
     macros: MacrosInfo  # per serving
     ingredients: tuple[SessionIngredient, ...]  # one batch
+    # How the cooked dish keeps; ``None`` in files older than these fields.
+    fridge_days: int | None = None
+    freezer_friendly: bool | None = None
 
     @property
     def portions(self) -> int:

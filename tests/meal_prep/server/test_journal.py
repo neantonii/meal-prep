@@ -39,8 +39,9 @@ def _add(client: TestClient, date: str) -> dict:
 
 def test_each_edit_is_one_line_with_its_effects(client: TestClient, tmp_path: Path):
     _add(client, "2026-11-06")
-    _add(client, "2026-11-07")
-    week = _add(client, "2026-11-08")  # a third portion: a second batch
+    take = {"date": "2026-11-07", "mealtime": "lunch", "recipe": BEANS}
+    assert client.post(f"/api/diary/{WEEK}/unassigned", json=take).status_code == 200
+    week = _add(client, "2026-11-08")  # a drop never uses what exists: a batch
     sunday = next(
         e
         for d in week["days"]
@@ -49,34 +50,53 @@ def test_each_edit_is_one_line_with_its_effects(client: TestClient, tmp_path: Pa
         for e in m["entries"]
     )
     client.delete(f"/api/diary/{WEEK}/entries/{sunday['id']}")
-    first, second, third, removed = _journal(tmp_path)
+    session = next(s for s in week["sessions"] if s["date"] == "2026-11-05")
+    client.delete(
+        f"/api/sessions/{session['id']}/items/{BEANS}/batch", params={"week": WEEK}
+    )
+    first, second, third, removed, batch = _journal(tmp_path)
 
     assert first["action"] == "entry.add" and first["outcome"] == "ok"
     assert (first["today"], first["admin"]) == ("2026-11-05", False)
-    assert first["params"]["session"] == "auto"
-    [entry] = first["entries"]
-    assert entry["before"] is None
-    assert entry["after"]["session_date"] == "2026-11-05"
-    [session] = first["sessions"]
-    assert session["batches"] == {BEANS: [None, 1]}
+    assert first["params"]["session"] is None
+    # One portion on the day, the batch's other one unassigned.
+    on_day, spare = sorted(first["entries"], key=lambda e: "slot" in e["after"])
+    assert on_day["before"] is None and spare["before"] is None
+    assert on_day["after"]["date"] == "2026-11-06"
+    assert on_day["after"]["session_date"] == "2026-11-05"
+    assert spare["after"]["slot"] == "unassigned"
+    [made] = first["sessions"]
+    assert made["batches"] == {BEANS: [None, 1]}
 
-    assert second["sessions"] == []  # a free portion: no batch changed
+    assert second["action"] == "unassigned.take"
+    assert second["sessions"] == []  # the portion existed: no batch changed
+    [taken] = second["entries"]
+    assert taken["id"] == spare["id"]
+    assert taken["before"]["slot"] == "unassigned"
+    assert taken["after"]["date"] == "2026-11-07"
+
     assert third["sessions"][0]["batches"] == {BEANS: [1, 2]}
     assert removed["action"] == "entry.remove"
-    assert removed["entries"][0]["after"] is None
-    assert removed["sessions"][0]["batches"] == {BEANS: [2, 1]}
+    [unassigned] = removed["entries"]
+    assert unassigned["before"]["date"] == "2026-11-08"
+    assert unassigned["after"]["slot"] == "unassigned"
+    assert removed["sessions"] == []  # the batch stays
+
+    assert batch["action"] == "batch.remove"
+    assert batch["sessions"][0]["batches"] == {BEANS: [2, 1]}
+    assert [e["after"] for e in batch["entries"]] == [None, None]
 
 
 def test_refusals_are_journaled_with_their_message(client: TestClient, tmp_path: Path):
     week = _add(client, "2026-11-06")
     session = next(s for s in week["sessions"] if s["date"] == "2026-11-05")
     response = client.delete(
-        f"/api/sessions/{session['id']}/items/{BEANS}", params={"week": WEEK}
+        f"/api/sessions/{session['id']}/items/{BEANS}/batch", params={"week": WEEK}
     )
     assert response.status_code == 409
     record = _journal(tmp_path)[-1]
-    assert (record["action"], record["outcome"]) == ("item.remove", "refused")
-    assert "linked from Fri 6 Nov lunch" in record["message"]
+    assert (record["action"], record["outcome"]) == ("batch.remove", "refused")
+    assert "move 1 to unassigned first" in record["message"]
     assert "entries" not in record  # nothing changed
 
 

@@ -120,6 +120,33 @@
           "title": "Fiber G",
           "type": "number"
         },
+        "freezer_friendly": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Whether the cooked dish can be frozen",
+          "title": "Freezer Friendly"
+        },
+        "fridge_days": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Days the cooked dish keeps in the fridge",
+          "title": "Fridge Days"
+        },
         "ingredients": {
           "description": "Ingredient lines of one batch, when added",
           "items": {

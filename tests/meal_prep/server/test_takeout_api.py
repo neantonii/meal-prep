@@ -94,13 +94,15 @@ def test_edit_corrects_takeout_in_place_but_not_a_recipe(client: TestClient):
     assert response.status_code == 409 and "frozen" in response.json()["detail"]
 
 
-def test_linking_takeout_is_refused(client: TestClient):
+def test_takeout_has_no_slot_and_removing_it_deletes_it(client: TestClient):
     [entry] = _entries(_add(client))
-    response = client.put(
-        f"/api/diary/{WEEK}/entries/{entry['id']}/session",
-        json={"session_date": "2026-11-05"},
-    )
-    assert response.status_code == 409 and "never linked" in response.json()["detail"]
+    url = f"/api/diary/{WEEK}/entries/{entry['id']}"
+    for slot in ("unassigned", "bin"):
+        response = client.put(f"{url}/slot", json={"slot": slot})
+        assert response.status_code == 409
+        assert "not a portion" in response.json()["detail"]
+    week = _ok(client.delete(url))
+    assert _entries(week) == [] and week["unassigned"] == []
 
 
 def test_usuals_list_past_meals_latest_first(client: TestClient, tmp_path: Path):

@@ -38,6 +38,12 @@ export interface RecipeEntry extends EntryBase {
   card_url: string | null;
   /** id of the prep session it came from */
   session: string | null;
+  /** that session's date */
+  cooked: string | null;
+  /** eaten later than the dish keeps in the fridge: frozen in between */
+  frozen: boolean;
+  /** whether the dish freezes well; null when not recorded */
+  freezer_friendly: boolean | null;
   fiber_g: number;
   cost: number;
 }
@@ -124,10 +130,14 @@ export interface SessionItem {
   servings: number;
   /** made: batches x servings */
   portions: number;
-  /** linked entries, in every week */
+  /** its meals on days, in every week */
   eaten: number;
-  /** those entries: which days and mealtimes */
+  /** those meals: which days and mealtimes */
   meals: MealRef[];
+  /** its meals with no day yet */
+  unassigned: number;
+  /** its meals thrown away */
+  binned: number;
   kcal: number;
   protein_g: number;
   cost: number;
@@ -209,17 +219,63 @@ export interface SessionDetail {
   needs: AisleNeeds[];
 }
 
+/** The unassigned portions of one recipe, over every session. */
+export interface UnassignedRecipe {
+  recipe: string;
+  title: string;
+  card_url: string | null;
+  count: number;
+  kcal: number;
+  protein_g: number;
+  /** whether the dish freezes well; null when not recorded */
+  freezer_friendly: boolean | null;
+  /** where they were (or will be) cooked, latest session first */
+  sources: { session: string; date: string; count: number }[];
+  /** the portions' ids, oldest session first */
+  meals: string[];
+}
+
+/** A portion thrown away. */
+export interface BinnedMeal {
+  id: string;
+  recipe: string;
+  title: string;
+  cost: number;
+  /** the day it went to the bin */
+  binned: string;
+  session: string;
+  /** its session's date; null when the session is gone */
+  cooked: string | null;
+}
+
+/** Everything thrown away so far; `meals` latest first. */
+export interface Bin {
+  count: number;
+  cost: number;
+  meals: BinnedMeal[];
+}
+
 export interface DiaryWeek {
   week: string;
   today: string;
   exists: boolean;
   days: DiaryDay[];
   sessions: Session[];
+  /** portions with no day yet, by recipe */
+  unassigned: UnassignedRecipe[];
+  bin: Bin;
   totals: Record<string, number>;
 }
 
-/** How a new entry links to a session: an id, none, or auto (palette drop). */
-export type Link = string | null | "auto";
+/** Portions of a recipe line no meal accounts for: only when something went
+ * wrong (an interrupted edit, a hand-edited file, a session from before
+ * portions were meals). */
+export function spareOf(it: SessionItem): number {
+  return it.portions - it.eaten - it.unassigned - it.binned;
+}
+
+/** The two homes without a date. */
+export type SlotName = "unassigned" | "bin";
 
 /** Where an entry goes: a slot and, optionally, its index in that slot. */
 export interface Placement {
@@ -254,8 +310,13 @@ export const api = {
   catalog: () => request<{ groups: CatalogGroup[] }>("/api/catalog"),
   diary: (week: string) => request<DiaryWeek>(`/api/diary/${week}`),
   session: (id: string) => request<SessionDetail>(`/api/sessions/${id}`),
-  addEntry: (week: string, recipe: string, where: Placement, session: Link, admin: boolean) =>
+  /** Cook one more batch of `recipe` with one portion on this day; in
+   * `session`, or (null) the session of the meal's prep cycle. */
+  addEntry: (week: string, recipe: string, where: Placement, session: string | null, admin: boolean) =>
     send<DiaryWeek>("POST", `/api/diary/${week}/entries`, admin, { ...where, recipe, session }),
+  /** Put an unassigned portion of `recipe` on a day. */
+  takeUnassigned: (week: string, recipe: string, where: Placement, admin: boolean) =>
+    send<DiaryWeek>("POST", `/api/diary/${week}/unassigned`, admin, { ...where, recipe }),
   /** Add takeout items (a whole order) to one slot. */
   addTakeout: (week: string, where: Placement, items: TakeoutFields[], admin: boolean) =>
     send<DiaryWeek>("POST", `/api/diary/${week}/takeout`, admin, { ...where, items }),
@@ -272,17 +333,22 @@ export const api = {
     send<DiaryWeek>("DELETE", `/api/diary/${week}/entries/${id}`, admin),
   moveEntry: (week: string, id: string, where: Placement, admin: boolean) =>
     send<DiaryWeek>("PATCH", `/api/diary/${week}/entries/${id}`, admin, where),
-  linkEntry: (week: string, id: string, session: string | null, admin: boolean) =>
-    send<DiaryWeek>("PUT", `/api/diary/${week}/entries/${id}/session`, admin, { session }),
-  /** Link to the session on `date`, created when that day has none yet. */
-  linkEntryToDay: (week: string, id: string, date: string, admin: boolean) =>
-    send<DiaryWeek>("PUT", `/api/diary/${week}/entries/${id}/session`, admin, {
-      session_date: date,
-    }),
-  removeItem: (week: string, session: string, recipe: string, admin: boolean) =>
-    send<DiaryWeek>("DELETE", `/api/sessions/${session}/items/${recipe}?week=${week}`, admin),
-  deleteSession: (week: string, session: string, admin: boolean) =>
-    send<DiaryWeek>("DELETE", `/api/sessions/${session}?week=${week}`, admin),
+  /** Move a meal (from a day or the other slot) to unassigned or the bin. */
+  moveToSlot: (week: string, id: string, slot: SlotName, admin: boolean) =>
+    send<DiaryWeek>("PUT", `/api/diary/${week}/entries/${id}/slot`, admin, { slot }),
+  /** Remove one batch; its portions are taken from unassigned. */
+  removeBatch: (week: string, session: string, recipe: string, admin: boolean) =>
+    send<DiaryWeek>("DELETE", `/api/sessions/${session}/items/${recipe}/batch?week=${week}`, admin),
+  /** Move a whole recipe line to another session, or to the one on a day
+   * (created when that day has none yet). */
+  moveItem: (
+    week: string,
+    session: string,
+    recipe: string,
+    to: { session: string } | { date: string },
+    admin: boolean,
+  ) =>
+    send<DiaryWeek>("PUT", `/api/sessions/${session}/items/${recipe}/session?week=${week}`, admin, to),
   /** Tick (or untick) recipe shares on the session's shopping checklist. */
   setHave: (session: string, shares: ShareRef[], have: boolean) =>
     send<SessionDetail>("PUT", `/api/sessions/${session}/have`, false, { shares, have }),

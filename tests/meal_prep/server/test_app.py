@@ -14,6 +14,8 @@ from meal_prep.server.weeks import current_week, week_dates
 
 REPO = Path(__file__).resolve().parents[3]
 # Entries are added in week 2026-W43 (from Mon 19 Oct): none of it settled.
+# The default slot is Tuesday's dinner: cooked that evening, so its session
+# (Tue 20 Oct) is still planned.
 TODAY = datetime.date(2026, 10, 19)
 
 
@@ -71,7 +73,7 @@ BUCKWHEAT = "boiled-roasted-buckwheat"
 
 
 def _add(client: TestClient, recipe: str = BUCKWHEAT, **where) -> dict:
-    body = {"date": "2026-10-19", "mealtime": "dinner", "recipe": recipe, **where}
+    body = {"date": "2026-10-20", "mealtime": "dinner", "recipe": recipe, **where}
     r = client.post(f"/api/diary/{WEEK}/entries", json=body)
     assert r.status_code == 200, r.text
     return r.json()
@@ -98,12 +100,12 @@ def test_missing_week_returns_scaffold(client: TestClient):
 def test_add_entry_freezes_numbers_and_persists(client: TestClient, tmp_path: Path):
     week = _add(client)
     assert week["exists"] is True
-    [entry] = _slot(week, 0, "dinner")
+    [entry] = _slot(week, 1, "dinner")
     assert entry["recipe"] == BUCKWHEAT
     assert entry["kcal"] > 0
     assert entry["card_url"] == f"/cards/recipe/modular_carb/{BUCKWHEAT}.html"
     assert week["totals"]["kcal"] == pytest.approx(entry["kcal"])
-    assert week["days"][0]["totals"]["cost"] == pytest.approx(entry["cost"])
+    assert week["days"][1]["totals"]["cost"] == pytest.approx(entry["cost"])
 
     saved = (tmp_path / "diary" / f"{WEEK}.yaml").read_text()
     assert entry["id"] in saved
@@ -123,7 +125,7 @@ def test_frozen_numbers_survive_a_server_with_changed_data(
             REPO / "data", REPO / "recipes", tmp_path / "diary", today=lambda: TODAY
         )
     )
-    [entry] = _slot(fresh.get(f"/api/diary/{WEEK}").json(), 0, "dinner")
+    [entry] = _slot(fresh.get(f"/api/diary/{WEEK}").json(), 1, "dinner")
     assert entry["title"].startswith("Old ")
 
 
@@ -144,16 +146,27 @@ def test_add_rejects_bad_mealtime_and_out_of_week_date(client: TestClient):
     assert client.post(url, json=out_of_week).status_code == 422
 
 
-def test_remove_entry_and_last_one_deletes_week(client: TestClient, tmp_path: Path):
+def test_removing_a_meal_unassigns_it_and_the_last_one_deletes_week(
+    client: TestClient, tmp_path: Path
+):
     _add(client)
     week = _add(client)
-    first, second = _slot(week, 0, "dinner")
+    first, second = _slot(week, 1, "dinner")
+    [session] = [s for s in week["sessions"] if s["id"]]
+    portions = session["items"][0]["portions"]  # two batches
+    unassigned = lambda page: sum(r["count"] for r in page["unassigned"])  # noqa: E731
+    assert unassigned(week) == portions - 2
     r = client.delete(f"/api/diary/{WEEK}/entries/{first['id']}")
     assert r.status_code == 200, r.text
-    assert _slot(r.json(), 0, "dinner") == [second]
+    assert _slot(r.json(), 1, "dinner") == [second]
+    assert unassigned(r.json()) == portions - 1
     r = client.delete(f"/api/diary/{WEEK}/entries/{second['id']}")
     assert r.json()["exists"] is False
     assert not (tmp_path / "diary" / f"{WEEK}.yaml").exists()
+    # Nothing was deleted: both batches are whole, with no day.
+    assert unassigned(r.json()) == portions
+    [session] = [s for s in r.json()["sessions"] if s["id"]]
+    assert session["items"][0]["batches"] == 2
 
 
 def test_remove_unknown_entry_404(client: TestClient):
@@ -165,37 +178,50 @@ def test_remove_unknown_entry_404(client: TestClient):
 
 
 def test_move_entry_keeps_its_numbers(client: TestClient):
-    [entry] = _slot(_add(client), 0, "dinner")
+    [entry] = _slot(_add(client), 1, "dinner")
     r = client.patch(
         f"/api/diary/{WEEK}/entries/{entry['id']}",
         json={"date": "2026-10-21", "mealtime": "lunch"},
     )
     assert r.status_code == 200, r.text
-    assert _slot(r.json(), 0, "dinner") == []
+    assert _slot(r.json(), 1, "dinner") == []
     assert _slot(r.json(), 2, "lunch") == [entry]
 
 
 def test_reorder_within_slot(client: TestClient):
     _add(client, BUCKWHEAT)
     week = _add(client, "boiled-basmati-rice")
-    first, second = _slot(week, 0, "dinner")
+    first, second = _slot(week, 1, "dinner")
     r = client.patch(
         f"/api/diary/{WEEK}/entries/{second['id']}",
-        json={"date": "2026-10-19", "mealtime": "dinner", "position": 0},
+        json={"date": "2026-10-20", "mealtime": "dinner", "position": 0},
     )
-    assert [e["id"] for e in _slot(r.json(), 0, "dinner")] == [
+    assert [e["id"] for e in _slot(r.json(), 1, "dinner")] == [
         second["id"],
         first["id"],
     ]
 
 
-def test_move_out_of_week_rejected(client: TestClient):
-    [entry] = _slot(_add(client), 0, "dinner")
+def test_move_to_another_week(client: TestClient):
+    [entry] = _slot(_add(client), 1, "dinner")
     r = client.patch(
         f"/api/diary/{WEEK}/entries/{entry['id']}",
         json={"date": "2026-10-26", "mealtime": "dinner"},
     )
-    assert r.status_code == 422
+    assert r.status_code == 200, r.text
+    assert r.json()["exists"] is False
+    [moved] = _slot(client.get("/api/diary/2026-W44").json(), 0, "dinner")
+    assert moved["id"] == entry["id"]
+
+
+def test_a_batch_whose_session_is_cooked_is_refused(client: TestClient):
+    # Monday's dinner belongs to Sunday's cycle, and Sunday has passed.
+    r = client.post(
+        f"/api/diary/{WEEK}/entries",
+        json={"date": "2026-10-19", "mealtime": "dinner", "recipe": BUCKWHEAT},
+    )
+    assert r.status_code == 409
+    assert "already cooked" in r.json()["detail"]
 
 
 def test_corrupt_week_file_returns_422(client: TestClient, tmp_path: Path):

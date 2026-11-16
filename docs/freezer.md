@@ -1,8 +1,7 @@
 # Unassigned portions, freezing and the bin
 
-Status: decided; not implemented. Changes several rules of
-`docs/prep-sessions.md` (listed under "What changes in prep sessions");
-that file is rewritten when this is built.
+Status: implemented (#197). Sessions, prep cycles and editing modes are in
+`docs/prep-sessions.md`.
 
 ## Goal
 
@@ -24,7 +23,12 @@ A batch is exactly its portions, and each portion is a meal with a home:
 a day, the unassigned slot or the bin.
 
 - For every recipe of every session, the meals linked to it equal
-  `batches x servings`. There are no spare or unaccounted portions.
+  `batches x servings`: every edit keeps it so.
+- This is not checked as a hard rule. The one check is that an item never
+  has more meals than portions, so nothing breaks when a file has fewer
+  (an interrupted edit, a hand-edited file, a session from before portions
+  were meals). The week page shows those as a "spare" warning: it means
+  something went wrong.
 - A recipe meal belongs to a session batch from the moment it is created,
   and it stays with that batch. Takeout is the only meal without one.
 - A meal is never deleted on its own. It moves between homes; it only
@@ -67,6 +71,8 @@ settles.
 - A drop from the recipe panel always cooks a new batch, also when that
   recipe has unassigned portions. Using what exists is always a drag from
   the unassigned list.
+- A meal can also move to a day in another week (API; the week page only
+  reaches its own days, so across weeks a meal goes through Unassigned).
 - Recipes cannot be dropped on the unassigned slot or the bin: a portion gets
   there only through a batch.
 - The settled-meal lock applies to day slots as before: moving a settled
@@ -76,10 +82,11 @@ settles.
 ## Batches
 
 - **Add:** only by creating a meal (table above).
-- **Remove one batch:** from the session panel. It removes as many of that
-  recipe's meals as one batch has portions, taken from the unassigned
-  slot only. Refused when it holds fewer ("unassign 2 Beef chili meals
-  first"); binned meals must be dragged back first. Removing the
+- **Remove one batch:** from the session panel. The meals the recipe no
+  longer has portions for are taken from the unassigned slot only. Refused
+  when the meals on days and in the bin don't fit in what is left ("move 2
+  to unassigned first"); binned meals must be dragged back first. Removing
+  the
   last batch removes the recipe from the session, and a session without
   recipes is deleted. This is the only way a meal disappears.
 - **Move a recipe to another session:** drag its row from a session panel
@@ -92,8 +99,8 @@ settles.
   moving a batch needs Admin. Their meals still move freely between days,
   the unassigned slot and the bin.
 
-Removing a recipe line or deleting a session directly goes away: both
-happen when the last batch is removed.
+A recipe line or a session is never deleted directly: both go when the last
+batch is removed.
 
 ## Admin
 
@@ -124,67 +131,44 @@ unassigned.
 
 ## Week page
 
-- **Frozen meals** show a ❄ mark and their cook date wherever the meal is
-  shown. When the dish does not freeze well the mark is a warning; nothing
+- **Frozen meals** show ❄ and their cook date wherever the meal is on a
+  day. When the dish does not freeze well the mark is ⚠ instead; nothing
   is blocked.
-- **Unassigned:** its own section at the top of the recipe column. One row
-  per recipe with the number of portions ("Beef chili x5"). Rows are
-  dragged to days; meals are dropped on it. It makes no claim about what
-  is physically frozen.
+- **Unassigned:** its own section above the recipe panel. One row per
+  recipe with the number of portions ("Beef chili ×5"; ⚠ when the dish
+  does not freeze well). Rows are dragged to days or to the bin; meals are
+  dropped on it. It makes no claim about what is physically frozen.
 - **Bin:** a collapsed section under it with a count and the cost. It
-  lists the meals binned in the last few days; older ones are behind
-  "show older".
-- **Recipe panel:** a recipe with unassigned portions shows how many, as a
-  hint to take it from there.
+  lists the meals binned in the last three days; older ones are behind
+  "show older". A binned meal is dragged back to a day or to Unassigned.
 - **Session panel:** each recipe row lists where its portions are (days,
-  unassigned, bin) and has "remove a batch". Sessions accept one kind of
-  drop: a recipe row from another session.
-- The spare warning goes away.
+  unassigned, bin) and has "− batch". Sessions accept one kind of drop: a
+  recipe row from another session.
 
 ## Storage
 
-- `diary/slots.yaml` (`schemas/slots.schema.json`): two lists,
-  `unassigned` and `bin`, of ordinary recipe entries (the week files' shape). `session`
-  is required here; bin entries also carry `binned` (a date).
-- Session items gain `fridge_days` and `freezer_friendly`.
+- `diary/unassigned.yaml` (`schemas/unassigned.schema.json`) and
+  `diary/bin.yaml` (`schemas/bin.schema.json`): each a list `meals` of
+  ordinary recipe entries (the week files' shape). `session` is required
+  here; bin entries also carry `binned` (a date). A missing file is an
+  empty slot.
+- Session items gain `fridge_days` and `freezer_friendly`, both optional.
 - A spawned meal copies its title and numbers from the session's recipe
   line, so it is what was cooked, also after the recipe changes or is
   deleted.
-- Multi-file edits keep the existing order (sessions, then meals, then
-  deletions), extended with the slots file.
+- The write order of a multi-file edit is in `docs/prep-sessions.md`
+  ("Storage").
 
-## Migration
+## Existing diaries
 
-Existing sessions have portions with no meal, which the principle forbids.
-Migration 2 (`src/meal_prep/migrations/`) creates the missing meals, with
-the numbers of the session's recipe line:
+No migration. Nothing is created for sessions that already exist:
 
-- for a session dated before the day it runs: in the bin, `binned` set to
-  the session's date (so history does not show up as freshly binned);
-- for a later session: unassigned.
-
-It also fills `fridge_days` and `freezer_friendly` on existing session
-items from the recipe library (left out when the recipe is gone: such
-meals get no frozen flag). Bin costs for the
-time before this release say little: some of those portions were eaten
-without being logged.
-
-## What changes in prep sessions
-
-- **Batches are derived from linked meals** -> stored; changed only by
-  adding or removing a batch.
-- **Spare portions and their warning** -> gone; every portion is a meal.
-- **Auto-link takes a free portion first** -> a recipe-panel drop always
-  adds a batch to the cycle's session.
-- **A drop that cannot link is saved unlinked** -> refused.
-- **Manual links** (drop a meal on a session, link to a session day,
-  unlink) -> gone; a recipe line moves as a whole.
-- **A moved meal follows its cycle**, and is re-linked when the move
-  breaks its link -> gone; a move never changes the session, and a day
-  before the session's date is refused.
-- **Remove an item, delete a session** -> remove a batch.
-- **Admin skips batch recalculation and never grows a cooked session on a
-  recipe drop** -> Admin only ignores settled and cooked.
+- both slots start empty, so portions cooked before this release never
+  appear in the unassigned list;
+- their recipe lines show the portions no meal accounts for as "spare";
+- their items have no `fridge_days`, so meals from those batches get no
+  frozen mark;
+- meals that were linked by hand to older sessions keep their links.
 
 ## Out of scope
 
@@ -194,5 +178,8 @@ without being logged.
   frozen flag; no new data needed).
 - Cooking a recipe on the meal's own day when its cycle's session has
   already been cooked (an ad hoc session); such a drop is refused for now.
+- A flag set by hand (or by a planner) to freeze a portion that will be
+  eaten within its fridge life.
+- Bringing portions cooked before this release into the unassigned list.
 - Waste reports per week (the `binned` date is stored for them).
 - Best-before warnings for portions frozen a long time.

@@ -312,3 +312,24 @@ tr.day.log td:not(.day-cell) { background: rgba(255, 255, 255, 0.015); }
   color: var(--text-muted); }
 .other-form .add-photo:hover, .other-form .add-photo:focus-within { color: var(--primary); border-color: var(--primary); }
 .other-form .add-photo input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+/* The two homes without a date, above the recipe list. */
+.shelf { border: 1px solid var(--border); border-radius: 8px; padding: 8px; margin-bottom: 10px; }
+.shelf.dragover { outline: 2px dashed var(--primary); outline-offset: 1px; }
+.shelf-title { font-weight: 700; font-size: 0.85rem; padding: 0 0 6px; }
+.shelf .muted { color: var(--text-muted); font-weight: 400; font-size: 0.78rem; }
+.shelf .count { color: var(--primary); }
+details.shelf > summary { cursor: pointer; padding: 0; }
+details.shelf[open] > summary { padding-bottom: 6px; }
+.chip.binned { opacity: 0.75; text-decoration: line-through; text-decoration-color: var(--text-muted); }
+.shelf-more { background: none; border: none; color: var(--text-muted); cursor: pointer;
+  font-size: 0.75rem; padding: 2px 0; text-decoration: underline; }
+/* A meal that was frozen between cooking and eating; a dish that doesn't
+   freeze well gets the warning instead. */
+.frozen { color: #7dd3fc; font-size: 0.8rem; cursor: default; }
+.no-freeze { color: #fb923c; font-size: 0.8rem; cursor: default; }
+/* A session's recipe line is dragged by its title. */
+.item-handle { cursor: grab; min-width: 0; }
+.session-item.dragging { opacity: 0.35; }
+.session-item .x:disabled { opacity: 0.35; cursor: not-allowed; }
+.session-item .x { font-size: 0.75rem; white-space: nowrap; }

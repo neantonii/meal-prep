@@ -89,7 +89,7 @@ function Slot({ date, meal, entries, settled, ...rest }: SlotProps) {
   const hovered =
     dragging !== undefined &&
     target !== undefined &&
-    target.kind !== "session" &&
+    (target.kind === "slot" || target.kind === "entry") &&
     target.date === date &&
     target.meal === meal;
   return (
@@ -156,8 +156,9 @@ function EntryRow({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver, active } =
     useSortable({ id: entry.id, data });
   const from = active?.data.current as DragData | undefined;
-  // Another slot's meal, a recipe or a session item hovering here: it will
-  // be inserted around this meal, so show the line.
+  // Another slot's meal, a recipe, a session's recipe line or a portion
+  // from Unassigned or the bin hovering here: it will be inserted around
+  // this meal, so show the line.
   const incoming =
     isOver && from !== undefined && !(from.kind === "entry" && from.date === date && from.meal === meal);
 
@@ -174,8 +175,24 @@ function EntryRow({
       </span>
     );
   };
+  /** Eaten later than the dish keeps in the fridge: it was frozen in
+   * between. A dish that doesn't freeze well gets a warning instead. */
+  const frozen = () => {
+    if (entry.kind !== "recipe" || !entry.frozen) return null;
+    const cooked = entry.cooked ? `cooked ${dayLabel(entry.cooked)}` : "cooked earlier";
+    return entry.freezer_friendly === false ? (
+      <span className="no-freeze" title={`Kept past its fridge life (${cooked}), and this dish doesn't freeze well`}>
+        ⚠
+      </span>
+    ) : (
+      <span className="frozen" title={`From the freezer: ${cooked}`}>
+        ❄
+      </span>
+    );
+  };
   const edge =
     entry.kind === "takeout" ? "other" : entry.session ? `linked ${colors[entry.session] ?? ""}` : "unlinked";
+  const portion = entry.kind === "recipe" && entry.session !== null;
 
   return (
     <div
@@ -206,11 +223,12 @@ function EntryRow({
       ) : (
         <span title="This recipe no longer exists">{entry.title}</span>
       )}
+      {frozen()}
       {badge()}
       <span className="kcal">{Math.round(entry.kcal)}</span>
       <button
         className="x"
-        title="Remove"
+        title={portion ? "Take off this day (the portion goes to Unassigned)" : "Remove"}
         onKeyDown={(e) => e.stopPropagation()}
         onClick={() => onRemove(entry.id)}
       >

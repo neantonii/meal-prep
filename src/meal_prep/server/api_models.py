@@ -42,6 +42,11 @@ class RecipeEntryOut(_EntryOut):
     recipe: str
     card_url: str | None  # None when the recipe no longer exists
     session: str | None  # id of the prep session it came from
+    cooked: str | None  # that session's date
+    # Eaten later than the dish keeps in the fridge, so frozen in between;
+    # False when the session doesn't record its fridge life (older files).
+    frozen: bool
+    freezer_friendly: bool | None  # None: not recorded
     fiber_g: float
     cost: float
 
@@ -90,8 +95,10 @@ class SessionItem(BaseModel):
     batches: int
     servings: int
     portions: int  # made: batches x servings
-    eaten: int  # linked entries, in every week
-    meals: list[MealRef]  # those entries: which days and mealtimes
+    eaten: int  # its meals on days, in every week
+    meals: list[MealRef]  # those meals: which days and mealtimes
+    unassigned: int  # its meals with no day yet
+    binned: int  # its meals thrown away
     kcal: float
     protein_g: float
     cost: float
@@ -175,25 +182,85 @@ class SessionDetail(BaseModel):
     needs: list[AisleNeeds]  # what to have on hand by the session
 
 
+class UnassignedSource(BaseModel):
+    """Unassigned portions of one recipe from one session."""
+
+    session: str
+    date: str  # the session's date: no day before it can take them
+    count: int
+
+
+class UnassignedRecipe(BaseModel):
+    """The unassigned portions of one recipe, over every session."""
+
+    recipe: str
+    title: str
+    card_url: str | None
+    count: int
+    kcal: float
+    protein_g: float
+    freezer_friendly: bool | None  # None: not recorded
+    sources: list[UnassignedSource]  # latest session first
+    meals: list[str]  # the portions' ids, oldest session first
+
+
+class BinnedMeal(BaseModel):
+    """A portion thrown away."""
+
+    id: str
+    recipe: str
+    title: str
+    cost: float
+    binned: str  # the day it went to the bin
+    session: str
+    cooked: str | None  # its session's date; None when the session is gone
+
+
+class Bin(BaseModel):
+    """Everything thrown away so far; ``meals`` latest first."""
+
+    count: int
+    cost: float
+    meals: list[BinnedMeal]
+
+
 class DiaryWeek(BaseModel):
     week: str
     today: str
     exists: bool
     days: list[DiaryDay]
     sessions: list[Session]
+    unassigned: list[UnassignedRecipe]
+    bin: Bin
     totals: dict[str, float]
 
 
 class NewEntry(BaseModel):
-    """A recipe to log; ``position`` is its index in the slot, ``None``
-    appends. ``session``: a session id, ``None`` (unlinked) or ``"auto"``
-    (a palette drop: auto-linked in Plan)."""
+    """A recipe to cook one more batch of, with one portion on this day
+    (the rest go to unassigned); ``position`` is its index in the slot,
+    ``None`` appends. ``session``: the session that cooks it; ``None`` is
+    the session of the meal's prep cycle."""
 
     date: datetime.date
     mealtime: Mealtime
     recipe: str
     position: int | None = Field(default=None, ge=0)
-    session: uuid.UUID | Literal["auto"] | None = "auto"
+    session: uuid.UUID | None = None
+
+
+class UnassignedTake(BaseModel):
+    """An unassigned portion of ``recipe`` to put on a day."""
+
+    date: datetime.date
+    mealtime: Mealtime
+    recipe: str
+    position: int | None = Field(default=None, ge=0)
+
+
+class SlotMove(BaseModel):
+    """Move a meal to one of the slots without a date."""
+
+    slot: Literal["unassigned", "bin"]
 
 
 class EntryPlacement(BaseModel):
@@ -205,12 +272,18 @@ class EntryPlacement(BaseModel):
     position: int | None = Field(default=None, ge=0)
 
 
-class EntryLink(BaseModel):
-    """A session id (``None`` unlinks), or ``session_date``: the session on
+class ItemMove(BaseModel):
+    """Where a recipe line goes: a session id, or ``date``: the session on
     that day, created when the day has none yet."""
 
     session: uuid.UUID | None = None
-    session_date: datetime.date | None = None
+    date: datetime.date | None = None
+
+    @model_validator(mode="after")
+    def validate_one(self) -> ItemMove:
+        if (self.session is None) == (self.date is None):
+            raise ValueError("Give either the session or the day")
+        return self
 
 
 class SessionMove(BaseModel):

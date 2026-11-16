@@ -1,22 +1,22 @@
 # Prep sessions
 
-Status: decided; first version implemented. The week page layout is a trial,
-to revisit after use.
+Status: implemented. How portions are kept track of (every portion is a
+meal; the unassigned slot, the bin, the frozen mark) is in
+`docs/freezer.md`; this file covers sessions, prep cycles, editing modes,
+the week page and the ingredient list.
 
 ## Goal
 
-Plan and log meal prep sessions alongside the diary, and link each diary
-entry to the session that produced it, so that what is prepped and what is
-eaten stay aligned. Per-session ingredient lists build on this later.
+Plan and log meal prep sessions alongside the diary, and tie each diary
+meal to the session batch it is a portion of, so that what is prepped and
+what is eaten stay aligned.
 
 ## Out of scope
 
 - Subtracting counted stock from the ingredient list (inventory, see
   `docs/spikes/inventory.md`); the checklist below only records yes/no.
 - Takeout / eating-out entries (#142, `docs/takeout.md`)
-  and AI macro estimates (#141). They are never linked to a session.
-- Checks that compare portions made with portions eaten (shortfall, waste,
-  fridge life). Only the hard rules below are enforced.
+  and AI macro estimates (#141). They never belong to a session.
 - The PoC optimizer (`src/meal_prep/planner/`). `Recipe`, `MacrosInfo`,
   `RecipeCategory` and `Library` are unchanged; sessions are diary data, not
   part of `Library`.
@@ -37,25 +37,21 @@ eaten stay aligned. Per-session ingredient lists build on this later.
 - A prep session is a date plus a list of items. Sessions are **not tied to
   weeks**: a Sunday session typically feeds that Sunday's dinner and the start
   of the next week.
-- At most one session per day. A session exists because meals are linked
-  to it: linking a meal creates it (or adds the recipe as an item), and
-  while it is open (its day or later) an item whose last meal goes is
-  removed, a session with no items left deleted. Once its day has passed a
-  session stays as it was (a record).
+- At most one session per day. A session exists because it cooks
+  something: putting a recipe on a day adds a batch to a session (creating
+  it), and removing its last batch deletes it.
 - Every session has a permanent id (UUID). Moving it to another day keeps the
-  id, so entries linked to it are untouched.
+  id, so its meals are untouched.
 
 ## Session item
 
 - A recipe and `batches` (how many times it is made as written; a whole
   number).
-- **Batches are derived, not typed.** While the session is open (its day or
-  later) they follow the linked meals: the fewest whole batches that cover
-  them; every edit recalculates them, up or down, on the session's own day
-  too (it grows that day, so it must shrink back, or a mis-drop could never
-  be undone). Once the day has passed they stay as they were, a record of
-  what was made. Nobody types them, Admin included: a session grows by
-  linking meals to it.
+- **Batches are stored, and change only by an explicit act**: a recipe put
+  on a day adds one, "remove a batch" takes one away, and two lines of the
+  same recipe merge when one is moved onto the other
+  (`docs/freezer.md`, "Batches"). Nobody types them, and nothing
+  recalculates them from the meals.
 - Portions = batches × servings. Both are whole numbers, so portions are
   exact; a recipe with fractional servings can't be added to a session.
 - "Made fresh, not prepped ahead" (e.g. salads) will be a recipe property,
@@ -63,28 +59,41 @@ eaten stay aligned. Per-session ingredient lists build on this later.
   it is deprecated and ignored until then.
 - One item per recipe in a session.
 - **Frozen when added** (like diary entries, #107): title, servings per batch,
-  per-serving cost and macros, and the per-batch ingredient lines (ingredient
+  per-serving cost and macros, how the cooked dish keeps (`fridge_days`,
+  `freezer_friendly`), and the per-batch ingredient lines (ingredient
   id, name, grams, cost, aisle, and the retail package: product title, its
-  authored size such as 4 l or 18 count, and packages per batch). Changing
-  `batches` keeps them; nothing is recomputed. To pick up a changed recipe,
-  remove the item and add it again.
+  authored size such as 4 l or 18 count, and packages per batch). More
+  batches keep them; nothing is recomputed. The meals of its portions copy
+  its numbers.
 - Aisle values are stored, so they are never renamed or removed, only added
   (`Aisle` in `enums.py`). Lines frozen before aisles and packages were
   recorded have neither; migration 1 (`src/meal_prep/migrations/`) fills
   them in from the ingredient data on the first start after upgrading.
+  Items saved before the keeping values were recorded have none: their
+  meals get no frozen mark.
 
 ## Links
 
-A diary entry has an optional `session` (the session id). A linked entry must
-align with its session:
+A recipe meal names its session (`session`, the session id) from the moment
+it is created, and keeps it: a meal is one portion of that session's batch.
+Only a whole recipe line moves to another session. A meal must align with
+its session:
 
-1. the session lists the entry's recipe;
-2. the entry's date is on or after the session's date (a manual link may use
-   the session's own day for any meal; auto-link only for dinner, below);
-3. entries linked to an item never exceed its portions.
+1. the session lists the meal's recipe;
+2. a meal on a day is on or after the session's date;
+3. the meals of an item (on days, unassigned and binned together) never
+   exceed its portions.
 
 The server enforces these on every edit. Rules span weeks, so they are
-checked across all weeks, not inside one week file.
+checked across all weeks and both slots, not inside one file.
+
+Rule 3 is "never more", not "exactly": every edit keeps meals and portions
+equal, but nothing breaks when a file has fewer meals (an interrupted edit,
+a hand-edited file, a session from before portions were meals). The week
+page shows such portions as a "spare" warning.
+
+Recipe meals without a session exist in older week files; they stay as they
+are, and no new ones can be created.
 
 ## Editing modes
 
@@ -98,79 +107,90 @@ edits are allowed (#165):
 - **Settled meals.** A cycle's meals lock **the day after the next session
   day**: on a Tuesday both Sunday's and Tuesday's cycles are open, and
   Sunday's locks on Wednesday. Today's meals never lock. Every edit to a
-  settled meal (add, remove, move, link) needs Admin; the week page shows
-  settled slots muted.
-- **Open and closed sessions.** A session dated today or later is open: it
-  grows to fit the meals linked to it, and shrinks back as they go. An
-  earlier session is closed: it is the record of what was cooked, so it only
-  gives free portions and never grows.
+  settled meal (add, remove, move) needs Admin; the week page shows
+  settled slots muted. The unassigned slot and the bin never settle.
+- **Planned and cooked sessions.** A session dated today or later is
+  planned: batches can be added, removed and moved. An earlier session is
+  cooked: its batches are a fact. Its meals still move freely between
+  days, the unassigned slot and the bin.
 
-**Admin** (header switch, off on reload) edits settled meals and grows
-closed sessions by hand. Nothing else differs, auto-link included.
+**Admin** (header switch, off on reload) ignores "settled" and "cooked":
+every meal and every session behaves as if still planned. There is no other
+Admin logic.
 
 "Today" is the server's local date. The day's Plan / Log label (after today
 / today and earlier) is kept for display and for moving sessions.
 
-### Entries
+### Meals
 
 | Edit (meal not settled) | Result |
 |---|---|
-| Add a recipe (palette drop) | auto-linked (below) |
-| Add on a session card | linked to that session (manual link) |
-| Remove | ✅; an open session shrinks to fit, a closed one keeps the portion (spare) |
-| Move / reorder | ✅; re-linked by auto-link when the move breaks the link, or carries a meal into a later cycle while its own cycle's session is still open (below) |
-| Link / unlink / change session | ✅ to any session on or before the meal's day (manual link) |
+| Put a recipe on a day (recipe panel) | one more batch in the session on the meal's cycle day, created when the day has none: one portion on that day, the rest unassigned. Refused when that session is cooked. |
+| Put a session's recipe row on a day | the same, in that session; the day must be on or after its date |
+| Put an unassigned recipe on a day | one of its portions moves there (`docs/freezer.md`) |
+| Move / reorder | ✅; the session never changes. A day before the session's date is refused. |
+| Remove | the portion goes to the unassigned slot. Takeout, and a recipe meal without a session, is deleted. |
 
-**A link only says where a portion went.** A manual link to an **open**
-session adds the recipe or raises its batches as needed (see "Session item");
-a **closed** session only gives a free portion, so a link to a full one, or
-to one without the recipe, is refused ("full", "has no …"). Unlinking is
-always allowed: the portion becomes spare.
+**A recipe from the recipe panel always cooks a new batch**, also when that
+recipe has unassigned portions: using what exists is a drag from the
+unassigned list. There is no way to link, relink or unlink a single meal.
 
-**A moved meal follows its cycle** while nothing has been made for it: if
-it was linked to its own cycle's session, that session is still open, and
-the new slot belongs to a later cycle, auto-link re-links it there (the old
-session shrinks). A manual link to another cycle's session, and a portion
-of a closed session (already made), keep their link while it holds.
-
-**Auto-link** runs on every drop, on any day, the same in Admin: it looks at
-the session on the meal's cycle day, and links
-
-1. to a free portion there;
-2. else, while that day is open (today or later), to that session grown to
-   fit, created when it doesn't exist yet;
-
-and leaves the meal unlinked otherwise. An earlier cycle is never reached
-into, however long its food keeps (a manual link may still pick it).
+**A drop on a day whose cycle session is already cooked is refused**: to eat
+a recipe that session did not cook, take an unassigned portion, or use
+Admin to record after the fact that it was cooked there. (Cooking it on the
+meal's own day, an ad hoc session, is not built.)
 
 ### Sessions
 
 Domain rule: once food is prepared you may choose not to eat it, but you can
-never retroactively make more.
+never retroactively make more or less.
 
-| Edit | Plan | Log | Admin |
+| Edit | Planned session | Cooked session | Admin |
 |---|---|---|---|
-| Add an item (only by linking a meal) | ✅ | refused | ✅ |
-| Set `batches` by hand | never (derived from meals) | never | never |
-| Remove an item / delete the session | ✅ | ✅ | ✅ |
+| Add a batch (only by putting a recipe on a day) | ✅ | refused | ✅ |
+| Remove a batch | ✅ | refused | ✅ |
+| Move a recipe line to another session | ✅ (both planned) | refused | ✅ |
 | Move to another day (API only; no UI) | ✅ (both days in Plan) | refused | ✅ |
 
-Never allowed: lowering portions below the linked entries, removing an item
-or deleting a session that has linked entries, moving a session after any of
-its linked entries, or onto a day that already has a session.
+Never allowed: more meals than portions, removing a batch whose portions
+are still on days or in the bin, moving a recipe line or a session to after
+one of its meals, or a session onto a day that already has one.
 
 ## Week page
 
-- A strip of one-line session chips above the grid (date, mode, "10 recipes
-  · 17/24 eaten"): every session dated from the Sunday before the week
-  through the week's own Sunday (typically Sun, Tue, Thu, Sun). A Sunday
-  session shows in both weeks; it is one session.
+- A strip of one-line session chips above the grid (date, mode, "3
+  recipes"): every session dated from the Sunday before the week through
+  the week's own Sunday (typically Sun, Tue, Thu, Sun). A Sunday session
+  shows in both weeks; it is one session.
+- Empty placeholders fill the default days (Sun, Tue, Thu) in that range;
+  "+ session" (Admin mode only) adds a placeholder on another day.
+- Older sessions that this week's meals are portions of (e.g. frozen
+  portions) appear as extra chips at the start.
 - Clicking a chip rolls the session out over the week table: one row per
-  recipe with its batches, portions, the meals it feeds ("Mon lunch · Tue
-  lunch") and any spare warning. It closes on ×, Esc or a click outside.
+  recipe with its batches, portions and where they are ("Mon lunch · Tue
+  lunch · 2 unassigned · 1 binned"), and "− batch". It closes on ×, Esc or a
+  click outside.
+- A recipe row is dragged by its title: onto a day to cook one more batch
+  in that session, onto another session's chip or open panel to move the
+  whole line there (an empty placeholder day gets its session created).
+  That is the only thing a session takes; recipes from the recipe panel go
+  onto days.
+- "⚠ 1 spare" on a row or chip: portions no meal accounts for. It appears
+  only when something went wrong (see "Links").
 - "Details →" opens the session's own page (`/?session=<id>`): totals
   (recipes, portions, cost, kcal, protein) and a table per recipe on the
   left, the ingredient list on the right (below on a phone).
+- The unassigned list and the bin sit above the recipe panel
+  (`docs/freezer.md`).
+- Meals show their session as a colored left edge (meals without a session
+  have their own color). Colors follow the four standard slots of the page,
+  the same every week: Sunday before, Tuesday, Thursday, the week's Sunday;
+  other days and older sessions get two more.
+- A date badge appears only when the session is not one of the page's four
+  standard ones (an extra-day or older session); the standard ones are
+  told apart by color alone.
+- A meal eaten later than its dish keeps in the fridge shows ❄ (it was
+  frozen in between), or ⚠ when the dish does not freeze well.
 
 ## Ingredient list
 
@@ -217,36 +237,21 @@ is the shopping list. Every tick can be undone the same way it was made.
   picked), in whole packs (a started pack counts as one) with whole-pack
   costs; "copy as text" puts it on the clipboard.
 
-- Empty placeholders fill the default days (Sun, Tue, Thu) in that range;
-  "+ session" (Admin mode only) adds a placeholder on another day.
-- Older sessions linked from this week's entries (e.g. frozen portions)
-  appear as extra chips at the start.
-- Each item shows its batches ("2 batches") and, when the batch is
-  underused, a warning ("⚠ 1 spare": portions made but not linked to a
-  meal); chips sum the spare portions of their session.
-- Sessions only take meals: drop a meal on a chip or the open panel to
-  relink it (same rules as any link); on an empty placeholder day this
-  creates the session with the meal's recipe. Palette recipes go into slots
-  only (auto-link fills sessions); drag an item from the open panel into a
-  slot for a linked entry.
-- Entries show their source as a colored left edge (the session's color;
-  unlinked entries have their own color). Colors follow the four standard
-  slots of the page, the same every week: Sunday before, Tuesday, Thursday,
-  the week's Sunday; other days and older sessions get two more.
-- A date badge appears only when the source is not one of the page's four
-  standard sessions (an extra-day or older session); the standard ones are
-  told apart by color alone.
-
 ## Storage
 
 - One YAML file per session: `diary/sessions/<YYYY-MM-DD>.yaml`
   (`schemas/session.schema.json`). It lives in the mounted `diary/` folder,
   so deploys need no change.
-- Week files gain an optional `session` field per entry; every existing week
+- Week files have an optional `session` field per entry; every existing week
   file stays loadable.
-- Multi-file edits write sessions before weeks and delete sessions last, so
-  an interrupted edit can leave a spare portion but never break a rule.
+- Portions on no day are in `diary/unassigned.yaml` and `diary/bin.yaml`
+  (`docs/freezer.md`).
+- Multi-file edits are ordered so that an interrupted one can lose a meal or
+  leave a portion without one (a spare), but never leave more meals than
+  portions: sessions that keep or gain portions first, then the meal files
+  (those that lose meals before those that gain them), then sessions that
+  lose portions; deleted sessions last.
 - The shopping checklist adds an optional `have` map to session files
   (written only once used) and `diary/staples.yaml`; existing files need no
   migration.
-- Maps to two linked tables if the diary moves to SQLite (#125).
+- Maps to linked tables if the diary moves to SQLite (#125).

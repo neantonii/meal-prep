@@ -1,4 +1,5 @@
-"""Build the week page the UI shows: 7 days, session cards and totals.
+"""Build the week page the UI shows: 7 days, session cards, the two slots
+without a date and totals.
 
 Read-only: turns the loaded diary (``services.prep.Diary``) into the API
 shapes, with titles and numbers from the frozen entries and session items.
@@ -8,8 +9,11 @@ from __future__ import annotations
 
 import datetime
 import uuid
+from collections import Counter
 from collections.abc import Collection, Mapping
+from dataclasses import dataclass
 
+from meal_prep.dtos.log import RecipeEntryDTO
 from meal_prep.enums import Mealtime, RecipeCategory
 from meal_prep.models.ingredient import MacrosInfo
 from meal_prep.models.library import Library
@@ -20,6 +24,8 @@ from meal_prep.models.session import PrepSession
 from meal_prep.renderer import category_display_name
 from meal_prep.server.api_models import (
     AisleNeeds,
+    Bin,
+    BinnedMeal,
     DiaryDay,
     DiaryEntry,
     DiaryMeal,
@@ -32,6 +38,8 @@ from meal_prep.server.api_models import (
     SessionDetail,
     SessionItem,
     TakeoutEntryOut,
+    UnassignedRecipe,
+    UnassignedSource,
 )
 from meal_prep.server.weeks import week_dates
 from meal_prep.services import prep
@@ -111,7 +119,31 @@ def _needs_out(
     ]
 
 
-def _entry_out(entry: LogEntry, library: Library) -> DiaryEntry:
+@dataclass(frozen=True, slots=True)
+class _Batch:
+    """What a meal needs to know about the recipe line it is a portion of."""
+
+    cooked: datetime.date
+    fridge_days: int | None
+    freezer_friendly: bool | None
+
+
+type _Batches = dict[tuple[str, str], _Batch]
+
+
+def _batches(diary: prep.Diary) -> _Batches:
+    return {
+        (str(sid), item.recipe): _Batch(
+            session.date, item.fridge_days, item.freezer_friendly
+        )
+        for sid, session in diary.sessions.items()
+        for item in session.items
+    }
+
+
+def _entry_out(
+    entry: LogEntry, library: Library, date: datetime.date, batches: _Batches
+) -> DiaryEntry:
     m = entry.macros
     if isinstance(entry, TakeoutLogEntry):
         return TakeoutEntryOut(
@@ -123,6 +155,7 @@ def _entry_out(entry: LogEntry, library: Library) -> DiaryEntry:
             fat_g=m.fat_g,
             cost=entry.cost,
         )
+    batch = batches.get((entry.session_id or "", entry.recipe_id))
     return RecipeEntryOut(
         id=entry.entry_id,
         title=entry.title,
@@ -133,22 +166,111 @@ def _entry_out(entry: LogEntry, library: Library) -> DiaryEntry:
         recipe=entry.recipe_id,
         card_url=_card_url(library.recipes.get(entry.recipe_id)),
         session=entry.session_id,
+        cooked=None if batch is None else batch.cooked.isoformat(),
+        # Frozen is implied: eaten later than the dish keeps in the fridge.
+        frozen=(
+            batch is not None
+            and batch.fridge_days is not None
+            and (date - batch.cooked).days > batch.fridge_days
+        ),
+        freezer_friendly=None if batch is None else batch.freezer_friendly,
         fiber_g=m.fiber_g,
         cost=entry.cost,
     )
 
 
-type _Meals = dict[tuple[str, str], list[MealRef]]
+@dataclass(frozen=True, slots=True)
+class _Meals:
+    """Where the portions of every recipe line are, by (session id, recipe
+    id): on days, unassigned, binned."""
+
+    days: dict[tuple[str, str], list[MealRef]]
+    unassigned: Counter[tuple[str, str]]
+    binned: Counter[tuple[str, str]]
 
 
 def _meals_by_item(diary: prep.Diary) -> _Meals:
-    return {
-        (str(sid), recipe): [
-            MealRef(date=date.isoformat(), mealtime=mealtime.value)
-            for date, mealtime in found
-        ]
-        for (sid, recipe), found in prep.linked_meals(diary.weeks.values()).items()
-    }
+    def by_item(counts: Counter[tuple[uuid.UUID, str]]) -> Counter[tuple[str, str]]:
+        return Counter({(str(sid), recipe): n for (sid, recipe), n in counts.items()})
+
+    return _Meals(
+        days={
+            (str(sid), recipe): [
+                MealRef(date=date.isoformat(), mealtime=mealtime.value)
+                for date, mealtime in found
+            ]
+            for (sid, recipe), found in prep.linked_meals(diary.weeks.values()).items()
+        },
+        unassigned=by_item(prep.slot_counts(diary.unassigned)),
+        binned=by_item(prep.slot_counts(diary.bin)),
+    )
+
+
+def _unassigned_out(diary: prep.Diary, library: Library) -> list[UnassignedRecipe]:
+    """The unassigned slot by recipe, in title order; each with its
+    sessions, latest first. Portions whose session is gone are left out
+    (nothing can be done with them)."""
+    found: dict[str, list[tuple[datetime.date, uuid.UUID]]] = {}
+    first: dict[str, RecipeEntryDTO] = {}
+    ids: dict[str, list[tuple[datetime.date, str]]] = {}
+    for meal in diary.unassigned:
+        session = diary.sessions.get(meal.session) if meal.session else None
+        if session is None:
+            continue
+        found.setdefault(meal.recipe, []).append((session.date, session.id))
+        ids.setdefault(meal.recipe, []).append((session.date, str(meal.id)))
+        first.setdefault(meal.recipe, meal)
+    batches = _batches(diary)
+    rows = []
+    for recipe_id, sources in found.items():
+        meal = first[recipe_id]
+        counts = Counter(sources)
+        latest = max(counts)
+        rows.append(
+            UnassignedRecipe(
+                recipe=recipe_id,
+                title=meal.title,
+                card_url=_card_url(library.recipes.get(recipe_id)),
+                count=len(sources),
+                kcal=meal.calories_kcal,
+                protein_g=meal.protein_g,
+                freezer_friendly=batches[(str(latest[1]), recipe_id)].freezer_friendly
+                if (str(latest[1]), recipe_id) in batches
+                else None,
+                sources=[
+                    UnassignedSource(
+                        session=str(sid), date=date.isoformat(), count=count
+                    )
+                    for (date, sid), count in sorted(counts.items(), reverse=True)
+                ],
+                meals=[meal_id for _, meal_id in sorted(ids[recipe_id])],
+            )
+        )
+    return sorted(rows, key=lambda row: row.title.casefold())
+
+
+def _bin_out(diary: prep.Diary) -> Bin:
+    meals = sorted(diary.bin, key=lambda m: m.binned, reverse=True)
+    return Bin(
+        count=len(meals),
+        cost=sum(m.cost for m in meals),
+        meals=[
+            BinnedMeal(
+                id=str(m.id),
+                recipe=m.recipe,
+                title=m.title,
+                cost=m.cost,
+                binned=m.binned.isoformat(),
+                session=str(m.session),
+                cooked=(
+                    session.date.isoformat()
+                    if m.session and (session := diary.sessions.get(m.session))
+                    else None
+                ),
+            )
+            for m in meals
+        ],
+    )
 
 
 _CATEGORY_ORDER = {category: i for i, category in enumerate(RecipeCategory)}
@@ -188,8 +310,10 @@ def _session_out(
                 batches=item.batches,
                 servings=item.servings,
                 portions=item.portions,
-                eaten=len(meals.get((session.session_id, item.recipe_id), [])),
-                meals=meals.get((session.session_id, item.recipe_id), []),
+                eaten=len(meals.days.get((session.session_id, item.recipe_id), [])),
+                meals=meals.days.get((session.session_id, item.recipe_id), []),
+                unassigned=meals.unassigned[(session.session_id, item.recipe_id)],
+                binned=meals.binned[(session.session_id, item.recipe_id)],
                 kcal=item.macros.calories_kcal,
                 protein_g=item.macros.protein_g,
                 cost=item.cost,
@@ -211,6 +335,7 @@ def week_response(
     dto = diary.weeks.get(week)
     logged = prepare_diary_week(dto) if dto is not None else None
     by_date = {d.date: d for d in logged.days} if logged is not None else {}
+    batches = _batches(diary)
     days = []
     for date in dates:
         day = by_date.get(date)
@@ -235,7 +360,9 @@ def week_response(
                 meals=[
                     DiaryMeal(
                         mealtime=meal.mealtime.value,
-                        entries=[_entry_out(e, library) for e in meal.entries],
+                        entries=[
+                            _entry_out(e, library, date, batches) for e in meal.entries
+                        ],
                     )
                     for meal in day.meals()
                 ],
@@ -293,6 +420,8 @@ def week_response(
         exists=dto is not None,
         days=days,
         sessions=[card for _, card in cards],
+        unassigned=_unassigned_out(diary, library),
+        bin=_bin_out(diary),
         totals=totals,
     )
 

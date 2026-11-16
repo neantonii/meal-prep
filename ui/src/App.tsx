@@ -17,7 +17,6 @@ import {
   shiftWeek,
   type CatalogGroup,
   type DiaryWeek,
-  type Link,
   type Mealtime,
   type Placement,
   type TakeoutEntry,
@@ -134,7 +133,7 @@ export default function App() {
     });
   };
 
-  const handleAdd = (recipe: string, where: Placement, session: Link) =>
+  const handleAdd = (recipe: string, where: Placement, session: string | null) =>
     change((w) => api.addEntry(w, recipe, where, session, admin));
   const handleRemove = (id: string) => change((w) => api.removeEntry(w, id, admin));
   const handleSaveOther = (items: TakeoutFields[]) => {
@@ -175,13 +174,22 @@ export default function App() {
     const to = over?.data.current as DropData | undefined;
     if (!from || !to || !over) return;
     if (to.kind === "session") {
-      // Only meals go onto sessions: relink, creating an empty day's session.
-      if (from.kind === "entry")
-        change((w) =>
-          to.session
-            ? api.linkEntry(w, from.id, to.session, admin)
-            : api.linkEntryToDay(w, from.id, to.date, admin),
-        );
+      // Sessions take one thing: a recipe line from another session, which
+      // moves there with every meal (an empty day's session is created).
+      if (from.kind === "item" && from.session !== to.session) {
+        const target = to.session ? { session: to.session } : { date: to.date };
+        change((w) => api.moveItem(w, from.session, from.recipe, target, admin));
+      }
+      return;
+    }
+    if (to.kind === "unassigned") {
+      if (from.kind === "entry" || from.kind === "binned")
+        change((w) => api.moveToSlot(w, from.id, "unassigned", admin));
+      return;
+    }
+    if (to.kind === "bin") {
+      if (from.kind === "entry" || from.kind === "unassigned")
+        change((w) => api.moveToSlot(w, from.id, "bin", admin));
       return;
     }
     const where: Placement = { date: to.date, mealtime: to.meal };
@@ -198,8 +206,12 @@ export default function App() {
     } else if (sameSlot) {
       return; // dropped back on its own slot's empty space
     }
-    if (from.kind === "recipe") handleAdd(from.recipe, where, "auto");
+    // Onto a day: a recipe cooks a batch (in its cycle's session, or the
+    // session its row was dragged from); a portion that exists just moves.
+    if (from.kind === "recipe") handleAdd(from.recipe, where, null);
     else if (from.kind === "item") handleAdd(from.recipe, where, from.session);
+    else if (from.kind === "unassigned")
+      change((w) => api.takeUnassigned(w, from.recipe, where, admin));
     else handleMove(from.id, where);
   };
 
@@ -233,7 +245,7 @@ export default function App() {
           {version && <span className="version">{version}</span>}
           <button
             className={admin ? "admin-on" : ""}
-            title="Admin mode: amend history: edit settled meals, grow sessions that already happened"
+            title="Admin mode: amend history: edit settled meals, change the batches of sessions already cooked"
             onClick={() => setAdmin((a) => !a)}
           >
             {admin ? "Admin on" : "Admin"}
@@ -242,7 +254,7 @@ export default function App() {
       </header>
       {admin && (
         <div className="admin-banner">
-          Admin mode: you are amending history. Settled meals can be changed, and sessions that already happened grow to fit the meals linked to them.
+          Admin mode: you are amending history. Settled meals can be changed, and sessions already cooked take, lose and move batches like planned ones.
         </div>
       )}
       {error && <div className="err">{error}</div>}
@@ -287,10 +299,9 @@ export default function App() {
                   [state.week]: [...(cur[state.week] ?? []), date],
                 }))
               }
-              onRemoveItem={(session, recipe) =>
-                change((w) => api.removeItem(w, session, recipe, admin))
+              onRemoveBatch={(session, recipe) =>
+                change((w) => api.removeBatch(w, session, recipe, admin))
               }
-              onDelete={(session) => change((w) => api.deleteSession(w, session, admin))}
               onOpenDetails={(session) => {
                 // Keep the week we came from, for the way back.
                 window.history.pushState(null, "", `/?session=${session}&week=${state.week}`);
@@ -311,7 +322,12 @@ export default function App() {
             />
           )}
         </section>
-        <Palette groups={groups} />
+        <Palette
+          groups={groups}
+          unassigned={state?.unassigned ?? []}
+          bin={state?.bin ?? { count: 0, cost: 0, meals: [] }}
+          today={state?.today ?? ""}
+        />
       </main>
       {other && (
         <OtherForm

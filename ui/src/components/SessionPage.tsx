@@ -6,6 +6,7 @@ import {
   type NeededIngredient,
   type ShareRef,
   type SessionDetail,
+  spareOf,
 } from "../api";
 import NeedsList from "./NeedsList";
 
@@ -114,7 +115,7 @@ export default function SessionPage({ id, fromWeek, onBack }: Props) {
             </thead>
             <tbody>
               {session.items.map((it) => {
-                const spare = it.portions - it.eaten;
+                const spare = spareOf(it);
                 const own = sharesOf(it.recipe);
                 const missing = own.filter((s) => !s.have && !s.always);
                 const ticked = own.filter((s) => s.have);
@@ -142,7 +143,14 @@ export default function SessionPage({ id, fromWeek, onBack }: Props) {
                     <td>{batchLabel(it.batches)}</td>
                     <td>
                       {it.portions}
-                      {spare > 0 && <span className="spare"> ⚠ {spare} spare</span>}
+                      {it.unassigned > 0 && <span className="muted"> · {it.unassigned} unassigned</span>}
+                      {it.binned > 0 && <span className="muted"> · {it.binned} binned</span>}
+                      {spare > 0 && (
+                        <span className="spare" title="Portions no meal accounts for: something went wrong">
+                          {" "}
+                          ⚠ {spare} spare
+                        </span>
+                      )}
                     </td>
                     <td className="meals">{mealsLabel(it.meals) || "—"}</td>
                     <td>${(it.portions * it.cost).toFixed(2)}</td>

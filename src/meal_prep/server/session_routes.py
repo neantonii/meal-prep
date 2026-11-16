@@ -1,8 +1,9 @@
-"""Prep session routes: remove items; move or delete a session; the
-shopping checklist (ticks per session, staples across sessions). Items are
-added by linking meals (``diary_routes``). Item and session edits return the
-page of ``week`` (the week the UI shows); checklist edits return the
-session's own page. The rules live in ``meal_prep.services.prep``.
+"""Prep session routes: remove a batch; move a recipe line to another
+session; move a session; the shopping checklist (ticks per session, staples
+across sessions). Batches are added by putting a recipe on a day
+(``diary_routes``). Batch and session edits return the page of ``week``
+(the week the UI shows); checklist edits return the session's own page. The
+rules live in ``meal_prep.services.prep``.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from meal_prep.server.api_models import (
     AlwaysUpdate,
     DiaryWeek,
     HaveUpdate,
+    ItemMove,
     SessionDetail,
     SessionMove,
 )
@@ -53,19 +55,53 @@ def session_router(editor: Editor) -> APIRouter:
         logger.info("staple %s: %s", ingredient_id, body.always)
         return editor.detail(session_id)
 
-    @router.delete("/{session_id}/items/{recipe_id}")
-    def item_remove(
+    @router.delete("/{session_id}/items/{recipe_id}/batch")
+    def batch_remove(
         session_id: uuid.UUID, recipe_id: str, week: str, admin: bool = False
     ) -> DiaryWeek:
         def op(diary: prep.Diary) -> prep.Change:
-            change = prep.remove_item(
+            change = prep.remove_batch(
                 diary, editor.policy(admin), session_id, recipe_id
             )
-            logger.info("removed %s from session %s", recipe_id, session_id)
+            logger.info("removed a batch of %s from session %s", recipe_id, session_id)
             return change
 
         params = {"session": session_id, "recipe": recipe_id}
-        return editor.edit(week, op, action="item.remove", params=params, admin=admin)
+        return editor.edit(week, op, action="batch.remove", params=params, admin=admin)
+
+    @router.put("/{session_id}/items/{recipe_id}/session")
+    def item_move(
+        session_id: uuid.UUID,
+        recipe_id: str,
+        week: str,
+        body: ItemMove,
+        admin: bool = False,
+    ) -> DiaryWeek:
+        """Move the whole recipe line, with every meal, to another session."""
+
+        def op(diary: prep.Diary) -> prep.Change:
+            change = prep.move_item(
+                diary,
+                editor.policy(admin),
+                session_id,
+                recipe_id,
+                body.session,
+                body.date,
+            )
+            logger.info(
+                "moved %s from session %s to %s",
+                recipe_id,
+                session_id,
+                body.session or body.date,
+            )
+            return change
+
+        params = {
+            "session": session_id,
+            "recipe": recipe_id,
+            "to": body.model_dump(mode="json"),
+        }
+        return editor.edit(week, op, action="item.move", params=params, admin=admin)
 
     @router.patch("/{session_id}")
     def session_move(
@@ -80,19 +116,5 @@ def session_router(editor: Editor) -> APIRouter:
 
         params = {"session": session_id, **body.model_dump(mode="json")}
         return editor.edit(week, op, action="session.move", params=params, admin=admin)
-
-    @router.delete("/{session_id}")
-    def session_delete(
-        session_id: uuid.UUID, week: str, admin: bool = False
-    ) -> DiaryWeek:
-        def op(diary: prep.Diary) -> prep.Change:
-            change = prep.delete_session(diary, editor.policy(admin), session_id)
-            logger.info("deleted session %s", session_id)
-            return change
-
-        params = {"session": session_id}
-        return editor.edit(
-            week, op, action="session.delete", params=params, admin=admin
-        )
 
     return router
