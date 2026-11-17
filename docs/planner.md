@@ -1,8 +1,9 @@
 # Planner
 
 Status: first version built (#200: hard templates, Plan / Accept / Clear
-plans). Next: the model below, where existing meals are pins and templates
-are soft (see "Existing items are pins", "Soft templates"). The terms were
+plans). Next: the model below, where existing meals are pins, the
+objective is a sum of named terms, and each slot chooses an archetype
+(see "Existing items are pins", "Terms", "Archetypes"). The terms were
 first tried in a sandbox (branch `sandbox/session-optimizer`, reference
 only). The meal
 requirements themselves (what a breakfast is, the kcal target, pairing
@@ -79,44 +80,119 @@ change how a constraint or term is written: they only fix variables.
   Long reach (frequency over weeks): precomputed per-recipe counts, not
   slot variables, so a month of history does not grow the model.
 
-### Soft templates
+### Terms: the extension point
 
-Templates stay as the local recommendation ("I like a meal of protein +
-carb + veg"), but they are scored, not enforced: rice every day is a
-possible plan, it just costs a lot.
+The objective is a sum of named **terms**. A term reads the shared
+variables and adds its own: `build(ctx) -> points expression`, plus a name
+for the points breakdown. The model builds the shared variables once
+(`x`, `b`, the archetype choice per slot) and each term contributes;
+adding a term is one class and changes nothing else. Pins never reach a
+term: they only fix variables.
 
-- **Roles** are groups of recipes: protein, carb, cooked veg, salad,
-  one-dish, each breakfast-set item, apple, cottage cheese, takeout, and
-  "unknown" (fits no role). `count[slot, role] = Σ x` over the role's
-  recipes, pinned or planned alike.
-- **An option** is a recommended composition: a target count per role.
-  Lunch "plate" = protein 1, carb 1, cooked veg 1, the rest 0; lunch "one
-  dish" = one-dish 1; "eat out" = takeout 1; a breakfast set = 1 of each of
-  its recipes.
-- **A slot pays for its closest option:**
-  `min over options of Σ_role (missing × w_missing[role] + extra × w_extra[role])`,
-  linear with one choice flag per option (exactly one per slot), the
-  shortfall and excess counted only for the chosen one. An option may
-  carry a base cost (plates preferred over one-dish; oats on Mon / Wed /
-  Fri as a per-weekday cost).
-- **Consequences.** A half-filled meal is completed because completing it
-  is cheaper. A takeout dinner picks "eat out" at no cost. Two proteins
-  placed by hand pay their "extra" and nothing breaks. An empty slot pays
-  the missing points of its closest option, so the planner fills it; low
-  weights make snacks optional.
+Two shapes cover the terms so far (see "Point system"): an **amount**
+(`weight × ((x − target) / tolerance)²`, with the quadratic helper) and an
+**event** (`weight × count`).
+
+### Archetypes
+
+What a meal looks like is decided per slot by an **archetype**: an explicit
+choice variable `archetype[slot, a]`, exactly one per slot, among the
+archetypes its mealtime allows. The solver picks the archetype and the
+dishes; the slot pays for how badly its dishes fit the chosen archetype.
+Nothing is enforced, so pinned contents never conflict: at worst the slot
+pays a misfit. Rice every day is a possible plan; it just costs a lot.
+
+Because the choice is a variable, later terms can act on it: per-day
+preferences (one-dish on Sundays), frequency ("one-dish at most twice a
+week"), diversity of archetypes over the week.
+
+**Class shape** (kept shallow; subclass only for new behaviour, never for
+new data):
+
+```
+Term (protocol)              build(ctx) -> points, name
+└── Archetype (protocol)     fit(ctx, slot) -> points if chosen
+    └── RoleArchetype        roles with target counts and penalties
+        ├── Split            3 roles, one dish each (protein, carb, veg)
+        ├── Single           1 role: one unit from a pool
+        │   └── Bundle       Single whose pool is one fixed set
+        └── (later) flexible kinds, e.g. 2-3 roles, optional extras
+```
+
+- **`RoleArchetype`** does the work. A role has a **pool** (recipes or
+  bundles), a **target count range** (exactly 1; 0-2 for extras) and
+  **missing / extra weights**. Fit = weighted shortfall and excess per role,
+  plus a cost for anything in the slot no role takes. Linear: the
+  shortfall and excess are counted only when the archetype is chosen.
+- **Strict vs flexible is a weight, not a class.** A breakfast bundle has
+  high missing and extra weights; a plate moderate ones, so the solver can
+  leave the pattern when it really pays. "Hard" is a very large weight; no
+  archetype is a hard constraint.
+- **Pool units can be bundles**: a set of recipes eaten together is one
+  unit (a breakfast set, apple + cottage cheese). Half a bundle pays its
+  missing items. Bundles are authored data (the unused `Meal` bundles,
+  `meals/*.yaml`, revived for this; `docs/spikes/meal-composition.md`).
+- **Extensions add named terms on top of the fit**, e.g. a Split with
+  pairing rules (requirement P1, rice-stick noodles only with minced meat:
+  a penalty on that protein-carb pair), or a balanced-plate nutrient term.
+- **Preferences on units** use the same machinery: oats on Mon / Wed / Fri
+  (B1) is a per-weekday cost on one pool unit.
+- **Archetype base cost**: plates slightly preferred over one-dish, etc.
+
+**Configuration** (data, not code): which archetypes each mealtime allows,
+with their pools and weights. Pools that differ by mealtime (cooked veg at
+lunch, salad at dinner) are configuration, not subclasses.
+
+```yaml
+archetypes:
+  lunch:
+    - split:  {protein: modular_protein, carb: modular_carb, veg: modular_cooked_veg}
+    - single: {pool: one_dish, base_cost: 0.5}
+  dinner:
+    - split:  {protein: modular_protein, carb: modular_carb, veg: fresh_salad_veg}
+    - single: {pool: one_dish, base_cost: 0.5}
+  breakfast:
+    - single: {pool: [oats-set, eggs-set, sausage-set], strict: true}
+  snacks:
+    - bundle: apple-cottage
+```
+
+Takeout needs an archetype too, or the planner would "complete" a takeout
+dinner with a plate around it: **eat out**, a Single whose pool is any
+takeout entry, allowed at lunch and dinner. The planner never picks it for
+an empty slot (takeout can't be planned); it matches pinned takeout at no
+cost.
 
 Starting weights (points; a leftover portion and a next-day repeat are 1):
 
-| Role | missing | extra |
+| Archetype role | missing | extra |
 |---|---|---|
-| protein, carb (main meals) | 5 | 3 |
-| veg, salad | 3 | 1 |
-| one-dish | 5 | 3 |
-| breakfast set item | 2 | 2 |
-| apple, cottage cheese | 1 | 0.5 |
-| other snack | – | 0.2 |
-| unknown item | – | 1 |
-| same recipe twice in a day | – | 5 |
+| Split: protein, carb | 5 | 3 |
+| Split: veg | 3 | 1 |
+| Single: one-dish | 5 | 3 |
+| Bundle item (breakfast, strict) | 5 | 5 |
+| Snack bundle item | 1 | 0.5 |
+| Anything no role takes | – | 1 |
+
+### Where the first version's rules go
+
+| First version | In this model |
+|---|---|
+| Hard template per empty slot (exactly one option, its roles) | `archetype[slot, a]` + `RoleArchetype` fit (soft) |
+| Breakfast presets | Single over breakfast bundles, strict weights |
+| Lunch / dinner "plate" and "one dish" options | Split and Single archetypes, per-mealtime pools |
+| Snacks: fixed pair + any other snack | Bundle apple + cottage cheese; extras later |
+| Slots holding anything skipped | gone: their meals are pins, the slot is completed or pays a misfit |
+| `eaten` set (once-a-day, repeats) | gone: pinned `x`, the terms read all `x` alike |
+| Once a day (hard) | event term, 5 points per extra use in a day |
+| Next-day repeat (1 point, special-cased for fixed days) | event term over all `x`, history days included |
+| Leftovers (1 point per portion, planned batches only) | event term over every batch, manual ones included |
+| `uses ≤ batches × servings` | hard, unchanged (diary invariant), with binned and unassigned portions counted |
+| Meal on or after its session's date | hard, unchanged (diary invariant) |
+| Truncated last session (leftovers not charged) | a parameter of the leftover term |
+| Session of a meal = its cycle day | session is a variable index; candidates: cycle session + sessions with stock |
+| Points per term in the plan | one name per term, the breakdown is automatic |
+| Deterministic solve, time limit | unchanged |
 
 ### First version (built, being replaced)
 
@@ -163,8 +239,9 @@ reports its points per term, so a strange plan can be explained.
 
 | Term | Shape | Parameters | Status |
 |---|---|---|---|
-| Templates | event | soft, per role (table above) | next (hard in the first version) |
+| Archetype fit | event | per role (Archetypes) | next (hard templates in the first version) |
 | Same recipe twice in a day | event | 5 points | next (hard in the first version) |
+| Archetype preferences | event | per day / frequency | later |
 | Leftover portion | event | 1 point each | first version |
 | Repeat on the next day | event | 1 point each | first version |
 | Daily kcal | amount | 2100, tolerance 100, hard 0–4000 | next |
@@ -221,9 +298,9 @@ Notes per term:
 1. **First version** (done, #200): hard templates, the planned flag,
    Plan / Accept / Clear plans, leftovers and next-day repeats over 7 days;
    the old `plan_week` and its report retired.
-2. **Pins and soft templates:** the model above. Half-filled meals get
+2. **Pins, terms and archetypes:** the model above. Half-filled meals get
    completed, existing batches and unassigned stock count, history is
-   pinned slots.
+   pinned slots, archetypes are chosen per slot and scored.
 3. Kcal terms, then session repeats.
 4. A points breakdown in the UI and a config file in the diary folder, so
    weights can be tuned without a deploy.
@@ -243,7 +320,8 @@ Notes per term:
    less?
 5. Made-fresh recipes (#145): until the recipe property exists, a list in
    the config.
-6. Meal composition (`docs/spikes/meal-composition.md`): soft templates are
-   option C of the spike in practice.
+6. Meal composition (`docs/spikes/meal-composition.md`): archetypes with
+   bundle pools answer it (option C); the spike can be closed with this
+   design.
 7. Should accepted or manual meals ever be moved by the planner (soft
    pins)? Today: never.
