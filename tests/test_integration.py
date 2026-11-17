@@ -8,6 +8,7 @@ the loader or a service raises and the test fails.
 
 from __future__ import annotations
 
+import datetime
 from pathlib import Path
 
 import pytest
@@ -15,10 +16,12 @@ import pytest
 from meal_prep import renderer
 from meal_prep.adapters.ingredients import load_all_ingredients
 from meal_prep.adapters.units import load_units
+from meal_prep.enums import Mealtime
 from meal_prep.library import load_library
 from meal_prep.models.library import Library
-from meal_prep.planner.report import render_week_plan_page
-from meal_prep.planner.solver import plan_week
+from meal_prep.planner.plan import MealSlot
+from meal_prep.planner.solver import plan
+from meal_prep.planner.templates import STANDARD
 from meal_prep.services.ingredients import prepare_catalog
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -122,13 +125,16 @@ def test_air_fried_chicken_breast_totals(library: Library):
     assert recipe.per_serving_macros.protein_g == pytest.approx(54.86, abs=0.01)
 
 
-def test_solve_week_plan_and_render_page(tmp_path, library: Library):
-    plan = plan_week(list(library.recipes.values()))
-    assert len(plan.days) == 7
-
-    target = render_week_plan_page(
-        plan, tmp_path / "weekly_plan" / "plan.html", recipes=library.recipes
-    )
-    content = target.read_text(encoding="utf-8")
-    assert content.startswith("<!DOCTYPE html>")
-    assert content.count('class="day-card"') == 7
+def test_plan_a_week_from_the_library(library: Library):
+    """The standard templates can be filled from the real recipes."""
+    thursday = datetime.date(2026, 11, 5)
+    slots = [
+        MealSlot(
+            date=thursday + datetime.timedelta(days=d), mealtime=m, session=thursday
+        )
+        for d in range(3)
+        for m in Mealtime
+    ]
+    result = plan(list(library.recipes.values()), slots, STANDARD)
+    filled = {(p.slot.date, p.slot.mealtime) for p in result.picks}
+    assert filled == {(s.date, s.mealtime) for s in slots}
