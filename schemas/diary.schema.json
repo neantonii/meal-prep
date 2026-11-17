@@ -136,6 +136,19 @@
           "title": "Id",
           "type": "string"
         },
+        "planned": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "True when the planner placed this serving and nobody has accepted or moved it yet; absent otherwise",
+          "title": "Planned"
+        },
         "potassium_mg": {
           "description": "Per serving, when logged",
           "minimum": 0,
