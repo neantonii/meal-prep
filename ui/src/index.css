@@ -210,6 +210,9 @@ tr.day.log td:not(.day-cell) { background: rgba(255, 255, 255, 0.015); }
 .entry.planned { outline: 1px dashed var(--text-muted); outline-offset: -1px; opacity: 0.9; }
 .entry.planned::before { content: "✦"; color: var(--text-muted); font-size: 0.7rem; margin-right: -2px; }
 .plan-actions { display: flex; gap: 6px; }
+/* Session panel: a recipe line the planner added, wholly or in part. */
+.session-item.planned { outline: 1px dashed var(--text-muted); outline-offset: -2px; border-radius: 6px; }
+.planned-tag { color: var(--text-muted); font-size: 0.8rem; white-space: nowrap; }
 .plan-actions button, .session-actions .accept { font-size: 0.8rem; }
 .plan-actions button:first-child { background: var(--primary); color: #06202e; font-weight: 700; border: none; }
 .actions button.admin-on { background: var(--danger); color: #2b0606; border: none; font-weight: 700; }

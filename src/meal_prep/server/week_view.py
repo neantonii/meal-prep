@@ -187,36 +187,37 @@ class _Meals:
     days: dict[tuple[str, str], list[MealRef]]
     unassigned: Counter[tuple[str, str]]
     binned: Counter[tuple[str, str]]
-    planned: Counter[str]  # meals the planner placed, per session id
-
-
-def _planned_by_session(diary: prep.Diary) -> Counter[str]:
-    """Planned (not yet accepted) meals per session id, on days and
-    unassigned."""
-    counts: Counter[str] = Counter(
-        str(link.session)
-        for link in prep.linked_entries(diary.weeks.values())
-        if link.entry.planned
-    )
-    counts.update(str(m.session) for m in diary.unassigned if m.planned and m.session)
-    return counts
+    planned: Counter[tuple[str, str]]  # planner-placed meals, days + unassigned
 
 
 def _meals_by_item(diary: prep.Diary) -> _Meals:
     def by_item(counts: Counter[tuple[uuid.UUID, str]]) -> Counter[tuple[str, str]]:
         return Counter({(str(sid), recipe): n for (sid, recipe), n in counts.items()})
 
+    order = list(Mealtime)
+    days: dict[tuple[str, str], list[tuple[datetime.date, int, MealRef]]] = {}
+    planned: Counter[tuple[str, str]] = Counter()
+    for link in prep.linked_entries(diary.weeks.values()):
+        key = (str(link.session), link.entry.recipe)
+        ref = MealRef(
+            date=link.date.isoformat(),
+            mealtime=link.mealtime.value,
+            planned=bool(link.entry.planned),
+        )
+        days.setdefault(key, []).append((link.date, order.index(link.mealtime), ref))
+        if link.entry.planned:
+            planned[key] += 1
+    for meal in diary.unassigned:
+        if meal.planned and meal.session:
+            planned[(str(meal.session), meal.recipe)] += 1
     return _Meals(
         days={
-            (str(sid), recipe): [
-                MealRef(date=date.isoformat(), mealtime=mealtime.value)
-                for date, mealtime in found
-            ]
-            for (sid, recipe), found in prep.linked_meals(diary.weeks.values()).items()
+            key: [ref for _, _, ref in sorted(found, key=lambda f: (f[0], f[1]))]
+            for key, found in days.items()
         },
         unassigned=by_item(prep.slot_counts(diary.unassigned)),
         binned=by_item(prep.slot_counts(diary.bin)),
-        planned=_planned_by_session(diary),
+        planned=planned,
     )
 
 
@@ -308,7 +309,9 @@ def _session_out(
         date=session.date.isoformat(),
         mode=policy.mode(session.date).value,
         in_window=in_window,
-        planned=meals.planned[session.session_id],
+        planned=sum(
+            n for (sid, _), n in meals.planned.items() if sid == session.session_id
+        ),
         items=[
             SessionItem(
                 recipe=item.recipe_id,
@@ -329,6 +332,7 @@ def _session_out(
                 meals=meals.days.get((session.session_id, item.recipe_id), []),
                 unassigned=meals.unassigned[(session.session_id, item.recipe_id)],
                 binned=meals.binned[(session.session_id, item.recipe_id)],
+                planned=meals.planned[(session.session_id, item.recipe_id)],
                 kcal=item.macros.calories_kcal,
                 protein_g=item.macros.protein_g,
                 cost=item.cost,

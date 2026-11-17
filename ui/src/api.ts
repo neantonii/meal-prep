@@ -115,6 +115,8 @@ export interface DiaryDay {
 export interface MealRef {
   date: string;
   mealtime: string;
+  /** placed by the planner, not yet accepted */
+  planned: boolean;
 }
 
 /** One recipe of a prep session: frozen numbers plus made vs eaten. */
@@ -138,6 +140,8 @@ export interface SessionItem {
   unassigned: number;
   /** its meals thrown away */
   binned: number;
+  /** its meals the planner placed, on days and unassigned */
+  planned: number;
   kcal: number;
   protein_g: number;
   cost: number;
@@ -387,9 +391,11 @@ export function sessionColor(date: string, monday: string): string {
   return slots[offset] ?? (offset >= -1 && offset <= 6 ? "c4" : "c5");
 }
 
-/** "Mon lunch · Wed dinner" for a list of meals. */
+/** "Mon lunch · ✦Wed dinner" for a list of meals (✦: planned). */
 export function mealsLabel(meals: MealRef[]): string {
-  return meals.map((m) => `${dayLabel(m.date).split(" ")[0]} ${m.mealtime}`).join(" · ");
+  return meals
+    .map((m) => `${m.planned ? "✦" : ""}${dayLabel(m.date).split(" ")[0]} ${m.mealtime}`)
+    .join(" · ");
 }
 
 /** Shift an ISO week id ("2026-W43") by `delta` weeks. */

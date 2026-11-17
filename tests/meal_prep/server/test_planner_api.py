@@ -96,3 +96,17 @@ def test_planning_a_full_week_is_refused(client: TestClient):
     response = client.post("/api/plan", params={"week": W45})
     assert response.status_code == 409
     assert "Nothing to plan" in response.json()["detail"]
+
+
+def test_session_rows_tell_planned_from_manual(client: TestClient):
+    _ok(_add(client, "2026-11-06", CHICKEN, mealtime="dinner"))  # by hand
+    week = _plan(client)
+    thursday = next(s for s in week["sessions"] if s["date"] == "2026-11-05")
+    chicken = next(i for i in thursday["items"] if i["recipe"] == CHICKEN)
+    manual = [m for m in chicken["meals"] if not m["planned"]]
+    assert {"date": "2026-11-06", "mealtime": "dinner", "planned": False} in manual
+    planned_rows = [i for i in thursday["items"] if i["planned"]]
+    assert (
+        planned_rows
+        and sum(i["planned"] for i in thursday["items"]) == thursday["planned"]
+    )
