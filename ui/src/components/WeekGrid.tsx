@@ -201,9 +201,17 @@ function EntryRow({
   return (
     <div
       ref={setNodeRef}
-      className={`entry ${edge}${isDragging ? " dragging" : ""}${incoming ? " incoming" : ""}`}
+      className={`entry ${edge}${entry.kind === "recipe" && entry.planned ? " planned" : ""}${isDragging ? " dragging" : ""}${incoming ? " incoming" : ""}`}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      title={entry.kind === "takeout" ? "Takeout" : entry.session ? undefined : "Not from a prep session"}
+      title={
+        entry.kind === "takeout"
+          ? "Takeout"
+          : entry.planned
+            ? "Planned: move it, or accept its session, to keep it"
+            : entry.session
+              ? undefined
+              : "Not from a prep session"
+      }
       {...attributes}
       {...listeners}
     >

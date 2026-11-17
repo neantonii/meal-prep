@@ -16,8 +16,8 @@ dependencies = [
 
 [dependency-groups]
 # The planner (CP-SAT solver) is the only user of OR-Tools, which brings
-# numpy, pandas and protobuf. Kept out of [project] so the server image
-# doesn't ship ~225 MB it never imports; installed by default for dev and CI.
+# numpy, pandas and protobuf (~225 MB). A group of its own so that only the
+# planner pulls it in; the server image installs it (the week page's Plan).
 planner = [
     "ortools==9.15.6755",
 ]

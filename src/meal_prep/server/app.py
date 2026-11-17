@@ -33,6 +33,7 @@ from meal_prep.server.editing import Editor
 from meal_prep.server.estimate import CachedEstimator, Estimator
 from meal_prep.server.estimate_routes import estimate_router
 from meal_prep.server.journal import Journal
+from meal_prep.server.planner_routes import planner_router
 from meal_prep.server.session_routes import session_router
 from meal_prep.server.store import DiaryStore
 from meal_prep.server.weeks import current_week
@@ -178,6 +179,7 @@ def create_app(
         estimate_router(None if estimator is None else CachedEstimator(estimator))
     )
     app.include_router(session_router(editor))
+    app.include_router(planner_router(editor))
     app.include_router(cards_router(library))
 
     ui_dir = Path(__file__).resolve().parent / "static"
