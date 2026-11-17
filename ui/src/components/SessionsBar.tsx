@@ -296,7 +296,9 @@ function ItemRow({
   });
   const meals = [mealsLabel(it.meals), elsewhere(it)].filter(Boolean).join(" · ");
   return (
-    <div className={`session-item${isDragging ? " dragging" : ""}`}>
+    <div
+      className={`session-item${it.planned > 0 && it.planned === it.portions ? " planned" : ""}${isDragging ? " dragging" : ""}`}
+    >
       <span
         ref={setNodeRef}
         className="item-handle"
@@ -316,6 +318,15 @@ function ItemRow({
       </span>
       <span className="item-amount">
         {batchLabel(it.batches)} · {it.portions} portion{it.portions === 1 ? "" : "s"}
+        {it.planned > 0 && (
+          <span
+            className="planned-tag"
+            title="Portions the planner placed (✦ below); Accept plan keeps them, Clear plans removes them"
+          >
+            {" "}
+            ✦ {it.planned === it.portions ? "planned" : `${it.planned} planned`}
+          </span>
+        )}
       </span>
       <span className="item-meals" title="Where this recipe's portions are">
         {meals || "no meals"}

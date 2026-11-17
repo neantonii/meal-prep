@@ -271,8 +271,8 @@ def test_session_detail_lists_each_items_meals(client: TestClient):
     sun = _card(week, "2026-11-01")
     [item] = sun["items"]
     assert item["meals"] == [
-        {"date": "2026-11-01", "mealtime": "dinner"},
-        {"date": "2026-11-02", "mealtime": "lunch"},
+        {"date": "2026-11-01", "mealtime": "dinner", "planned": False},
+        {"date": "2026-11-02", "mealtime": "lunch", "planned": False},
     ]
     detail = _ok(client.get(f"/api/sessions/{sun['id']}"))
     assert detail["week"] == W44

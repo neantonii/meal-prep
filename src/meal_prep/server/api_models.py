@@ -82,6 +82,7 @@ class MealRef(BaseModel):
 
     date: str
     mealtime: str
+    planned: bool = False  # placed by the planner, not yet accepted
 
 
 class SessionItem(BaseModel):
@@ -99,6 +100,7 @@ class SessionItem(BaseModel):
     meals: list[MealRef]  # those meals: which days and mealtimes
     unassigned: int  # its meals with no day yet
     binned: int  # its meals thrown away
+    planned: int = 0  # its meals the planner placed (days and unassigned)
     kcal: float
     protein_g: float
     cost: float
