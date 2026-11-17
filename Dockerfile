@@ -10,7 +10,8 @@
 #
 # Stages: `test` and the final runtime stage are siblings built on the same
 # `deps` stage, so the tests run against exactly the server packages that
-# ship. Dev tools, the planner group and the tests never reach the runtime
+# ship. The planner group (OR-Tools) ships too: the server plans the week
+# ahead (docs/planner.md). Dev tools and the tests never reach the runtime
 # image; neither do uv, node or any package cache.
 #
 # Pinning: every image by digest (Dependabot's docker ecosystem proposes
@@ -53,14 +54,14 @@ FROM python-uv AS deps
 # keeps src/ at the same path the editable install points to.
 COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-default-groups --no-install-project
+    uv sync --locked --no-default-groups --group planner --no-install-project
 COPY src/ ./src/
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-default-groups
+    uv sync --locked --no-default-groups --group planner
 
 # ---- CI gate: lint, types, tests (never shipped) ----
 FROM deps AS test
-# Adds the dev and planner groups on top of the server packages. (uv sync is
+# Adds the dev group on top of the server and planner packages. (uv sync is
 # exact: --no-install-project here would uninstall the project deps put in.)
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked

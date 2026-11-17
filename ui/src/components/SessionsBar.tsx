@@ -18,6 +18,8 @@ interface Props {
   onRemoveBatch: (session: string, recipe: string) => void;
   /** Open the session's own page. */
   onOpenDetails: (session: string) => void;
+  /** Keep the session's planned meals: they become ordinary meals. */
+  onAcceptPlan: (session: string) => void;
 }
 
 /** A session as a drop target (its chip or open panel): a recipe line
@@ -75,6 +77,7 @@ export default function SessionsBar(props: Props) {
           mode: date > today ? "plan" : "log",
           in_window: true,
           items: [],
+          planned: 0,
         }),
       ),
   ].sort((a, b) => Number(a.in_window) - Number(b.in_window) || a.date.localeCompare(b.date));
@@ -157,6 +160,7 @@ function SessionPanel({
   admin,
   onRemoveBatch,
   onOpenDetails,
+  onAcceptPlan,
 }: Props & { session: Session; onClose: () => void }) {
   const { id, date, mode } = session;
   // What the rules allow here (the server has the final say): today's
@@ -202,6 +206,15 @@ function SessionPanel({
             : `${session.items.length} recipe${session.items.length === 1 ? "" : "s"} · ${portions} portions`}
         </span>
         <span className="session-actions">
+          {id && session.planned > 0 && (
+            <button
+              className="accept"
+              title="Keep this session's planned meals: they become ordinary meals that Clear plans leaves alone"
+              onClick={() => onAcceptPlan(id)}
+            >
+              Accept plan ({session.planned})
+            </button>
+          )}
           {id && <button onClick={() => onOpenDetails(id)}>Details →</button>}
           <button className="x" title="Close (Esc)" onClick={onClose}>
             ×

@@ -48,6 +48,7 @@ class RecipeEntryOut(_EntryOut):
     freezer_friendly: bool | None  # None: not recorded
     fiber_g: float
     cost: float
+    planned: bool = False  # placed by the planner, not yet accepted
 
 
 class TakeoutEntryOut(_EntryOut):
@@ -111,6 +112,7 @@ class Session(BaseModel):
     mode: str  # "plan" or "log"
     in_window: bool  # False: an older session linked from this week
     items: list[SessionItem]
+    planned: int = 0  # its meals the planner placed, not yet accepted
 
 
 class NeedShare(BaseModel):
