@@ -40,9 +40,7 @@ Week-agnostic. Drafted together, section by section.
 - S1 (TODO): Discretionary, unplanned for now — fills the gap between planned meals
   and the ~2100 kcal target.
 
-## Rendering
+## Planner
 
-- The planner renders its own report (`planner/report.py`). Diary weeks:
-  `python scripts/render_week.py diary/2026-W43.yaml` writes
-  `weekly_plan/diary-2026-W43.html` (regenerates recipe cards first, links
-  relativized automatically).
+- The templates in `planner/templates.py` encode B1/B2, L1, D1 and the
+  snacks; `docs/planner.md` is the design.

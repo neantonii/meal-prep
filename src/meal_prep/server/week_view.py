@@ -175,6 +175,7 @@ def _entry_out(
         freezer_friendly=None if batch is None else batch.freezer_friendly,
         fiber_g=m.fiber_g,
         cost=entry.cost,
+        planned=entry.planned,
     )
 
 
@@ -186,6 +187,19 @@ class _Meals:
     days: dict[tuple[str, str], list[MealRef]]
     unassigned: Counter[tuple[str, str]]
     binned: Counter[tuple[str, str]]
+    planned: Counter[str]  # meals the planner placed, per session id
+
+
+def _planned_by_session(diary: prep.Diary) -> Counter[str]:
+    """Planned (not yet accepted) meals per session id, on days and
+    unassigned."""
+    counts: Counter[str] = Counter(
+        str(link.session)
+        for link in prep.linked_entries(diary.weeks.values())
+        if link.entry.planned
+    )
+    counts.update(str(m.session) for m in diary.unassigned if m.planned and m.session)
+    return counts
 
 
 def _meals_by_item(diary: prep.Diary) -> _Meals:
@@ -202,6 +216,7 @@ def _meals_by_item(diary: prep.Diary) -> _Meals:
         },
         unassigned=by_item(prep.slot_counts(diary.unassigned)),
         binned=by_item(prep.slot_counts(diary.bin)),
+        planned=_planned_by_session(diary),
     )
 
 
@@ -293,6 +308,7 @@ def _session_out(
         date=session.date.isoformat(),
         mode=policy.mode(session.date).value,
         in_window=in_window,
+        planned=meals.planned[session.session_id],
         items=[
             SessionItem(
                 recipe=item.recipe_id,

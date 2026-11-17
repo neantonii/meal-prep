@@ -4,9 +4,9 @@
 
 - **Setup (fresh container)**: `uv sync --locked` (installs the project
   editable plus the `dev` and `planner` groups into `.venv` exactly as
-  `uv.lock` pins it). The `planner` group (OR-Tools) is kept out of
-  `[project]` so the server image doesn't ship it; add planner-only
-  dependencies with `uv add --group planner`.
+  `uv.lock` pins it). The `planner` group (OR-Tools) is its own group so
+  only the planner pulls it in; the server image installs it (the week
+  page's Plan). Add planner-only dependencies with `uv add --group planner`.
   Install uv with `pip install uv` if missing. UI: `cd ui && npm ci` on the
   Node major in the Dockerfile's `ui` stage.
 - **CI = the Dockerfile.** Python, Node and uv versions live only in the

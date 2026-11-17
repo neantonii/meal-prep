@@ -278,6 +278,20 @@ export default function App() {
             <span>
               {dates.length > 0 ? `${dates[0]} – ${dates[dates.length - 1]}` : ""}
             </span>
+            <span className="plan-actions">
+              <button
+                title="Fill the empty meals of the week ahead and the sessions that cook them"
+                onClick={() => change((w) => api.plan(w))}
+              >
+                Plan
+              </button>
+              <button
+                title="Remove every planned meal (✦) that wasn't accepted, and the batches only they needed"
+                onClick={() => change((w) => api.clearPlans(w))}
+              >
+                Clear plans
+              </button>
+            </span>
             <span className="totals">
               {state?.exists
                 ? `${Math.round(totals["kcal"] ?? 0)} kcal · ${Math.round(totals["protein_g"] ?? 0)}g P · $${(totals["cost"] ?? 0).toFixed(2)}`
@@ -302,6 +316,7 @@ export default function App() {
               onRemoveBatch={(session, recipe) =>
                 change((w) => api.removeBatch(w, session, recipe, admin))
               }
+              onAcceptPlan={(session) => change((w) => api.acceptPlan(w, session))}
               onOpenDetails={(session) => {
                 // Keep the week we came from, for the way back.
                 window.history.pushState(null, "", `/?session=${session}&week=${state.week}`);
