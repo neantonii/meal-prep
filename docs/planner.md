@@ -1,9 +1,10 @@
 # Planner
 
-Status: design. Building blocks exist (the quadratic helper,
-`planner/quadratic.py`); the app integration below is not built. The
-model and the terms were tried in a sandbox (branch
-`sandbox/session-optimizer`, kept for reference only). The meal
+Status: first version built (#200: hard templates, Plan / Accept / Clear
+plans). Next: the model below, where existing meals are pins and templates
+are soft (see "Existing items are pins", "Soft templates"). The terms were
+first tried in a sandbox (branch `sandbox/session-optimizer`, reference
+only). The meal
 requirements themselves (what a breakfast is, the kcal target, pairing
 rules) are in `src/meal_prep/planner/requirements.md`.
 
@@ -23,8 +24,11 @@ batch is exactly its portions, and leftovers go to the unassigned slot.
 - **Plan** (one button, on the week page) plans the **week ahead**: every
   empty slot from the next planned session's cycle through the horizon
   (below). It writes all of it: sessions with batch counts, meals on days,
-  leftover portions unassigned. Slots that already hold something (manual
-  meals, takeout, accepted meals) are left alone and count as fixed.
+  leftover portions unassigned. What is already there (manual meals,
+  takeout, accepted meals) stays and is planned around: a half-filled meal
+  gets completed (see "Existing items are pins"). The first version left
+  any slot that held something alone, so a lunch with only a carb stayed
+  that way.
 - **Planned meals are flagged.** Every meal the planner creates, on a day or
   unassigned, carries `planned: true` (an optional entry field; existing
   files load unchanged). The week page shows them with a distinct style.
@@ -45,22 +49,81 @@ about 225 MB).
 
 ## The model
 
-### Slots and templates
+### Existing items are pins
 
-Every mealtime of every day in the horizon is a slot. A **template** per
-mealtime says what a slot holds (requirements B1/B2, L1, D1, S1):
+One model, built the same way whatever already exists. Existing items never
+change how a constraint or term is written: they only fix variables.
 
-- **roles:** each filled by exactly one recipe from a category or a list
-  (lunch: protein + carb + cooked veg);
-- **presets:** alternatively one fixed set of recipes eaten whole (the two
-  breakfasts);
-- **alternatives:** a whole other shape (lunch or dinner: one one-dish
-  recipe instead of the three roles);
-- **extras:** optional additions (snacks: any other snack; the escape
-  hatch).
+- **Variables.** `x[slot, recipe, session]`: this recipe, a portion of this
+  session's batch, is in this slot. `b[session, recipe]`: batches cooked.
+  Slots cover the horizon and the history days the terms reach back to.
+  Candidate sessions for a slot: its cycle session and any session with
+  stock of the recipe (unassigned portions, older batches), so a frozen or
+  older portion is representable.
+- **Pins.** A meal on a day fixes its `x = 1`. A cooked session fixes
+  `b = its batches`; a planned session keeps at least its manual batches
+  (`b ≥`, open question). History days are fully pinned.
+- **Hard constraints are only what the diary already guarantees**, so pins
+  can never make the model infeasible: a portion is eaten on or after its
+  session's date; meals from a batch (plus binned portions) never exceed
+  `b × servings`; cooked batches are fixed. Unassigned portions are
+  capacity not yet placed.
+- **Everything else is soft**, including the templates and "once a day".
+  Rejected: hard templates with constraints dropped locally where pins
+  break them (fragile, and every new rule would need its own exceptions).
+- **Write-back is the difference:** new meals are the `x = 1` that were not
+  pinned; new batches are `b` minus what existed.
+- **History** enters at two scales. Short reach (next-day repeats, rolling
+  kcal): the last few logged days are slots with every `x` pinned, the
+  terms run over them unchanged, and presolve turns them into constants.
+  Long reach (frequency over weeks): precomputed per-recipe counts, not
+  slot variables, so a month of history does not grow the model.
 
-Nothing else goes in a slot. Templates start strict (hard rules) and can
-be softened later into penalties for leaving the pattern.
+### Soft templates
+
+Templates stay as the local recommendation ("I like a meal of protein +
+carb + veg"), but they are scored, not enforced: rice every day is a
+possible plan, it just costs a lot.
+
+- **Roles** are groups of recipes: protein, carb, cooked veg, salad,
+  one-dish, each breakfast-set item, apple, cottage cheese, takeout, and
+  "unknown" (fits no role). `count[slot, role] = Σ x` over the role's
+  recipes, pinned or planned alike.
+- **An option** is a recommended composition: a target count per role.
+  Lunch "plate" = protein 1, carb 1, cooked veg 1, the rest 0; lunch "one
+  dish" = one-dish 1; "eat out" = takeout 1; a breakfast set = 1 of each of
+  its recipes.
+- **A slot pays for its closest option:**
+  `min over options of Σ_role (missing × w_missing[role] + extra × w_extra[role])`,
+  linear with one choice flag per option (exactly one per slot), the
+  shortfall and excess counted only for the chosen one. An option may
+  carry a base cost (plates preferred over one-dish; oats on Mon / Wed /
+  Fri as a per-weekday cost).
+- **Consequences.** A half-filled meal is completed because completing it
+  is cheaper. A takeout dinner picks "eat out" at no cost. Two proteins
+  placed by hand pay their "extra" and nothing breaks. An empty slot pays
+  the missing points of its closest option, so the planner fills it; low
+  weights make snacks optional.
+
+Starting weights (points; a leftover portion and a next-day repeat are 1):
+
+| Role | missing | extra |
+|---|---|---|
+| protein, carb (main meals) | 5 | 3 |
+| veg, salad | 3 | 1 |
+| one-dish | 5 | 3 |
+| breakfast set item | 2 | 2 |
+| apple, cottage cheese | 1 | 0.5 |
+| other snack | – | 0.2 |
+| unknown item | – | 1 |
+| same recipe twice in a day | – | 5 |
+
+### First version (built, being replaced)
+
+Hard templates per empty slot (exactly one option; roles, presets,
+alternatives, extras). Slots holding anything were skipped, existing
+batches and unassigned stock were not in the model, and "fixed vs planned"
+was special-cased in each term.
 
 ### Sessions and batches
 
@@ -84,15 +147,6 @@ Rejected: a horizon in whole sessions (the last day comes out half
 planned), and averaging kcal over shifted "dinner-to-lunch" days (every
 per-day rule would have to pick a kind of day).
 
-### Fixed inputs
-
-- Meals already on days (manual, takeout, accepted) count as fixed: their
-  kcal enter the day and window sums, their recipes enter the repeat
-  terms.
-- Days before the horizon (logged history) count as fixed numbers in the
-  rolling windows and repeat terms.
-- Unassigned portions are free stock (planned use: later).
-
 ## Point system
 
 Every soft term is in **points**, so unlike terms can be weighed against
@@ -109,8 +163,8 @@ reports its points per term, so a strange plan can be explained.
 
 | Term | Shape | Parameters | Status |
 |---|---|---|---|
-| Templates | hard | per mealtime | first version |
-| No recipe twice in a day | hard | | first version |
+| Templates | event | soft, per role (table above) | next (hard in the first version) |
+| Same recipe twice in a day | event | 5 points | next (hard in the first version) |
 | Leftover portion | event | 1 point each | first version |
 | Repeat on the next day | event | 1 point each | first version |
 | Daily kcal | amount | 2100, tolerance 100, hard 0–4000 | next |
@@ -164,22 +218,32 @@ Notes per term:
 
 ## Order of work
 
-1. **First version:** templates, the planned flag, Plan / Accept / Clear
-   plans, leftovers and next-day repeats, written over 7 days. Retire the
-   old `plan_week` and its report (#103, L5).
-2. Kcal terms, then session repeats.
-3. A points breakdown in the UI and a config file in the diary folder, so
+1. **First version** (done, #200): hard templates, the planned flag,
+   Plan / Accept / Clear plans, leftovers and next-day repeats over 7 days;
+   the old `plan_week` and its report retired.
+2. **Pins and soft templates:** the model above. Half-filled meals get
+   completed, existing batches and unassigned stock count, history is
+   pinned slots.
+3. Kcal terms, then session repeats.
+4. A points breakdown in the UI and a config file in the diary folder, so
    weights can be tuned without a deploy.
-4. Long-run frequency (with the `added` field), then freshness and spread
+5. Long-run frequency (with the `added` field), then freshness and spread
    as real plans show the need.
 
 ## Open questions
 
-1. Frequency shares: equal per role to start; which recipes get more or
+1. Unassigned stock: may the planner put existing unassigned portions on
+   days (as planned meals)? Proposed: yes; that is what the slot is for
+   (`docs/freezer.md`).
+2. Planned sessions with manual batches: `b ≥ yours` (the plan may add
+   batches of a recipe you batched) or `b = yours`? Proposed: `≥`.
+3. How far back history reaches per term (a day for repeats, the window
+   for rolling kcal, weeks for frequency).
+4. Frequency shares: equal per role to start; which recipes get more or
    less?
-2. Made-fresh recipes (#145): until the recipe property exists, a list in
+5. Made-fresh recipes (#145): until the recipe property exists, a list in
    the config.
-3. Meal composition (`docs/spikes/meal-composition.md`): the templates here
-   are option C of the spike in practice.
-4. Should accepted or manual meals ever be moved by the planner (soft pins)?
-   Today: never.
+6. Meal composition (`docs/spikes/meal-composition.md`): soft templates are
+   option C of the spike in practice.
+7. Should accepted or manual meals ever be moved by the planner (soft
+   pins)? Today: never.
