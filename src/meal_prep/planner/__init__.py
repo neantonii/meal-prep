@@ -1,19 +1,31 @@
-"""Weekly meal planner — 7 days x 3 meal slots, one recipe per meal.
+"""The meal planner (``docs/planner.md``).
 
-Consumes enriched ``meal_prep.models.Recipe`` values, solves the cheapest
-assignment with CP-SAT (``meal_prep.planner.solver`` owns the OR-Tools
-import), and returns the frozen ``WeekPlan`` (``meal_prep.planner.plan``).
-``meal_prep.planner.report`` renders the plan to standalone HTML.
+``meal_prep.planner.plan`` holds the plain input and output values,
+``meal_prep.planner.templates`` the standard meal pattern, and
+``meal_prep.planner.solver`` (the only module that imports OR-Tools) builds
+and solves the model. Writing a plan into the diary is the services' job.
 """
 
 from __future__ import annotations
 
 from meal_prep.planner.plan import (
-    DailyPlannedMeal,
+    MealSlot,
+    MealTemplate,
+    Option,
+    Plan,
     PlannedBatch,
-    PlannedMeal,
-    WeekPlan,
+    Role,
+    SlotPick,
+    Weights,
 )
-from meal_prep.planner.solver import plan_week
 
-__all__ = ["DailyPlannedMeal", "PlannedBatch", "PlannedMeal", "WeekPlan", "plan_week"]
+__all__ = [
+    "MealSlot",
+    "MealTemplate",
+    "Option",
+    "Plan",
+    "PlannedBatch",
+    "Role",
+    "SlotPick",
+    "Weights",
+]

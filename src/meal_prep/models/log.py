@@ -39,6 +39,7 @@ class RecipeLogEntry:
     recipe_id: str
     cost: float
     session_id: str | None = None
+    planned: bool = False  # placed by the planner, not yet accepted
 
 
 @dataclass(frozen=True, slots=True)

@@ -15,10 +15,10 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); line
   border-bottom: 1px solid var(--border); background: var(--surface);
   position: sticky; top: 0; z-index: 10; }
 .top h1 { font-size: 1.1rem; }
-.pager button, .actions button { background: var(--surface-card); color: var(--text);
+.pager button, .actions button, .plan-actions button { background: var(--surface-card); color: var(--text);
   border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px;
   cursor: pointer; font-size: 0.9rem; }
-.pager button:hover, .actions button:hover { border-color: var(--primary); }
+.pager button:hover, .actions button:hover, .plan-actions button:hover { border-color: var(--primary); }
 .actions button.primary { background: var(--primary); color: #06202e; font-weight: 700; border: none; }
 .actions button:disabled { opacity: 0.4; cursor: default; }
 .err { color: var(--danger); font-size: 0.85rem; padding: 8px 20px; }
@@ -206,6 +206,12 @@ tr.day.log td:not(.day-cell) { background: rgba(255, 255, 255, 0.015); }
 /* Entry edge: its session's color; unlinked entries get their own color. */
 .entry.linked { border-left: 4px solid var(--sc, var(--border)); }
 .entry.unlinked { border-left: 4px solid #64748b; }
+/* Placed by the planner, not yet accepted: dashed and a little faded. */
+.entry.planned { outline: 1px dashed var(--text-muted); outline-offset: -1px; opacity: 0.9; }
+.entry.planned::before { content: "✦"; color: var(--text-muted); font-size: 0.7rem; margin-right: -2px; }
+.plan-actions { display: flex; gap: 6px; }
+.plan-actions button, .session-actions .accept { font-size: 0.8rem; }
+.plan-actions button:first-child { background: var(--primary); color: #06202e; font-weight: 700; border: none; }
 .actions button.admin-on { background: var(--danger); color: #2b0606; border: none; font-weight: 700; }
 .admin-banner { background: rgba(248, 113, 113, 0.12); color: var(--danger);
   border-bottom: 1px solid var(--danger); padding: 6px 20px; font-size: 0.85rem; }

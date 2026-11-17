@@ -588,6 +588,14 @@ def _move(draft: _Draft, entry_id: uuid.UUID, to: Place) -> Change:
                 to.position,
             )
             draft.put_week(target_week, dto)
+        if isinstance(entry, RecipeEntryDTO) and entry.planned:
+            # Placed by hand: the planner's pick becomes the person's.
+            draft.put_week(
+                target_week,
+                entries.replace_entry(
+                    draft.weeks[target_week], entry.model_copy(update={"planned": None})
+                ),
+            )
     else:
         if session is None or not isinstance(entry, RecipeEntryDTO):
             raise RuleError(
@@ -860,4 +868,207 @@ def move_session(
         raise RuleError(f"{day_label(date)} already has a session")
     draft.put_session(session.model_copy(update={"date": date}))
     draft.check([session_id])
+    return draft.change()
+
+
+# ---------------------------------------------------------------------------
+# Planner (docs/planner.md)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class PlannedCook:
+    """Batches of a recipe the plan cooks in the session on ``session_date``."""
+
+    session_date: datetime.date
+    recipe_id: str
+    batches: int
+
+
+@dataclass(frozen=True, slots=True)
+class PlannedMeal:
+    """One portion the plan eats: a recipe of the session on
+    ``session_date``, on a day and mealtime."""
+
+    date: datetime.date
+    mealtime: Mealtime
+    recipe_id: str
+    session_date: datetime.date
+
+
+def apply_plan(
+    diary: Diary,
+    policy: Policy,
+    recipes: Mapping[str, Recipe],
+    cooks: Sequence[PlannedCook],
+    meals: Sequence[PlannedMeal],
+) -> Change:
+    """Write a plan as one edit: its batches into the sessions on their days
+    (created when a day has none), one meal per portion, flagged
+    ``planned``. Portions the plan eats go on their days (after what is
+    there); the rest go to the unassigned slot. Refused when a session is
+    cooked or a meal's day is settled."""
+    draft = _Draft(diary, policy)
+    pools: dict[tuple[datetime.date, str], list[RecipeEntryDTO]] = {}
+    by_session: dict[datetime.date, list[PlannedCook]] = {}
+    for cook in cooks:
+        if cook.batches > 0:
+            by_session.setdefault(cook.session_date, []).append(cook)
+    touched: list[uuid.UUID] = []
+    for session_date, session_cooks in sorted(by_session.items()):
+        _check_planned(policy, session_date, "planning")
+        found = draft.session_on(session_date)
+        session_id = found.id if found is not None else uuid.uuid4()
+        items = list(found.items) if found is not None else []
+        for cook in session_cooks:
+            existing = next((i for i in items if i.recipe == cook.recipe_id), None)
+            if existing is None:
+                item = freeze_item(recipes[cook.recipe_id], cook.batches)
+                items.append(item)
+            else:
+                item = existing
+                items = [
+                    i.model_copy(update={"batches": i.batches + cook.batches})
+                    if i is existing
+                    else i
+                    for i in items
+                ]
+            pools[(session_date, cook.recipe_id)] = [
+                portion_entry(item, session_id).model_copy(update={"planned": True})
+                for _ in range(cook.batches * item.servings)
+            ]
+        draft.put_session(
+            PrepSessionDTO(
+                id=session_id,
+                date=session_date,
+                items=items,
+                have=found.have if found is not None else {},
+            )
+        )
+        touched.append(session_id)
+    for meal in meals:
+        _check_open(policy, meal.date, meal.mealtime)
+        pool = pools.get((meal.session_date, meal.recipe_id))
+        if not pool:
+            raise RuleError(
+                f"The plan eats more {meal.recipe_id} than the "
+                f"{day_label(meal.session_date)} session cooks"
+            )
+        week = week_id(meal.date)
+        dto, _ = entries.insert_entry(
+            draft.week(week), week, meal.date, meal.mealtime, pool.pop(0)
+        )
+        draft.put_week(week, dto)
+    leftovers = [entry for pool in pools.values() for entry in pool]
+    if leftovers:
+        draft.put_unassigned([*draft.unassigned, *leftovers])
+    draft.check(touched)
+    return draft.change()
+
+
+def clear_plans(diary: Diary, policy: Policy) -> Change:
+    """Remove every planned meal of every planned session (on days and
+    unassigned), and the batches only they needed: each recipe keeps the
+    fewest batches that cover its other meals, a kept batch's spare
+    portions go to the unassigned slot, a recipe with no meals left goes
+    and so does a session with no recipes left. Cooked sessions are not
+    touched."""
+    draft = _Draft(diary, policy)
+    open_ids = {sid for sid, s in draft.sessions.items() if policy.session_open(s.date)}
+
+    def doomed(entry: DiaryEntryDTO) -> bool:
+        return (
+            isinstance(entry, RecipeEntryDTO)
+            and bool(entry.planned)
+            and entry.session in open_ids
+        )
+
+    # Only sessions that lose planned meals are rebalanced: a manual
+    # session with spare portions (an older file) is left as it is.
+    cleared: set[uuid.UUID] = set()
+    for week, dto in list(draft.weeks.items()):
+        found = [
+            entry
+            for day in dto.days
+            for mealtime in Mealtime
+            for entry in getattr(day, mealtime.value) or ()
+            if doomed(entry)
+        ]
+        cleared.update(
+            e.session for e in found if isinstance(e, RecipeEntryDTO) and e.session
+        )
+        ids = [entry.id for entry in found]
+        current: DiaryWeekDTO | None = dto
+        for entry_id in ids:
+            assert current is not None
+            current = entries.remove_entry(current, entry_id)
+        if ids:
+            draft.put_week(week, current)
+    if any(doomed(m) for m in draft.unassigned):
+        cleared.update(m.session for m in draft.unassigned if doomed(m) and m.session)
+        draft.put_unassigned(m for m in draft.unassigned if not doomed(m))
+
+    counts = claim_counts(draft.snapshot())
+    for sid in sorted(cleared, key=str):
+        session = draft.sessions[sid]
+        items: list[SessionItemDTO] = []
+        refill: list[RecipeEntryDTO] = []
+        changed = False
+        for item in session.items:
+            left = counts[(sid, item.recipe)]
+            needed = min(item.batches, -(-left // item.servings))
+            if needed == 0:
+                changed = True
+                continue
+            kept = item.model_copy(update={"batches": needed})
+            items.append(kept)
+            changed = changed or needed != item.batches
+            # Portions of a kept batch that lost their planned meal.
+            spare = needed * item.servings - left
+            refill.extend(portion_entry(kept, sid) for _ in range(spare))
+        if refill:
+            changed = True
+        if not changed:
+            continue
+        if items:
+            draft.put_session(session.model_copy(update={"items": items}))
+        else:
+            draft.drop_session(sid)
+        if refill:
+            draft.put_unassigned([*draft.unassigned, *refill])
+    draft.check(cleared)
+    return draft.change()
+
+
+def accept_session(diary: Diary, policy: Policy, session_id: uuid.UUID) -> Change:
+    """Make a session's planned meals the person's own: the flag is cleared
+    on its meals on days and unassigned."""
+    draft = _Draft(diary, policy)
+    draft.session(session_id)  # must exist
+
+    def flagged(entry: DiaryEntryDTO) -> bool:
+        return (
+            isinstance(entry, RecipeEntryDTO)
+            and bool(entry.planned)
+            and entry.session == session_id
+        )
+
+    for week, dto in list(draft.weeks.items()):
+        current = dto
+        changed = False
+        for day in dto.days:
+            for mealtime in Mealtime:
+                for entry in getattr(day, mealtime.value) or ():
+                    if flagged(entry):
+                        current = entries.replace_entry(
+                            current, entry.model_copy(update={"planned": None})
+                        )
+                        changed = True
+        if changed:
+            draft.put_week(week, current)
+    if any(flagged(m) for m in draft.unassigned):
+        draft.put_unassigned(
+            m.model_copy(update={"planned": None}) if flagged(m) else m
+            for m in draft.unassigned
+        )
     return draft.change()

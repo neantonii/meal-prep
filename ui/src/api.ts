@@ -44,6 +44,8 @@ export interface RecipeEntry extends EntryBase {
   freezer_friendly: boolean | null;
   fiber_g: number;
   cost: number;
+  /** placed by the planner and not yet accepted */
+  planned: boolean;
 }
 
 /** A takeout meal: never from a session; its cost only if known. */
@@ -149,6 +151,8 @@ export interface Session {
   /** false: an older session linked from this week */
   in_window: boolean;
   items: SessionItem[];
+  /** its meals the planner placed, not yet accepted */
+  planned: number;
 }
 
 /** One session for its own page: the card plus totals. */
@@ -347,6 +351,13 @@ export const api = {
     admin: boolean,
   ) =>
     send<DiaryWeek>("PUT", `/api/sessions/${session}/items/${recipe}/session?week=${week}`, admin, to),
+  /** Fill the empty slots of the week ahead (planned meals, flagged). */
+  plan: (week: string) => send<DiaryWeek>("POST", `/api/plan?week=${week}`, false),
+  /** Remove every planned meal, and the batches only they needed. */
+  clearPlans: (week: string) => send<DiaryWeek>("DELETE", `/api/plan?week=${week}`, false),
+  /** Keep one session's planned meals: they become ordinary meals. */
+  acceptPlan: (week: string, session: string) =>
+    send<DiaryWeek>("POST", `/api/plan/accept/${session}?week=${week}`, false),
   /** Tick (or untick) recipe shares on the session's shopping checklist. */
   setHave: (session: string, shares: ShareRef[], have: boolean) =>
     send<SessionDetail>("PUT", `/api/sessions/${session}/have`, false, { shares, have }),

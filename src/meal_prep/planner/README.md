@@ -1,19 +1,24 @@
 # Planner
 
-Cheapest 7-day × 3-meal assignment via CP-SAT, covered by cooked batches.
+Fills the week ahead with meals and the prep sessions that cook them
+(`docs/planner.md`). The server reads the diary into planner input and
+writes the plan back (`server/planning.py`, `services/prep.py`).
 
 ## Role & Imports
 
-Consumes `meal_prep.models.Recipe`. Only `solver.py` may import `ortools`;
-`quadratic.py` (term spec, breakpoint placement) is solver-free.
+Consumes `meal_prep.models.Recipe` and `meal_prep.enums`. Only `solver.py`
+may import `ortools`; `plan.py`, `templates.py` and `quadratic.py` are
+solver-free.
 
 ## Business Invariants
 
-Batch costs scaled to integer cents; exactly one recipe per meal; breakfasts
-from `BREAKFAST`-category recipes only; one integer batch variable (0–7,
-one cook session per recipe per day) per recipe with
-`uses <= batches * servings` (leftovers tolerated, charged at full batch
-cost); deterministic seed.
+Every slot holds exactly one option of its mealtime's template (each role
+filled by one recipe) plus optional extras, nothing else; a recipe is eaten
+at most once a day, counting meals already there. Batches per session and
+recipe: `uses <= batches * servings`, whole servings only. Points:
+leftover portions (not for sessions the horizon cuts off) and next-day
+repeats (only when at least one side is planned). Deterministic: one
+worker, fixed seed.
 
 Convex quadratic terms (`ConvexQuadratic`, `c·x² + b·x + d`, `c > 0`) on an
 integer expression `x` in `[lo, hi]` (`_add_quadratic`): `lo <= x <= hi` is

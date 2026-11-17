@@ -18,11 +18,12 @@ enriched frozen models → rendered HTML cards.
   - `enums.py` — shared enum types
   - `library.py` — `load_library()`: loads and enriches everything into one
     frozen `Library` (ingredients, recipes, meals); consumers start here
-- `planner/` (under `src/meal_prep/`) — weekly meal planner (7 days × 3 meals, CP-SAT):
-  - `solver.py` — owns the OR-Tools import; cheapest one-recipe-per-meal plan
-  - `plan.py` — frozen `WeekPlan` value with day/week aggregates
-  - `report.py` — standalone HTML report (links each meal to its recipe card)
-- `weekly_plan/` — generated plan report (git-ignored)
+- `planner/` (under `src/meal_prep/`) — the week-ahead meal planner (CP-SAT,
+  `docs/planner.md`):
+  - `plan.py` — the plain input and output values (slots, templates, plan)
+  - `templates.py` — the standard meal pattern
+  - `solver.py` — owns the OR-Tools import; builds and solves the model
+- `weekly_plan/` — rendered diary weeks (git-ignored)
 - `tests/` — pytest suite
 
 ## Module documentation

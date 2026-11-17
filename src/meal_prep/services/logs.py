@@ -47,6 +47,7 @@ def diary_entry(entry: DiaryEntryDTO) -> LogEntry:
             recipe_id=entry.recipe,
             cost=entry.cost,
             session_id=None if entry.session is None else str(entry.session),
+            planned=bool(entry.planned),
         )
     return TakeoutLogEntry(
         entry_id=str(entry.id), title=entry.title, macros=macros, cost=entry.cost

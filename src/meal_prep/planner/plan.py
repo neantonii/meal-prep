@@ -1,99 +1,108 @@
-"""Frozen week-plan value — the solved assignment in domain terms.
+"""The planner's input and output, as plain frozen values (``docs/planner.md``).
 
-A ``WeekPlan`` is computed once by ``meal_prep.planner.solver.plan_week`` and
-never constructed by hand. Each day names its three meals explicitly
-(``breakfast``/``lunch``/``dinner``); ``prep`` lists the batches to cook so
-the week's portions are covered (``portions_used <= batches * servings`` —
-leftovers are tolerated and charged at full batch cost).
+Input: the slots to fill (a day, a mealtime and the session that feeds it),
+a template per mealtime (what a slot may hold), what is already eaten or
+placed on each day, and the weights of the soft terms. Output: the recipes
+picked per slot, the batches each session cooks, and the points per term.
 
-All frozen dataclasses are value objects: no I/O, no mutation. All amounts
-are raw floats with no rounding — presentation is the report's concern.
+No solver code here: ``meal_prep.planner.solver`` builds and solves the
+model; writing a plan into the diary is the services' job.
 """
 
 from __future__ import annotations
 
+import datetime
 from dataclasses import dataclass
-from functools import reduce
 
-from meal_prep.models.ingredient import MacrosInfo
-
-DAY_NAMES = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+from meal_prep.enums import Mealtime, RecipeCategory
 
 
 @dataclass(frozen=True, slots=True)
-class PlannedMeal:
-    """One filled meal slot: which recipe, and its per-serving cost/macros."""
+class MealSlot:
+    """One meal to fill: a day, a mealtime and the session that feeds it."""
 
+    date: datetime.date
+    mealtime: Mealtime
+    session: datetime.date
+
+
+@dataclass(frozen=True, slots=True)
+class Role:
+    """One part of a meal: exactly one recipe from these categories or ids."""
+
+    name: str
+    categories: frozenset[RecipeCategory] = frozenset()
+    recipe_ids: frozenset[str] = frozenset()
+
+    def accepts(self, recipe_id: str, category: RecipeCategory) -> bool:
+        """Whether a recipe can fill this role."""
+        return recipe_id in self.recipe_ids or category in self.categories
+
+
+@dataclass(frozen=True, slots=True)
+class Option:
+    """One way to make a meal: each role filled by exactly one recipe.
+
+    A fixed set of recipes (a breakfast eaten as a whole) is an option whose
+    roles each name one recipe.
+    """
+
+    name: str
+    roles: tuple[Role, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class MealTemplate:
+    """What a slot holds: exactly one of ``options``, plus any number of
+    ``extras`` (the escape hatch). Nothing else goes in the slot. A recipe
+    may fill roles of one option only."""
+
+    options: tuple[Option, ...]
+    extras: Role | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Weights:
+    """Points per unit of each soft term (``docs/planner.md``, "Terms")."""
+
+    leftover: float = 1.0  # per portion cooked but not placed on a day
+    next_day_repeat: float = 1.0  # per recipe eaten on two days in a row
+
+
+@dataclass(frozen=True, slots=True)
+class SlotPick:
+    """One recipe placed in a slot (a slot may hold several)."""
+
+    slot: MealSlot
     recipe_id: str
-    title: str
-    cost: float
-    macros: MacrosInfo
-
-
-@dataclass(frozen=True, slots=True)
-class DailyPlannedMeal:
-    """One day: a named meal per meal slot."""
-
-    day: str
-    breakfast: PlannedMeal
-    lunch: PlannedMeal
-    dinner: PlannedMeal
-
-    @property
-    def cost(self) -> float:
-        """Total day cost."""
-        return self.breakfast.cost + self.lunch.cost + self.dinner.cost
-
-    @property
-    def macros(self) -> MacrosInfo:
-        """Day macros summed over the three meals."""
-        morning = MacrosInfo.added(self.breakfast.macros, self.lunch.macros)
-        return MacrosInfo.added(morning, self.dinner.macros)
 
 
 @dataclass(frozen=True, slots=True)
 class PlannedBatch:
-    """One prep-list line: how many batches of a recipe to cook.
+    """What one session cooks of one recipe, and how many portions the plan
+    eats; the rest are leftovers."""
 
-    ``portions_made`` is ``batches * servings``; ``portions_used`` counts the
-    week's meals assigned to this recipe (never more than made).
-    """
-
+    session: datetime.date
     recipe_id: str
-    title: str
     batches: int
     servings: int
-    portions_used: int
-    cost: float
-
-    @property
-    def portions_made(self) -> int:
-        """Portions produced by the cooked batches."""
-        return self.batches * self.servings
+    used: int
 
     @property
     def leftover(self) -> int:
-        """Made but uneaten portions."""
-        return self.portions_made - self.portions_used
+        """Portions cooked but not placed on a day."""
+        return self.batches * self.servings - self.used
 
 
 @dataclass(frozen=True, slots=True)
-class WeekPlan:
-    """A solved week: 7 days, the batches to cook, plus aggregates."""
+class Plan:
+    """A solved plan: the picks, the batches, and the points per term."""
 
-    days: tuple[DailyPlannedMeal, ...]
-    prep: tuple[PlannedBatch, ...] = ()
-
-    @property
-    def total_cost(self) -> float:
-        """Total week cost at full batch prices (leftovers included)."""
-        return sum(batch.cost for batch in self.prep)
+    picks: tuple[SlotPick, ...]
+    batches: tuple[PlannedBatch, ...]
+    points: tuple[tuple[str, float], ...]
 
     @property
-    def week_macros(self) -> MacrosInfo:
-        """Week macros summed over days."""
-        return reduce(
-            MacrosInfo.added,
-            (day.macros for day in self.days),
-            MacrosInfo.zero(),
-        )
+    def total_points(self) -> float:
+        """The objective: every term's points summed."""
+        return sum(value for _, value in self.points)

@@ -69,6 +69,12 @@ class RecipeEntryDTO(_EntryDTO):
         description="Id of the prep session this serving came from; absent when "
         "not from a session",
     )
+    # Added for the planner (docs/planner.md); absent in older files.
+    planned: bool | None = Field(
+        default=None,
+        description="True when the planner placed this serving and nobody has "
+        "accepted or moved it yet; absent otherwise",
+    )
 
     @field_validator("recipe")
     @classmethod

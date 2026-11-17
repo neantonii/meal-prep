@@ -175,7 +175,7 @@ def insert_entry(
     return result, entry
 
 
-def replace_entry(diary: DiaryWeekDTO, entry: TakeoutEntryDTO) -> DiaryWeekDTO:
+def replace_entry(diary: DiaryWeekDTO, entry: DiaryEntryDTO) -> DiaryWeekDTO:
     """Put ``entry`` in place of the entry with its id (same slot and
     position)."""
     slots = _slots(diary)
