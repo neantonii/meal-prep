@@ -31,3 +31,5 @@ equipment:
   name: Coffee Bean Grinder
 - id: espresso-machine
   name: Espresso Machine
+- id: muffin-tin
+  name: Non-Stick 12-Cup Muffin Tin

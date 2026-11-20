@@ -851,3 +851,39 @@
     - from: cup
       to: g
       factor: 120
+
+- id: frozen-chopped-spinach
+  name: Frozen Chopped Spinach
+  step_name: spinach
+  aisle: produce
+  storage: frozen
+  shelf_life_days: 365
+
+  reference:
+    brand: Compliments
+    product: Compliments Frozen Chopped Spinach 500 g
+    price: 4.99
+
+  macros:
+    unit: nugget
+    amount: 3
+    calories_kcal: 30.0
+    protein_g: 3.0
+    fat_g: 0.5
+    carbs_g: 4.0
+    fiber_g: 2.0
+    saturated_fat_g: 0.0
+    sugars_g: 0.0
+    sodium_mg: 80.0
+    potassium_mg: 250.0
+
+  custom_units:
+    nugget: [nugget, nuggets]
+
+  conversions:
+    - from: package
+      to: g
+      factor: 500
+    - from: nugget
+      to: g
+      factor: 85/3
