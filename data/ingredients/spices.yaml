@@ -296,3 +296,36 @@
     - from: tsp
       to: g
       factor: 2.0
+
+- id: ground-cinnamon
+  name: Ground Cinnamon
+  step_name: cinnamon
+  aisle: spices
+  storage: ambient
+  shelf_life_days: 730
+
+  reference:
+    brand: Compliments
+    product: Compliments Spice Ground Cinnamon 145 g
+    price: 5.79
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 247.0
+    protein_g: 3.99
+    fat_g: 1.24
+    carbs_g: 80.59
+    fiber_g: 53.1
+    saturated_fat_g: 0.345
+    sugars_g: 2.17
+    sodium_mg: 10.0
+    potassium_mg: 431.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 145
+    - from: tsp
+      to: g
+      factor: 4

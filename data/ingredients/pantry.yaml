@@ -955,3 +955,36 @@
     - from: scoop
       to: g
       factor: 16
+
+- id: chopped-walnuts
+  name: California Chopped Walnuts
+  step_name: walnuts
+  aisle: pantry
+  storage: refrigerated
+  shelf_life_days: 90
+
+  reference:
+    brand: Longo's
+    product: Longo's Chopped Walnuts 100 g
+    price: 3.49
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 654.0
+    protein_g: 15.23
+    fat_g: 65.21
+    carbs_g: 13.71
+    fiber_g: 6.7
+    saturated_fat_g: 6.126
+    sugars_g: 2.61
+    sodium_mg: 2.0
+    potassium_mg: 441.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 100
+    - from: cup
+      to: g
+      factor: 117
