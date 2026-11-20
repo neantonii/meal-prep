@@ -329,3 +329,135 @@
     - from: tsp
       to: g
       factor: 4
+
+- id: chili-powder
+  name: Chili Powder
+  step_name: chili powder
+  aisle: spices
+  storage: ambient
+  shelf_life_days: 730
+
+  reference:
+    brand: Compliments
+    product: Compliments Spice Chili Powder 155 g
+    price: 5.29
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 282.0
+    protein_g: 13.46
+    fat_g: 14.28
+    carbs_g: 49.7
+    fiber_g: 34.8
+    saturated_fat_g: 2.462
+    sugars_g: 7.19
+    sodium_mg: 2867.0
+    potassium_mg: 1950.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 155
+    - from: tsp
+      to: g
+      factor: 2
+
+- id: ground-cumin
+  name: Ground Cumin
+  step_name: cumin
+  aisle: spices
+  storage: ambient
+  shelf_life_days: 730
+
+  reference:
+    brand: Compliments
+    product: Compliments Spice Ground Cumin 97 g
+    price: 4.19
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 375.0
+    protein_g: 17.81
+    fat_g: 22.27
+    carbs_g: 44.24
+    fiber_g: 10.5
+    saturated_fat_g: 1.535
+    sugars_g: 2.25
+    sodium_mg: 168.0
+    potassium_mg: 1788.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 97
+    - from: tsp
+      to: g
+      factor: 2.1
+
+- id: dried-oregano
+  name: Dried Oregano Leaves
+  step_name: oregano
+  aisle: spices
+  storage: ambient
+  shelf_life_days: 730
+
+  reference:
+    brand: Compliments
+    product: Compliments Spices Oregano Leaves 32 g
+    price: 4.19
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 265.0
+    protein_g: 9.0
+    fat_g: 4.28
+    carbs_g: 68.92
+    fiber_g: 42.5
+    saturated_fat_g: 1.551
+    sugars_g: 4.09
+    sodium_mg: 25.0
+    potassium_mg: 1260.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 32
+    - from: tsp
+      to: g
+      factor: 1
+
+- id: ground-cayenne
+  name: Ground Cayenne Pepper
+  step_name: cayenne
+  aisle: spices
+  storage: ambient
+  shelf_life_days: 730
+
+  reference:
+    brand: Compliments
+    product: Compliments Spice Ground Cayenne Pepper 97 g
+    price: 4.69
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 318.0
+    protein_g: 12.01
+    fat_g: 17.27
+    carbs_g: 56.63
+    fiber_g: 27.2
+    saturated_fat_g: 3.26
+    sugars_g: 10.34
+    sodium_mg: 30.0
+    potassium_mg: 2014.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 97
+    - from: tsp
+      to: g
+      factor: 1.8
