@@ -818,3 +818,36 @@
     - from: cup
       to: g
       factor: 110
+
+- id: frozen-wild-blueberries
+  name: Frozen Canadian Wild Blueberries
+  step_name: wild blueberries
+  aisle: produce
+  storage: frozen
+  shelf_life_days: 365
+
+  reference:
+    brand: Compliments
+    product: Compliments Frozen Wild Blueberries 300 g
+    price: 6.49
+
+  macros:
+    unit: cup
+    amount: 2/3
+    calories_kcal: 45.0
+    protein_g: 1.0
+    fat_g: 0.0
+    carbs_g: 10.0
+    fiber_g: 3.5
+    saturated_fat_g: 0.0
+    sugars_g: 7.0
+    sodium_mg: 0.0
+    potassium_mg: 50.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 300
+    - from: cup
+      to: g
+      factor: 120
