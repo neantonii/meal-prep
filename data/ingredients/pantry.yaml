@@ -1155,3 +1155,167 @@
     - from: cup
       to: g
       factor: 110
+
+- id: canned-black-beans
+  name: No Salt Added Canned Black Beans
+  step_name: black beans
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 1095
+
+  reference:
+    brand: Compliments
+    product: Compliments No Salt Added Canned Black Beans 540 ml
+    price: 2.69
+
+  macros:
+    unit: cup
+    amount: 1/2
+    calories_kcal: 100.0
+    protein_g: 7.0
+    fat_g: 0.5
+    carbs_g: 19.0
+    fiber_g: 5.0
+    saturated_fat_g: 0.0
+    sugars_g: 0.0
+    sodium_mg: 0.0
+
+  conversions:
+    - from: package
+      to: ml
+      factor: 540
+    - from: cup
+      to: g
+      factor: 176
+
+- id: canned-kidney-beans
+  name: No Salt Added Dark Red Kidney Beans
+  step_name: kidney beans
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 1095
+
+  reference:
+    brand: Compliments
+    product: Compliments Balance Dark Red Kidney Beans No Salt Added 540 ml
+    price: 2.69
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 81.0
+    protein_g: 5.22
+    fat_g: 0.36
+    carbs_g: 14.83
+    fiber_g: 5.3
+    saturated_fat_g: 0.125
+    sugars_g: 1.85
+    sodium_mg: 0.0
+    potassium_mg: 260.0
+
+  conversions:
+    - from: package
+      to: ml
+      factor: 540
+    - from: cup
+      to: g
+      factor: 256
+
+- id: longos-organic-black-beans
+  name: Organic Low Sodium Black Beans
+  step_name: black beans
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 1095
+
+  reference:
+    brand: Longo's
+    product: Longo's Organic Black Beans 398 ml
+    price: 2.19
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 91.0
+    protein_g: 6.03
+    fat_g: 0.29
+    carbs_g: 16.55
+    fiber_g: 6.9
+    saturated_fat_g: 0.075
+    sugars_g: 0.23
+    sodium_mg: 138.0
+    potassium_mg: 308.0
+
+  conversions:
+    - from: package
+      to: ml
+      factor: 398
+    - from: cup
+      to: g
+      factor: 240
+
+- id: longos-organic-kidney-beans
+  name: Organic Low Sodium Red Kidney Beans
+  step_name: kidney beans
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 1095
+
+  reference:
+    brand: Longo's
+    product: Longo's Organic Red Kidney Beans 398 ml
+    price: 2.19
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 81.0
+    protein_g: 5.22
+    fat_g: 0.36
+    carbs_g: 14.83
+    fiber_g: 5.3
+    saturated_fat_g: 0.125
+    sugars_g: 1.85
+    sodium_mg: 117.0
+    potassium_mg: 260.0
+
+  conversions:
+    - from: package
+      to: ml
+      factor: 398
+    - from: cup
+      to: g
+      factor: 256
+
+- id: organic-pinto-beans
+  name: Organic Pinto Beans
+  step_name: pinto beans
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 1095
+
+  reference:
+    brand: Compliments
+    product: Compliments Organic Pinto Beans 398 ml
+    price: 2.79
+
+  macros:
+    unit: cup
+    amount: 1/2
+    calories_kcal: 90.0
+    protein_g: 6.0
+    fat_g: 0.5
+    carbs_g: 17.0
+    fiber_g: 5.0
+    saturated_fat_g: 0.0
+    sugars_g: 0.0
+    sodium_mg: 75.0
+    potassium_mg: 250.0
+
+  conversions:
+    - from: package
+      to: ml
+      factor: 398
+    - from: cup
+      to: g
+      factor: 176
