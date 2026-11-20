@@ -920,3 +920,36 @@
     - from: count
       to: g
       factor: 300
+
+- id: frozen-broccoli-florets
+  name: Frozen Broccoli Florets
+  step_name: broccoli
+  aisle: produce
+  storage: frozen
+  shelf_life_days: 365
+
+  reference:
+    brand: Compliments
+    product: Compliments Frozen Broccoli Florets 500 g
+    price: 5.29
+
+  macros:
+    unit: cup
+    amount: 1
+    calories_kcal: 30.0
+    protein_g: 3.0
+    fat_g: 0.0
+    carbs_g: 5.0
+    fiber_g: 2.0
+    saturated_fat_g: 0.0
+    sugars_g: 1.0
+    sodium_mg: 15.0
+    potassium_mg: 200.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 500
+    - from: cup
+      to: g
+      factor: 85
