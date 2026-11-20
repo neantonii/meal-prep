@@ -227,3 +227,32 @@
     - from: cup
       to: g
       factor: 250
+
+- id: greek-feta
+  name: Greek Feta Cheese in Brine
+  step_name: feta
+  aisle: dairy
+  storage: refrigerated
+  shelf_life_days: 60
+
+  reference:
+    brand: Krinos
+    product: Krinos Greek Feta Cheese 200 g
+    price: 6.99
+
+  macros:
+    unit: g
+    amount: 30
+    calories_kcal: 90.0
+    protein_g: 5.0
+    fat_g: 7.0
+    carbs_g: 1.0
+    fiber_g: 0.0
+    saturated_fat_g: 4.0
+    sugars_g: 0.0
+    sodium_mg: 270.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 200

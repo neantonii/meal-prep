@@ -1054,3 +1054,104 @@
     - from: ml
       to: g
       factor: 1.26
+
+- id: wasa-light-rye-crispbread
+  name: Light Rye Crispbread
+  step_name: rye crispbread
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 365
+
+  reference:
+    brand: Wasa
+    product: Wasa Crispbread Light Rye 270 g
+    price: 6.29
+
+  macros:
+    unit: slice
+    amount: 3
+    calories_kcal: 80.0
+    protein_g: 2.0
+    fat_g: 0.4
+    carbs_g: 19.0
+    fiber_g: 6.0
+    saturated_fat_g: 0.1
+    sugars_g: 0.0
+    sodium_mg: 105.0
+
+  custom_units:
+    slice: [slice, slices]
+
+  conversions:
+    - from: package
+      to: g
+      factor: 270
+    - from: slice
+      to: g
+      factor: 26/3
+
+- id: almond-hazelnut-biscotti
+  name: Dark Chocolate Dipped Almond & Hazelnut Biscotti
+  step_name: biscotti
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 30
+
+  reference:
+    brand: Longo's
+    product: Longo's Biscotti Box Almond Hazelnut Chocolate 250 g
+    price: 6.99
+
+  macros:
+    unit: count
+    amount: 1
+    calories_kcal: 170.0
+    protein_g: 4.0
+    fat_g: 7.0
+    carbs_g: 24.0
+    fiber_g: 1.0
+    saturated_fat_g: 2.0
+    sugars_g: 11.0
+    sodium_mg: 125.0
+    potassium_mg: 75.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 250
+    - from: count
+      to: g
+      factor: 42
+
+- id: sun-dried-tomatoes-in-oil
+  name: Sun-Dried Tomato Strips in Oil
+  step_name: sun-dried tomatoes
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 365
+
+  reference:
+    brand: Panache
+    product: Panache Sundried Tomatoes In Oil 180 ml
+    price: 4.29
+
+  macros:
+    unit: g
+    amount: 30
+    calories_kcal: 60.0
+    protein_g: 1.0
+    fat_g: 4.0
+    carbs_g: 6.0
+    fiber_g: 2.0
+    saturated_fat_g: 0.4
+    sugars_g: 4.0
+    sodium_mg: 190.0
+    potassium_mg: 300.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 170
+    - from: cup
+      to: g
+      factor: 110
