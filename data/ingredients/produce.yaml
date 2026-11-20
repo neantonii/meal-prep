@@ -887,3 +887,36 @@
     - from: nugget
       to: g
       factor: 85/3
+
+- id: sweet-potatoes
+  name: Sweet Potatoes (Yams)
+  step_name: sweet potato
+  aisle: produce
+  storage: ambient
+  shelf_life_days: 30
+
+  reference:
+    brand: Voilà by Sobeys
+    product: Yams Single 1 Count
+    price: 1.99
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 86.0
+    protein_g: 1.57
+    fat_g: 0.05
+    carbs_g: 20.12
+    fiber_g: 3.0
+    saturated_fat_g: 0.018
+    sugars_g: 4.18
+    sodium_mg: 55.0
+    potassium_mg: 337.0
+
+  conversions:
+    - from: package
+      to: count
+      factor: 1
+    - from: count
+      to: g
+      factor: 300
