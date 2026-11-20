@@ -154,3 +154,61 @@
     - from: package
       to: g
       factor: 300
+
+- id: coho-salmon-fillet
+  name: Fresh Coho Salmon Fillet
+  step_name: coho salmon
+  aisle: seafood
+  storage: refrigerated
+  shelf_life_days: 2
+
+  reference:
+    brand: Voilà by Sobeys
+    product: Coho Salmon Fillet
+    price: 9.37
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 160.0
+    protein_g: 21.27
+    fat_g: 7.67
+    carbs_g: 0.0
+    fiber_g: 0.0
+    saturated_fat_g: 1.816
+    sodium_mg: 47.0
+    potassium_mg: 450.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 250
+
+- id: atlantic-salmon-steaks
+  name: Fresh Atlantic Salmon Steaks
+  step_name: salmon steaks
+  aisle: seafood
+  storage: refrigerated
+  shelf_life_days: 2
+
+  reference:
+    brand: Voilà by Sobeys
+    product: Atlantic Salmon Steaks
+    price: 13.65
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 208.0
+    protein_g: 20.42
+    fat_g: 13.42
+    carbs_g: 0.0
+    fiber_g: 0.0
+    saturated_fat_g: 3.05
+    sodium_mg: 59.0
+    potassium_mg: 363.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 325
