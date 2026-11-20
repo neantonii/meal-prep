@@ -988,3 +988,69 @@
     - from: cup
       to: g
       factor: 117
+
+- id: sliced-almonds
+  name: Sliced Almonds
+  step_name: sliced almonds
+  aisle: pantry
+  storage: refrigerated
+  shelf_life_days: 90
+
+  reference:
+    brand: Longo's
+    product: Longo's Sliced Almonds 100 g
+    price: 3.99
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 579.0
+    protein_g: 21.15
+    fat_g: 49.93
+    carbs_g: 21.55
+    fiber_g: 12.5
+    saturated_fat_g: 3.802
+    sugars_g: 4.35
+    sodium_mg: 1.0
+    potassium_mg: 733.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 100
+    - from: cup
+      to: g
+      factor: 92
+
+- id: orange-marmalade-fruit-sweetened
+  name: Orange Marmalade 100% from Fruit
+  step_name: orange marmalade
+  aisle: pantry
+  storage: ambient
+  shelf_life_days: 365
+
+  reference:
+    brand: St. Dalfour
+    product: St. Dalfour Marmalade Orange 225 ml
+    price: 7.79
+
+  macros:
+    unit: tbsp
+    amount: 1
+    calories_kcal: 40.0
+    protein_g: 0.0
+    fat_g: 0.0
+    carbs_g: 10.0
+    fiber_g: 0.0
+    saturated_fat_g: 0.0
+    sugars_g: 9.0
+    sodium_mg: 0.0
+    potassium_mg: 10.0
+
+  conversions:
+    - from: package
+      to: ml
+      factor: 225
+    - from: ml
+      to: g
+      factor: 1.26

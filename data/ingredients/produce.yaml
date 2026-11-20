@@ -785,3 +785,36 @@
     - from: count
       to: g
       factor: 206
+
+- id: frozen-cranberries
+  name: Frozen Cranberries
+  step_name: cranberries
+  aisle: produce
+  storage: frozen
+  shelf_life_days: 365
+
+  reference:
+    brand: Compliments
+    product: Compliments Frozen Cranberries 600 g
+    price: 6.49
+
+  macros:
+    unit: cup
+    amount: 1/2
+    calories_kcal: 25.0
+    protein_g: 0.2
+    fat_g: 0.0
+    carbs_g: 7.0
+    fiber_g: 3.0
+    saturated_fat_g: 0.0
+    sugars_g: 2.0
+    sodium_mg: 0.0
+    potassium_mg: 50.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 600
+    - from: cup
+      to: g
+      factor: 110
