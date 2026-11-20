@@ -3,8 +3,6 @@
 #
 # Cookware tokens in recipe bodies match id directly; there are no aliases.
 equipment:
-- id: air-fryer
-  name: Air Fryer
 - id: rice-cooker
   name: Rice Cooker
 - id: skillet
@@ -33,3 +31,5 @@ equipment:
   name: Espresso Machine
 - id: muffin-tin
   name: Non-Stick 12-Cup Muffin Tin
+- id: crisper-tray
+  name: Crisper Tray (Mesh Basket on Baking Tray)

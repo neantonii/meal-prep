@@ -67,7 +67,11 @@ def test_prepare_recipe_resolves_everything(library, chicken_recipe):
 
 def test_prepare_recipe_equipment_names_are_resolved(library, chicken_recipe):
     prepared = prepare_recipe(chicken_recipe, library.catalog, library.equipment)
-    assert prepared.equipment == ("Air Fryer", "Meat Thermometer")
+    assert prepared.equipment == (
+        "Oven",
+        "Crisper Tray (Mesh Basket on Baking Tray)",
+        "Meat Thermometer",
+    )
 
 
 def test_prepare_recipe_computes_cost_and_macros(library, chicken_recipe):
@@ -165,11 +169,11 @@ def test_prepare_recipe_resolves_cookware_canonical_id(library, chicken_recipe):
     from meal_prep.dtos.recipe import RecipeCookwareRef
 
     recipe = chicken_recipe.model_copy(
-        update={"cookware": [RecipeCookwareRef(id="air-fryer")]}
+        update={"cookware": [RecipeCookwareRef(id="oven")]}
     )
     prepared = prepare_recipe(recipe, library.catalog, library.equipment)
-    assert prepared.equipment == ("Air Fryer",)
-    assert prepared.cookware_by_token["air-fryer"] == "Air Fryer"
+    assert prepared.equipment == ("Oven",)
+    assert prepared.cookware_by_token["oven"] == "Oven"
 
 
 def test_prepare_recipe_rejects_unregistered_unit(library, chicken_recipe):
