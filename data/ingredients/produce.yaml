@@ -953,3 +953,35 @@
     - from: cup
       to: g
       factor: 85
+
+- id: clementines
+  name: Clementines / Mandarins
+  step_name: clementines
+  aisle: produce
+  storage: refrigerated
+  shelf_life_days: 14
+
+  reference:
+    brand: Compliments
+    product: Compliments Clementines/Mandarins 907 g
+    price: 5.99
+
+  macros:
+    unit: g
+    amount: 100
+    calories_kcal: 47.0
+    protein_g: 0.85
+    fat_g: 0.15
+    carbs_g: 12.02
+    fiber_g: 1.7
+    sugars_g: 9.18
+    sodium_mg: 1.0
+    potassium_mg: 177.0
+
+  conversions:
+    - from: package
+      to: g
+      factor: 907
+    - from: count
+      to: g
+      factor: 62
