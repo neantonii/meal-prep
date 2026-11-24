@@ -112,11 +112,51 @@ def test_clear_plans_keeps_manual_meals_and_what_they_need():
     )
     cleared = _apply(diary, prep.clear_plans(diary, PLAN))
     (thursday,) = cleared.sessions.values()
-    # 4 manual portions + 1 adopted = 5 meals: 2 batches of 4, 3 refilled.
-    assert [(i.recipe, i.batches) for i in thursday.items] == [("chicken", 2)]
+    # The plan ate the 3 unassigned manual portions first; one was adopted,
+    # the other 2 go back. The plan's own batch goes: 4 meals, 1 batch.
+    assert [(i.recipe, i.batches) for i in thursday.items] == [("chicken", 1)]
     assert {m.id for m in _day_meals(cleared)} == {manual.id, planned.id}
-    assert sum(1 for m in cleared.unassigned if m.recipe == "chicken") == 6
-    assert not any(m.planned for m in cleared.unassigned)
+    assert sum(1 for m in cleared.unassigned if m.recipe == "chicken") == 2
+    assert not any(m.planned or m.planned_from for m in cleared.unassigned)
+
+
+def test_a_plan_uses_unassigned_portions_first_and_clear_puts_them_back():
+    diary, _ = _add(EMPTY, THU, CHICKEN, meal=DINNER)  # 1 on Thu, 3 unassigned
+    stock = {m.id for m in diary.unassigned}
+    change = prep.apply_plan(
+        diary,
+        PLAN,
+        RECIPES,
+        cooks=[],
+        meals=[
+            PlannedMeal(FRI, LUNCH, "chicken", THU),
+            PlannedMeal(SAT, LUNCH, "chicken", THU),
+        ],
+    )
+    planned = _apply(diary, change)
+    placed = [m for m in _day_meals(planned) if m.planned]
+    assert {m.id for m in placed} <= stock  # existing portions, no new batch
+    assert all(m.planned_from == "unassigned" for m in placed)
+    (thursday,) = planned.sessions.values()
+    assert thursday.items[0].batches == 1
+    assert len(planned.unassigned) == 1
+
+    cleared = _apply(planned, prep.clear_plans(planned, PLAN))
+    assert {m.id for m in cleared.unassigned} == stock
+    assert not any(m.planned or m.planned_from for m in cleared.unassigned)
+    assert cleared.sessions == planned.sessions
+
+
+def test_clear_puts_back_portions_of_cooked_sessions_too():
+    diary, _ = _add(EMPTY, THU, CHICKEN, meal=DINNER)
+    change = prep.apply_plan(
+        diary, PLAN, RECIPES, cooks=[], meals=[PlannedMeal(SAT, LUNCH, "chicken", THU)]
+    )
+    planned = _apply(diary, change)
+    later = prep.Policy(today=FRI)  # Thursday's session is cooked by then
+    cleared = _apply(planned, prep.clear_plans(planned, later))
+    assert len(cleared.unassigned) == 3
+    assert not any(m.planned for m in _day_meals(cleared))
 
 
 def test_clear_plans_leaves_cooked_sessions_alone():

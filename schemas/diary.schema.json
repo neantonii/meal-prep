@@ -149,6 +149,20 @@
           "description": "True when the planner placed this serving and nobody has accepted or moved it yet; absent otherwise",
           "title": "Planned"
         },
+        "planned_from": {
+          "anyOf": [
+            {
+              "const": "unassigned",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Where a planned serving was before the planner placed it: 'unassigned' for a portion that already existed (Clear plans puts it back there); absent for a portion the plan cooks",
+          "title": "Planned From"
+        },
         "potassium_mg": {
           "description": "Per serving, when logged",
           "minimum": 0,
