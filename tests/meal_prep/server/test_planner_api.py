@@ -55,18 +55,52 @@ def test_plan_fills_the_week_ahead_with_flagged_meals(client: TestClient):
     assert {"2026-11-05", "2026-11-08"} <= sessions
 
 
-def test_plan_keeps_what_is_there(client: TestClient):
+def test_plan_completes_a_half_filled_meal(client: TestClient):
+    # Chicken by hand on Friday's dinner: the plan keeps it and adds a carb
+    # and a salad around it, nothing else.
     _ok(_add(client, "2026-11-06", CHICKEN, mealtime="dinner"))
     week = _plan(client)
     friday_dinner = [
         e for d, m, e in _meals(week) if (d, m) == ("2026-11-06", "dinner")
     ]
-    assert [(e["recipe"], e.get("planned")) for e in friday_dinner] == [
-        (CHICKEN, False)
-    ]
+    assert (CHICKEN, False) in [(e["recipe"], e.get("planned")) for e in friday_dinner]
+    added = [e for e in friday_dinner if e.get("planned")]
+    assert len(added) == 2
     # Chicken is already eaten on Friday: the plan doesn't repeat it that day.
     friday = [e["recipe"] for d, _, e in _meals(week) if d == "2026-11-06"]
     assert friday.count(CHICKEN) == 1
+
+
+def test_plan_leaves_a_takeout_meal_alone(client: TestClient):
+    takeout = {"title": "Pho", "kcal": 700, "protein_g": 40, "fat_g": 15, "carbs_g": 90}
+    _ok(
+        client.post(
+            f"/api/diary/{W45}/takeout",
+            json={"date": "2026-11-06", "mealtime": "dinner", "items": [takeout]},
+        )
+    )
+    week = _plan(client)
+    friday_dinner = [
+        e for d, m, e in _meals(week) if (d, m) == ("2026-11-06", "dinner")
+    ]
+    assert [e["kind"] for e in friday_dinner] == ["takeout"]
+
+
+def test_plan_uses_unassigned_portions_first(client: TestClient):
+    # A hand drop on Thursday dinner: 1 chicken on the day, 1 unassigned.
+    _ok(_add(client, "2026-11-05", CHICKEN, mealtime="dinner"))
+    week = _plan(client)
+    assert all(u["recipe"] != CHICKEN for u in week["unassigned"])
+    placed = [
+        e
+        for w in (W45, W46)
+        for _, _, e in _meals(_ok(client.get(f"/api/diary/{w}")))
+        if e["recipe"] == CHICKEN and e.get("planned")
+    ]
+    assert placed  # the existing portion, on some day of the week ahead
+    # Clear plans puts the portion back.
+    week = _ok(client.delete("/api/plan", params={"week": W45}))
+    assert [u["count"] for u in week["unassigned"] if u["recipe"] == CHICKEN] == [1]
 
 
 def test_clear_plans_takes_it_all_back(client: TestClient):
@@ -95,7 +129,7 @@ def test_planning_a_full_week_is_refused(client: TestClient):
     _plan(client)
     response = client.post("/api/plan", params={"week": W45})
     assert response.status_code == 409
-    assert "Nothing to plan" in response.json()["detail"]
+    assert "Nothing to add" in response.json()["detail"]
 
 
 def test_session_rows_tell_planned_from_manual(client: TestClient):
