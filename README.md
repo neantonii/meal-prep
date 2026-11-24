@@ -20,8 +20,8 @@ enriched frozen models → rendered HTML cards.
     frozen `Library` (ingredients, recipes, meals); consumers start here
 - `planner/` (under `src/meal_prep/`) — the week-ahead meal planner (CP-SAT,
   `docs/planner.md`):
-  - `plan.py` — the plain input and output values (slots, templates, plan)
-  - `templates.py` — the standard meal pattern
+  - `plan.py` — the plain input and output values (slots, pins, archetypes, plan)
+  - `archetypes.py` — the standard archetypes per mealtime
   - `solver.py` — owns the OR-Tools import; builds and solves the model
 - `weekly_plan/` — rendered diary weeks (git-ignored)
 - `tests/` — pytest suite

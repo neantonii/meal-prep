@@ -1,9 +1,10 @@
 # Planner
 
-Status: first version built (#200: hard templates, Plan / Accept / Clear
-plans). Next: the model below, where existing meals are pins, the
-objective is a sum of named terms, and each slot chooses an archetype
-(see "Existing items are pins", "Terms", "Archetypes"). The terms were
+Status: built. The first version (#200) had hard templates; the model below
+replaces it: existing meals are pins, the objective is a sum of named
+terms, and each slot chooses an archetype ("Existing items are pins",
+"Terms", "Archetypes"). "As built" lists where the code differs from the
+design for now. The terms were
 first tried in a sandbox (branch `sandbox/session-optimizer`, reference
 only). The meal
 requirements themselves (what a breakfast is, the kcal target, pairing
@@ -194,12 +195,35 @@ Starting weights (points; a leftover portion and a next-day repeat are 1):
 | Points per term in the plan | one name per term, the breakdown is automatic |
 | Deterministic solve, time limit | unchanged |
 
-### First version (built, being replaced)
+### As built
 
-Hard templates per empty slot (exactly one option; roles, presets,
-alternatives, extras). Slots holding anything were skipped, existing
-batches and unassigned stock were not in the model, and "fixed vs planned"
-was special-cased in each term.
+- **No bundles yet.** Every breakfast and the snack pair are Splits whose
+  roles name recipes ("oats breakfast" = any overnight oats + boiled eggs
+  + flat white; "hot breakfast" = fried eggs, the sausage skillet or egg
+  muffins + latte; snacks: apple + cottage cheese bowl, or the clementine
+  bowl). Bundles (a set eaten whole as one pool unit) come when a meal
+  needs them. Archetypes are code (`planner/archetypes.py`), not yet a
+  config file.
+- **Unassigned portions are stock.** A planned dish may come from its
+  slot's cycle session (cooked there) or from an earlier batch with
+  unassigned portions that is still good: within its fridge life, or
+  freezer-friendly. The write-back moves those portions onto days and
+  marks them `planned_from: unassigned`; Clear plans puts them back
+  (cooked sessions too). New batches are only cooked in planned sessions.
+- **Additions never overfill a role**: what the plan adds under the chosen
+  archetype fits in the room the pins leave (a hard limit on additions
+  only, never on pins), and it only adds dishes the chosen archetype
+  takes. Shortfall is linear (`short ≥ target × chosen − count`), pinned
+  excess and pinned unknown dishes are a constant × the choice. This keeps
+  the bound tight: a 7-day plan is proven optimal in 1-3 s (a big-M
+  version timed out at 10 s with poor plans).
+- **A session the horizon cuts off** pays 1% of the leftover points, so
+  its batches stay just enough (with no charge at all the solver cooked
+  arbitrary batches into Unassigned).
+- **History**: the day before the horizon and the start day's meals from
+  the previous cycle are fully pinned slots.
+- OR-Tools note: a variable's `proto.domain[-1]` does not index from the
+  end; bounds are read through a helper.
 
 ### Sessions and batches
 

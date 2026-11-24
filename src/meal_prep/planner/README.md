@@ -7,18 +7,20 @@ writes the plan back (`server/planning.py`, `services/prep.py`).
 ## Role & Imports
 
 Consumes `meal_prep.models.Recipe` and `meal_prep.enums`. Only `solver.py`
-may import `ortools`; `plan.py`, `templates.py` and `quadratic.py` are
+may import `ortools`; `plan.py`, `archetypes.py` and `quadratic.py` are
 solver-free.
 
 ## Business Invariants
 
-Every slot holds exactly one option of its mealtime's template (each role
-filled by one recipe) plus optional extras, nothing else; a recipe is eaten
-at most once a day, counting meals already there. Batches per session and
-recipe: `uses <= batches * servings`, whole servings only. Points:
-leftover portions (not for sessions the horizon cuts off) and next-day
-repeats (only when at least one side is planned). Deterministic: one
-worker, fixed seed.
+Existing items only fix variables: a pin is a lower bound on its slot's
+dish count, history slots are fixed, a cooked batch is fixed and a planned
+one keeps at least its batches. The only hard constraints are the diary's
+(a batch's meals never exceed its portions; a portion is eaten on or after
+its session's date), so pins can never make the model infeasible. The
+objective is a sum of named terms (archetype fit, same-day and next-day
+repeats, leftovers); each slot chooses one archetype, and the plan only
+adds dishes the chosen archetype takes, never overfilling a role.
+Deterministic: one worker, fixed seed.
 
 Convex quadratic terms (`ConvexQuadratic`, `c·x² + b·x + d`, `c > 0`) on an
 integer expression `x` in `[lo, hi]` (`_add_quadratic`): `lo <= x <= hi` is

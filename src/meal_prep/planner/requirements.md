@@ -42,5 +42,5 @@ Week-agnostic. Drafted together, section by section.
 
 ## Planner
 
-- The templates in `planner/templates.py` encode B1/B2, L1, D1 and the
+- The archetypes in `planner/archetypes.py` encode B1/B2, L1, D1 and the
   snacks; `docs/planner.md` is the design.

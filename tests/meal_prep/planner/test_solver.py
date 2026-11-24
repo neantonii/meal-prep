@@ -12,13 +12,27 @@ import pytest
 from meal_prep.enums import Aisle, Mealtime, RecipeCategory, StorageType
 from meal_prep.models.ingredient import MacrosInfo, Package
 from meal_prep.models.recipe import Recipe, RecipeIngredient
-from meal_prep.planner.plan import MealSlot, MealTemplate, Option, Role, Weights
-from meal_prep.planner.solver import NoPlanError, plan
+from meal_prep.planner.plan import (
+    TAKEOUT,
+    Archetype,
+    Batch,
+    Pin,
+    Plan,
+    Problem,
+    Role,
+    Slot,
+    Weights,
+    single,
+    split,
+)
+from meal_prep.planner.solver import plan
 
 P = RecipeCategory.MODULAR_PROTEIN
 C = RecipeCategory.MODULAR_CARB
+V = RecipeCategory.MODULAR_COOKED_VEG
 D = RecipeCategory.ONE_DISH
 THU = datetime.date(2026, 11, 5)
+LUNCH = Mealtime.LUNCH
 
 
 def _macros(*, cal: float = 100.0, protein: float = 10.0) -> MacrosInfo:
@@ -76,179 +90,162 @@ def _day(offset: int) -> datetime.date:
     return THU + datetime.timedelta(days=offset)
 
 
-def _lunches(days: int, session: datetime.date = THU) -> list[MealSlot]:
-    return [MealSlot(_day(d), Mealtime.LUNCH, session) for d in range(days)]
-
-
-_PLATE = Option(
-    "plate", (Role("protein", frozenset({P})), Role("carb", frozenset({C})))
+_PLATE = split(
+    "plate",
+    Role("protein", frozenset({P}), missing=5, extra=3),
+    Role("carb", frozenset({C}), missing=5, extra=3),
+    Role("veg", frozenset({V}), missing=3, extra=1),
 )
-_ONE_DISH = Option("one dish", (Role("one dish", frozenset({D})),))
-_LUNCH = {Mealtime.LUNCH: MealTemplate(options=(_PLATE, _ONE_DISH))}
+_ONE_DISH = single("one dish", Role("dish", frozenset({D}), missing=5, extra=3), 0.5)
+_EAT_OUT = Archetype(
+    "eat out", (Role("takeout", recipe_ids=frozenset({TAKEOUT})),), plannable=False
+)
+_LUNCHES = {LUNCH: (_PLATE, _ONE_DISH, _EAT_OUT)}
+
+_RECIPES = [
+    _recipe("chicken", P, servings=2),
+    _recipe("beef", P, servings=2),
+    _recipe("fish", P),
+    _recipe("rice", C),
+    _recipe("pasta", C),
+    _recipe("buckwheat", C),
+    _recipe("beans", V, servings=2),
+    _recipe("broccoli", V, servings=2),
+    _recipe("soup", D, servings=3),
+]
 
 
-def _by_day(result) -> dict[datetime.date, set[str]]:
-    days: dict[datetime.date, set[str]] = {}
-    for pick in result.picks:
-        days.setdefault(pick.slot.date, set()).add(pick.recipe_id)
-    return days
-
-
-def test_every_slot_follows_one_option_of_its_template():
-    recipes = [_recipe("chicken"), _recipe("rice", C), _recipe("soup", D)]
-    result = plan(recipes, _lunches(3), _LUNCH)
-    for meal in _by_day(result).values():
-        assert meal in ({"chicken", "rice"}, {"soup"})
-
-
-def test_fixed_sets_are_eaten_whole_and_extras_are_optional():
-    breakfast = {
-        Mealtime.BREAKFAST: MealTemplate(
-            options=(
-                Option(
-                    "oats",
-                    (
-                        Role("oats", recipe_ids=frozenset({"oats"})),
-                        Role("coffee", recipe_ids=frozenset({"coffee"})),
-                    ),
-                ),
-            ),
-            extras=Role("snack", recipe_ids=frozenset({"apple"})),
-        )
-    }
-    recipes = [
-        _recipe("oats", RecipeCategory.BREAKFAST),
-        _recipe("coffee", RecipeCategory.BREAKFAST),
-        _recipe("apple", RecipeCategory.SNACKS),
-        _recipe("eggs", RecipeCategory.BREAKFAST),  # fits nothing
-    ]
-    slots = [MealSlot(THU, Mealtime.BREAKFAST, THU)]
-    meal = _by_day(plan(recipes, slots, breakfast))[THU]
-    assert {"oats", "coffee"} <= meal <= {"oats", "coffee", "apple"}
-
-
-def test_a_recipe_is_eaten_once_a_day_counting_fixed_meals():
-    recipes = [
-        _recipe("chicken"),
-        _recipe("beef"),
-        _recipe("rice", C),
-        _recipe("pasta", C),
-        _recipe("buckwheat", C),
-    ]
-    dinner = {Mealtime.DINNER: MealTemplate(options=(_PLATE,))}
-    slots = [MealSlot(THU, Mealtime.LUNCH, THU), MealSlot(THU, Mealtime.DINNER, THU)]
-    result = plan(recipes, slots, {**_LUNCH, **dinner}, eaten={THU: {"rice"}})
-    picked = [p.recipe_id for p in result.picks]
-    assert len(picked) == len(set(picked))  # nothing twice on Thursday
-    assert "rice" not in picked  # already eaten that day
-
-
-def test_batches_cover_the_meals_and_leftovers_are_avoided():
-    # A 2-portion protein eaten on two days beats two 1-portion batches of
-    # anything with a portion left over.
-    recipes = [_recipe("chicken", servings=2), _recipe("rice", C)]
-    result = plan(recipes, _lunches(2), {Mealtime.LUNCH: MealTemplate((_PLATE,))})
-    batches = {b.recipe_id: b for b in result.batches}
-    assert (batches["chicken"].batches, batches["chicken"].used) == (1, 2)
-    assert dict(result.points)["leftovers"] == 0
-
-
-def test_leftovers_count_points():
-    # Three lunches of a 2-portion recipe: 2 batches, one portion left over.
-    recipes = [_recipe("chicken", servings=2), _recipe("rice", C)]
-    template = {Mealtime.LUNCH: MealTemplate((_PLATE,))}
-    result = plan(recipes, _lunches(3), template, weights=Weights(next_day_repeat=0))
-    (chicken,) = [b for b in result.batches if b.recipe_id == "chicken"]
-    assert (chicken.batches, chicken.used, chicken.leftover) == (2, 3, 1)
-    assert dict(result.points)["leftovers"] == 1
-
-
-def test_truncated_sessions_cook_just_enough_and_pay_nothing():
-    recipes = [_recipe("chicken", servings=2), _recipe("rice", C)]
-    template = {Mealtime.LUNCH: MealTemplate((_PLATE,))}
-    result = plan(
-        recipes,
-        _lunches(1),
-        template,
-        truncated={THU},
+def _problem(days: int = 1, **fields) -> Problem:
+    slots = tuple(Slot(_day(d), LUNCH, THU) for d in range(days))
+    return Problem(
+        slots=fields.pop("slots", slots),
+        history=fields.pop("history", ()),
+        pins=fields.pop("pins", ()),
+        batches=fields.pop("batches", ()),
+        sessions=fields.pop("sessions", (THU,)),
+        archetypes=fields.pop("archetypes", _LUNCHES),
+        **fields,
     )
-    (chicken,) = [b for b in result.batches if b.recipe_id == "chicken"]
-    assert (chicken.batches, chicken.leftover) == (1, 1)
+
+
+def _added(result: Plan, day: datetime.date = THU) -> list[str]:
+    return sorted(p.recipe_id for p in result.placements if p.date == day)
+
+
+def _category(recipe_id: str) -> RecipeCategory:
+    return next(r.category for r in _RECIPES if r.id == recipe_id)
+
+
+def test_an_empty_slot_gets_a_whole_archetype():
+    result = plan(_RECIPES, _problem())
+    meal = _added(result)
+    assert sorted(_category(r) for r in meal) in ([C, V, P], [D])
+    assert dict(result.points)["archetype fit"] <= 0.5  # at most a base cost
+
+
+def test_a_half_filled_meal_is_completed_around_its_pin():
+    pins = (Pin(THU, LUNCH, "fish", THU),)
+    result = plan(_RECIPES, _problem(pins=pins, batches=(Batch(THU, "fish", 1, 1),)))
+    added = _added(result)
+    assert sorted(_category(r) for r in added) == [C, V]  # no second protein
+    assert dict(result.points)["archetype fit"] == 0
+
+
+def test_pins_that_break_the_archetype_cost_points_never_infeasibility():
+    # Two proteins placed by hand: the slot pays an excess, the plan adds
+    # a carb and a veg and nothing else.
+    pins = (Pin(THU, LUNCH, "fish", THU), Pin(THU, LUNCH, "beef", THU))
+    batches = (Batch(THU, "fish", 1, 1), Batch(THU, "beef", 1, 2, unassigned=1))
+    result = plan(_RECIPES, _problem(pins=pins, batches=batches))
+    assert sorted(_category(r) for r in _added(result)) == [C, V]
+    assert dict(result.points)["archetype fit"] == 3  # one extra protein
+
+
+def test_takeout_is_matched_and_left_alone():
+    result = plan(_RECIPES, _problem(pins=(Pin(THU, LUNCH, TAKEOUT),)))
+    assert _added(result) == []
+    assert result.archetypes == ((THU, LUNCH, "eat out"),)
+
+
+def test_eat_out_is_never_chosen_for_an_empty_slot():
+    result = plan(_RECIPES, _problem())
+    assert result.archetypes[0][2] != "eat out"
+
+
+def test_unassigned_stock_is_used_before_cooking():
+    # Monday's beef has a spare portion; eating it beats a new batch.
+    monday = THU - datetime.timedelta(days=3)
+    stock = Batch(monday, "beef", 1, 2, outside=1, unassigned=1, fixed=True)
+    result = plan(_RECIPES, _problem(batches=(stock,)))
+    beef = [p for p in result.placements if p.recipe_id == "beef"]
+    assert [p.session for p in beef] == [monday]
+    assert all(c.recipe_id != "beef" for c in result.cooks)
+
+
+def test_stock_past_its_fridge_life_is_not_used():
+    long_ago = THU - datetime.timedelta(days=10)
+    stale = Batch(
+        long_ago,
+        "beef",
+        1,
+        2,
+        unassigned=2,
+        fixed=True,
+        fridge_days=4,
+        freezer_friendly=False,
+    )
+    result = plan(_RECIPES, _problem(batches=(stale,)))
+    assert all(p.session != long_ago for p in result.placements)
+
+
+def test_batches_are_used_up_and_leftovers_avoided():
+    # Two lunches: a 2-portion protein and veg eaten on both days, a day
+    # apart from nothing else; no leftovers.
+    result = plan(_RECIPES, _problem(days=2, weights=Weights(next_day_repeat=0)))
     assert dict(result.points)["leftovers"] == 0
 
 
-def test_next_day_repeats_are_avoided_but_a_day_between_is_free():
-    recipes = [
-        _recipe("chicken"),
-        _recipe("beef"),
-        _recipe("rice", C),
-        _recipe("pasta", C),
-    ]
-    template = {Mealtime.LUNCH: MealTemplate((_PLATE,))}
-    result = plan(recipes, _lunches(4), template, weights=Weights(leftover=0))
-    days = _by_day(result)
-    for d in range(3):
-        assert not days[_day(d)] & days[_day(d + 1)]
-    assert dict(result.points)["next-day repeats"] == 0
+def test_a_recipe_twice_in_a_day_is_avoided():
+    dinner = Mealtime.DINNER
+    archetypes = {LUNCH: (_PLATE,), dinner: (_PLATE,)}
+    slots = (Slot(THU, LUNCH, THU), Slot(THU, dinner, THU))
+    result = plan(
+        _RECIPES,
+        _problem(slots=slots, archetypes=archetypes, weights=Weights(leftover=0)),
+    )
+    picked = [p.recipe_id for p in result.placements]
+    assert len(picked) == len(set(picked))
 
 
-def test_repeats_count_against_the_day_before_the_plan():
-    recipes = [
-        _recipe("chicken"),
-        _recipe("beef"),
-        _recipe("rice", C),
-        _recipe("pasta", C),
-    ]
-    template = {Mealtime.LUNCH: MealTemplate((_PLATE,))}
+def test_next_day_repeats_count_the_history_day():
     yesterday = THU - datetime.timedelta(days=1)
-    result = plan(
-        recipes, _lunches(1), template, eaten={yesterday: {"chicken", "rice"}}
-    )
-    assert _by_day(result)[THU] == {"beef", "pasta"}
+    history = (Slot(yesterday, LUNCH, yesterday),)
+    pins = tuple(Pin(yesterday, LUNCH, r, None) for r in ("fish", "rice", "beans"))
+    # Leftovers off: a 2-portion batch's spare would tie with a repeat.
+    problem = _problem(history=history, pins=pins, weights=Weights(leftover=0))
+    result = plan(_RECIPES, problem)
+    assert not set(_added(result)) & {"fish", "rice", "beans"}
+    assert all(p.date == THU for p in result.placements)  # history untouched
 
 
-def test_unavoidable_repeats_are_charged():
-    recipes = [_recipe("chicken"), _recipe("rice", C)]
-    template = {Mealtime.LUNCH: MealTemplate((_PLATE,))}
-    result = plan(recipes, _lunches(3), template, weights=Weights(leftover=0))
-    # chicken and rice on Thu-Fri and Fri-Sat: 4 repeats.
-    assert dict(result.points)["next-day repeats"] == 4
+def test_a_cut_off_session_cooks_just_enough():
+    result = plan(_RECIPES, _problem(truncated=frozenset({THU})))
+    for cook in result.cooks:
+        recipe = next(r for r in _RECIPES if r.id == cook.recipe_id)
+        used = sum(1 for p in result.placements if p.recipe_id == cook.recipe_id)
+        assert cook.batches == -(-used // int(recipe.servings))
 
 
-def test_an_option_a_missing_recipe_breaks_is_left_out():
-    recipes = [_recipe("soup", D)]  # no protein or carb: only the one dish fits
-    result = plan(recipes, _lunches(1), _LUNCH)
-    assert _by_day(result)[THU] == {"soup"}
+def test_a_planned_session_keeps_its_batches_and_may_add():
+    # Thursday already cooks one beef batch (2 portions) by hand.
+    existing = Batch(THU, "beef", 1, 2, unassigned=2)
+    result = plan(_RECIPES, _problem(days=3, batches=(existing,)))
+    beef_cooks = [c for c in result.cooks if c.recipe_id == "beef"]
+    assert all(c.batches >= 1 for c in beef_cooks)  # only ever additions
 
 
-def test_no_fitting_recipe_is_an_error():
-    with pytest.raises(NoPlanError):
-        plan(
-            [_recipe("rice", C)], _lunches(1), {Mealtime.LUNCH: MealTemplate((_PLATE,))}
-        )
-
-
-def test_a_recipe_may_be_shared_by_two_options():
-    # Coffee comes with either breakfast.
-    def fixed(name: str, *ids: str) -> Option:
-        return Option(name, tuple(Role(i, recipe_ids=frozenset({i})) for i in ids))
-
-    template = {
-        Mealtime.BREAKFAST: MealTemplate(
-            (fixed("oats", "oats", "coffee"), fixed("eggs", "eggs", "coffee"))
-        )
-    }
-    recipes = [_recipe(i, RecipeCategory.BREAKFAST) for i in ("oats", "eggs", "coffee")]
-    slots = [MealSlot(_day(d), Mealtime.BREAKFAST, THU) for d in range(2)]
-    days = _by_day(plan(recipes, slots, template))
-    assert sorted(map(sorted, days.values())) == [
-        ["coffee", "eggs"],
-        ["coffee", "oats"],
-    ]
-
-
-def test_a_recipe_in_two_roles_of_one_option_is_rejected():
-    both = Role("p", frozenset({P}))
-    template = {Mealtime.LUNCH: MealTemplate((Option("x", (both, both)),))}
-    with pytest.raises(ValueError, match="more than one role"):
-        plan([_recipe("chicken")], _lunches(1), template)
+def test_a_dish_in_two_roles_of_one_archetype_is_rejected():
+    both = Role("protein", frozenset({P}))
+    archetypes = {LUNCH: (split("odd", both, Role("again", frozenset({P}))),)}
+    with pytest.raises(ValueError, match="two roles"):
+        plan(_RECIPES, _problem(archetypes=archetypes))

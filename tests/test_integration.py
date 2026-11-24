@@ -19,9 +19,9 @@ from meal_prep.adapters.units import load_units
 from meal_prep.enums import Mealtime
 from meal_prep.library import load_library
 from meal_prep.models.library import Library
-from meal_prep.planner.plan import MealSlot
+from meal_prep.planner.archetypes import STANDARD
+from meal_prep.planner.plan import Problem, Slot
 from meal_prep.planner.solver import plan
-from meal_prep.planner.templates import STANDARD
 from meal_prep.services.ingredients import prepare_catalog
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -126,15 +126,23 @@ def test_air_fried_chicken_breast_totals(library: Library):
 
 
 def test_plan_a_week_from_the_library(library: Library):
-    """The standard templates can be filled from the real recipes."""
+    """The standard archetypes can be filled from the real recipes, and each
+    slot comes out in its chosen archetype with no misfit."""
     thursday = datetime.date(2026, 11, 5)
-    slots = [
-        MealSlot(
-            date=thursday + datetime.timedelta(days=d), mealtime=m, session=thursday
-        )
+    slots = tuple(
+        Slot(date=thursday + datetime.timedelta(days=d), mealtime=m, cycle=thursday)
         for d in range(3)
         for m in Mealtime
-    ]
-    result = plan(list(library.recipes.values()), slots, STANDARD)
-    filled = {(p.slot.date, p.slot.mealtime) for p in result.picks}
+    )
+    problem = Problem(
+        slots=slots,
+        history=(),
+        pins=(),
+        batches=(),
+        sessions=(thursday,),
+        archetypes=dict(STANDARD),
+    )
+    result = plan(list(library.recipes.values()), problem)
+    filled = {(p.date, p.mealtime) for p in result.placements}
     assert filled == {(s.date, s.mealtime) for s in slots}
+    assert dict(result.points)["archetype fit"] < 3  # base costs at most
