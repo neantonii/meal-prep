@@ -1222,7 +1222,7 @@
       factor: 256
 
 - id: longos-organic-black-beans
-  name: Organic Low Sodium Black Beans
+  name: Organic Black Beans
   step_name: black beans
   aisle: pantry
   storage: ambient
@@ -1234,17 +1234,17 @@
     price: 2.19
 
   macros:
-    unit: g
-    amount: 100
-    calories_kcal: 91.0
-    protein_g: 6.03
-    fat_g: 0.29
-    carbs_g: 16.55
-    fiber_g: 6.9
-    saturated_fat_g: 0.075
-    sugars_g: 0.23
-    sodium_mg: 138.0
-    potassium_mg: 308.0
+    unit: cup
+    amount: 1/2
+    calories_kcal: 120.0
+    protein_g: 8.0
+    fat_g: 0.0
+    carbs_g: 22.0
+    fiber_g: 9.0
+    saturated_fat_g: 0.0
+    sugars_g: 0.0
+    sodium_mg: 125.0
+    potassium_mg: 400.0
 
   conversions:
     - from: package
@@ -1255,7 +1255,7 @@
       factor: 240
 
 - id: longos-organic-kidney-beans
-  name: Organic Low Sodium Red Kidney Beans
+  name: Organic Red Kidney Beans
   step_name: kidney beans
   aisle: pantry
   storage: ambient
@@ -1267,17 +1267,17 @@
     price: 2.19
 
   macros:
-    unit: g
-    amount: 100
-    calories_kcal: 81.0
-    protein_g: 5.22
-    fat_g: 0.36
-    carbs_g: 14.83
-    fiber_g: 5.3
-    saturated_fat_g: 0.125
-    sugars_g: 1.85
-    sodium_mg: 117.0
-    potassium_mg: 260.0
+    unit: cup
+    amount: 1/2
+    calories_kcal: 110.0
+    protein_g: 7.0
+    fat_g: 0.0
+    carbs_g: 19.0
+    fiber_g: 6.0
+    saturated_fat_g: 0.0
+    sugars_g: 2.0
+    sodium_mg: 135.0
+    potassium_mg: 350.0
 
   conversions:
     - from: package
