@@ -22,7 +22,7 @@ planner = [
     "ortools==9.15.6755",
 ]
 dev = [
-    "httpx2==2.13.1", # starlette TestClient
+    "httpx2==2.16.0", # starlette TestClient
     "mypy==2.4.0",
     "pytest==9.1.1",
     "ruff==0.17.1",
