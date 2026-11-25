@@ -160,13 +160,33 @@ class Cook:
 
 
 @dataclass(frozen=True, slots=True)
+class Line:
+    """One line of a plan's bill: which term charged it, where, why, how much.
+
+    ``date`` and ``mealtime`` place it on a slot (both set), a day (only
+    ``date``) or a session (only ``session``).
+    """
+
+    term: str
+    reason: str
+    points: float
+    date: datetime.date | None = None
+    mealtime: Mealtime | None = None
+    session: datetime.date | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class Plan:
-    """A solved plan: what it adds, the archetype per slot, the points."""
+    """A solved (or scored) plan: what it adds, the archetype per slot, the
+    points per term, the bill line by line, and any broken hard rule (only
+    possible in a scored week whose files are inconsistent)."""
 
     placements: tuple[Placement, ...]
     cooks: tuple[Cook, ...]
     archetypes: tuple[tuple[datetime.date, Mealtime, str], ...]
     points: tuple[tuple[str, float], ...]
+    lines: tuple[Line, ...] = ()
+    problems: tuple[str, ...] = ()
 
     @property
     def total_points(self) -> float:
