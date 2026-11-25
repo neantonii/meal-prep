@@ -1,5 +1,19 @@
 {
   "$defs": {
+    "MealRole": {
+      "description": "The part of a meal a recipe plays, where its category is too coarse\nto say (breakfast and snack recipes). The planner's archetypes name\nthese, never recipe ids (``docs/planner.md``, \"Archetypes\").",
+      "enum": [
+        "overnight_oats",
+        "boiled_eggs",
+        "hot_breakfast",
+        "coffee",
+        "fruit",
+        "snack_bowl",
+        "fruit_bowl"
+      ],
+      "title": "MealRole",
+      "type": "string"
+    },
     "RecipeCategory": {
       "enum": [
         "modular_protein",
@@ -123,7 +137,7 @@
     }
   },
   "additionalProperties": false,
-  "description": "A parsed recipe file, ``recipes/<category>/<id>.cook``.\n\nThe file is YAML frontmatter (id, title, category, yield, storage; no\nother keys) followed by a Cooklang body. Ingredients, mentions and\ncookware are parsed from the body, never authored as YAML: ``@id{1/2%cup}``\ndeclares an amount, ``@id`` or ``@id{}`` mentions an ingredient declared\nelsewhere, ``#id`` names equipment, and ``~name{10%min}`` is a timer (the\nname is required).",
+  "description": "A parsed recipe file, ``recipes/<category>/<id>.cook``.\n\nThe file is YAML frontmatter (id, title, category, yield, storage,\noptional meal_role; no other keys) followed by a Cooklang body. Ingredients, mentions and\ncookware are parsed from the body, never authored as YAML: ``@id{1/2%cup}``\ndeclares an amount, ``@id`` or ``@id{}`` mentions an ingredient declared\nelsewhere, ``#id`` names equipment, and ``~name{10%min}`` is a timer (the\nname is required).",
   "properties": {
     "category": {
       "$ref": "#/$defs/RecipeCategory",
@@ -154,6 +168,18 @@
       "description": "The Cooklang body: one step per paragraph",
       "title": "Instructions",
       "type": "string"
+    },
+    "meal_role": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MealRole"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The part of a meal it plays, for the planner's archetypes (breakfast and snack recipes); absent when the category says enough"
     },
     "mentions": {
       "description": "Amount-less ingredient references (``@id`` or ``@id{}``) parsed from the body; each needs a declaration elsewhere",

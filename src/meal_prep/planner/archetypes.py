@@ -3,23 +3,27 @@ meal requirements in ``planner/requirements.md``).
 
 Lunch and dinner: a plate (protein + carb + a vegetable: cooked veg at
 lunch, salad at dinner) or a one-dish meal; eating out matches takeout.
-Breakfast: an oats breakfast (overnight oats + boiled eggs + flat white) or
-a hot one (fried eggs, the sausage skillet or egg muffins + latte), both
-strict. Snacks: apple + cottage cheese, or the clementine bowl.
+Breakfast: an oats breakfast (overnight oats + boiled eggs + coffee) or a
+hot one (a hot main + coffee), both strict. Snacks: fruit + a snack bowl,
+or a fruit bowl.
+
+Pools are recipe categories or meal roles, never recipe ids: a recipe
+says which role it plays in its own file (``meal_role``), so a new
+breakfast needs no change here.
 """
 
 from __future__ import annotations
 
-from meal_prep.enums import Mealtime, RecipeCategory
-from meal_prep.planner.plan import TAKEOUT, Archetype, Role, single, split
+from meal_prep.enums import MealRole, Mealtime, RecipeCategory
+from meal_prep.planner.plan import Archetype, Role, single, split
 
 
 def _of(name: str, *categories: RecipeCategory, missing: float, extra: float) -> Role:
     return Role(name, categories=frozenset(categories), missing=missing, extra=extra)
 
 
-def _ids(name: str, *recipe_ids: str, missing: float, extra: float) -> Role:
-    return Role(name, recipe_ids=frozenset(recipe_ids), missing=missing, extra=extra)
+def _playing(name: str, *roles: MealRole, missing: float, extra: float) -> Role:
+    return Role(name, meal_roles=frozenset(roles), missing=missing, extra=extra)
 
 
 # Missing / extra points per dish (docs/planner.md, starting weights).
@@ -32,37 +36,24 @@ _ONE_DISH = _of("one dish", RecipeCategory.ONE_DISH, missing=5, extra=3)
 # Takeout is never planned; this archetype only matches a takeout meal that
 # is already there, so the planner doesn't build a plate around it.
 EAT_OUT = Archetype(
-    "eat out", (_ids("takeout", TAKEOUT, missing=5, extra=1),), plannable=False
+    "eat out", (Role("takeout", takeout=True, missing=5, extra=1),), plannable=False
 )
 
 _STRICT = 5.0  # a breakfast is eaten as it comes: high missing and extra
+_COFFEE = _playing("coffee", MealRole.COFFEE, missing=_STRICT, extra=_STRICT)
 
 STANDARD: dict[Mealtime, tuple[Archetype, ...]] = {
     Mealtime.BREAKFAST: (
         split(
             "oats breakfast",
-            _ids(
-                "oats",
-                "blueberry-peanut-butter-overnight-oats",
-                "granny-smith-maple-walnut-overnight-oats",
-                "orange-cranberry-almond-overnight-oats",
-                missing=_STRICT,
-                extra=_STRICT,
-            ),
-            _ids("eggs", "boiled-eggs-with-mayo", missing=_STRICT, extra=_STRICT),
-            _ids("coffee", "flat-white", missing=_STRICT, extra=_STRICT),
+            _playing("oats", MealRole.OVERNIGHT_OATS, missing=_STRICT, extra=_STRICT),
+            _playing("eggs", MealRole.BOILED_EGGS, missing=_STRICT, extra=_STRICT),
+            _COFFEE,
         ),
         split(
             "hot breakfast",
-            _ids(
-                "main",
-                "fried-eggs-ham-toast",
-                "sausage-peas-breakfast",
-                "spinach-sun-dried-tomato-feta-egg-muffins",
-                missing=_STRICT,
-                extra=_STRICT,
-            ),
-            _ids("coffee", "homemade-latte", missing=_STRICT, extra=_STRICT),
+            _playing("main", MealRole.HOT_BREAKFAST, missing=_STRICT, extra=_STRICT),
+            _COFFEE,
         ),
     ),
     Mealtime.LUNCH: (
@@ -77,13 +68,12 @@ STANDARD: dict[Mealtime, tuple[Archetype, ...]] = {
     ),
     Mealtime.SNACKS: (
         split(
-            "apple and cottage cheese",
-            _ids("apple", "honeycrisp-apple", missing=1, extra=0.5),
-            _ids("cottage cheese", "cottage-cheese-snack-bowl", missing=1, extra=0.5),
+            "fruit and snack bowl",
+            _playing("fruit", MealRole.FRUIT, missing=1, extra=0.5),
+            _playing("snack bowl", MealRole.SNACK_BOWL, missing=1, extra=0.5),
         ),
         single(
-            "clementine bowl",
-            _ids("bowl", "cottage-cheese-clementine-bowl", missing=1, extra=0.5),
+            "fruit bowl", _playing("bowl", MealRole.FRUIT_BOWL, missing=1, extra=0.5)
         ),
         EAT_OUT,
     ),

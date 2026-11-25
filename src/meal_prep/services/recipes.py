@@ -171,4 +171,5 @@ def prepare_recipe(
         cookware_by_token=MappingProxyType(cookware_by_token),
         ingredients=tuple(resolved_ingredients),
         instructions=recipe.instructions,
+        meal_role=recipe.meal_role,
     )
