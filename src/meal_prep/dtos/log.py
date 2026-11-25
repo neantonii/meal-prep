@@ -20,7 +20,7 @@ import datetime
 import itertools
 import re
 import uuid
-from typing import Annotated, Literal
+from typing import Annotated
 
 from pydantic import (
     BaseModel,
@@ -74,12 +74,6 @@ class RecipeEntryDTO(_EntryDTO):
         default=None,
         description="True when the planner placed this serving and nobody has "
         "accepted or moved it yet; absent otherwise",
-    )
-    planned_from: Literal["unassigned"] | None = Field(
-        default=None,
-        description="Where a planned serving was before the planner placed it: "
-        "'unassigned' for a portion that already existed (Clear plans puts it "
-        "back there); absent for a portion the plan cooks",
     )
 
     @field_validator("recipe")
