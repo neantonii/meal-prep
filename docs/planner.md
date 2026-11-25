@@ -207,9 +207,15 @@ Starting weights (points; a leftover portion and a next-day repeat are 1):
 - **Unassigned portions are stock.** A planned dish may come from its
   slot's cycle session (cooked there) or from an earlier batch with
   unassigned portions that is still good: within its fridge life, or
-  freezer-friendly. The write-back moves those portions onto days and
-  marks them `planned_from: unassigned`; Clear plans puts them back
-  (cooked sessions too). New batches are only cooked in planned sessions.
+  freezer-friendly. The write-back moves those portions onto days,
+  flagged `planned`. New batches are only cooked in planned sessions.
+- **Planned batches are counted on the recipe line** (`planned_batches`
+  on a session item: how many of its `batches` the plan added and nobody
+  has accepted). Meals carry only `planned`. Clear plans takes off the
+  planned batches of open sessions (keeping what manual meals need),
+  sends every planned meal from today on back to Unassigned, and leaves
+  past days alone. A cooked session keeps its batches (a fact). Accept
+  clears both flags; removing a batch takes a planned one first.
 - **Additions never overfill a role**: what the plan adds under the chosen
   archetype fits in the room the pins leave (a hard limit on additions
   only, never on pins), and it only adds dishes the chosen archetype

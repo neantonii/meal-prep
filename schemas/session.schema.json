@@ -155,6 +155,20 @@
           "title": "Ingredients",
           "type": "array"
         },
+        "planned_batches": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "How many of the batches the planner added and nobody has accepted yet; absent when none",
+          "title": "Planned Batches"
+        },
         "potassium_mg": {
           "description": "Per serving, when added",
           "minimum": 0,
