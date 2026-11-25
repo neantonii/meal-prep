@@ -37,6 +37,7 @@ from meal_prep.planner.plan import (
     Archetype,
     Batch,
     Cook,
+    Line,
     Placement,
     Plan,
     Problem,
@@ -50,7 +51,19 @@ _ONE_DAY = datetime.timedelta(days=1)
 CUT_OFF_SHARE = 0.01
 
 type _Key = tuple[str, datetime.date | None]  # (recipe id, session)
-type _Part = tuple[float, LinearExpr | cp_model.IntVar]  # (weight, value)
+
+
+@dataclass(frozen=True, eq=False)
+class Part:
+    """One weighted value a term adds to the objective, labelled for the
+    bill: where it applies (a slot, a day or a session) and why."""
+
+    weight: float
+    value: LinearExpr | cp_model.IntVar
+    reason: str
+    date: datetime.date | None = None
+    mealtime: Mealtime | None = None
+    session: datetime.date | None = None
 
 
 class NoPlanError(RuntimeError):
@@ -73,9 +86,17 @@ class Context:
     servings: dict[tuple[datetime.date, str], int]
     existing: dict[tuple[datetime.date, str], int]  # batches already there
     outside: dict[tuple[datetime.date, str], int]
+    titles: Mapping[str, str] = field(default_factory=dict)
+    scoring: bool = False  # every dish pinned, no new batches: just the bill
     archetype: dict[tuple[datetime.date, Mealtime], dict[str, cp_model.IntVar]] = field(
         default_factory=dict
     )
+
+    def title(self, recipe_id: str) -> str:
+        """A dish's name for the bill."""
+        if recipe_id == TAKEOUT:
+            return "takeout"
+        return self.titles.get(recipe_id, recipe_id)
 
     def day_uses(self, day: datetime.date, recipe_id: str) -> list[cp_model.IntVar]:
         """Every variable that puts ``recipe_id`` on ``day``."""
@@ -94,15 +115,30 @@ class Term(Protocol):
     @property
     def name(self) -> str: ...
 
-    def build(self, ctx: Context) -> list[_Part]: ...
+    def build(self, ctx: Context) -> list[Part]: ...
 
 
 def plan(
     recipes: Sequence[Recipe], problem: Problem, *, time_limit_s: float = 10.0
 ) -> Plan:
     """Solve ``problem``: what to add to each slot, and what to cook."""
+    return _solve(recipes, problem, scoring=False, time_limit_s=time_limit_s)
+
+
+def score(recipes: Sequence[Recipe], problem: Problem) -> Plan:
+    """Score what is already in ``problem``'s slots, the same way the planner
+    would: every dish stays as it is, no batch changes, each slot is read as
+    its closest archetype. The result has the bill (``points``, ``lines``),
+    the archetypes and any broken hard rule, and adds nothing."""
+    return _solve(recipes, problem, scoring=True, time_limit_s=10.0)
+
+
+def _solve(
+    recipes: Sequence[Recipe], problem: Problem, *, scoring: bool, time_limit_s: float
+) -> Plan:
     by_id = {recipe.id: recipe for recipe in recipes if recipe.servings.is_integer()}
-    ctx = _build(by_id, problem)
+    ctx, problems = _build(by_id, problem, scoring=scoring)
+    ctx.titles = {recipe.id: recipe.title for recipe in recipes}
     terms: list[Term] = [
         ArchetypeFit(),
         SameDayRepeat(problem.weights.same_day_repeat),
@@ -111,9 +147,7 @@ def plan(
     ]
     parts = {term.name: term.build(ctx) for term in terms}
     ctx.model.minimize(
-        LinearExpr.sum(
-            [weight * value for found in parts.values() for weight, value in found]
-        )
+        LinearExpr.sum([p.weight * p.value for found in parts.values() for p in found])
     )
 
     solver = cp_model.CpSolver()
@@ -150,14 +184,26 @@ def plan(
         if solver.boolean_value(var)
     )
     points = tuple(
-        (name, sum(w * solver.value(v) for w, v in found))
+        (name, sum(p.weight * solver.value(p.value) for p in found))
         for name, found in parts.items()
+    )
+    totals: dict[tuple[object, ...], float] = defaultdict(float)
+    for name, found in parts.items():
+        for p in found:
+            value = p.weight * solver.value(p.value)
+            if value > 1e-9:
+                totals[(name, p.reason, p.date, p.mealtime, p.session)] += value
+    lines = tuple(
+        Line(term, reason, round(value, 4), date, mealtime, session)  # type: ignore[arg-type]
+        for (term, reason, date, mealtime, session), value in totals.items()
     )
     return Plan(
         placements=tuple(placements),
         cooks=tuple(cooks),
         archetypes=chosen,
         points=points,
+        lines=lines,
+        problems=tuple(problems),
     )
 
 
@@ -172,9 +218,16 @@ def _slot_order(key: tuple[datetime.date, Mealtime]) -> tuple[datetime.date, int
     return key[0], list(Mealtime).index(key[1])
 
 
-def _build(recipes: Mapping[str, Recipe], problem: Problem) -> Context:
+def _build(
+    recipes: Mapping[str, Recipe], problem: Problem, *, scoring: bool
+) -> tuple[Context, list[str]]:
     """The shared variables: dishes per slot (pins as lower bounds, history
-    fixed), batches per session and recipe with their portion limit."""
+    fixed), batches per session and recipe with their portion limit.
+
+    Scoring: every slot is fixed to its pins and every batch to what it
+    has; the hard rules are checked and reported instead of enforced, so
+    an inconsistent week still gets its bill."""
+    problems: list[str] = []
     model = cp_model.CpModel()
     category: dict[str, RecipeCategory | None] = {
         rid: r.category for rid, r in recipes.items()
@@ -223,13 +276,20 @@ def _build(recipes: Mapping[str, Recipe], problem: Problem) -> Context:
 
     for slot in problem.slots:
         key = (slot.date, slot.mealtime)
-        wanted = candidates(slot) | set(pinned[key])
+        wanted = set(pinned[key]) if scoring else candidates(slot) | set(pinned[key])
         x[key] = {}
         for k in sorted(wanted, key=lambda k: (k[0], str(k[1]))):
             low = pinned[key][k]
             x[key][k] = model.new_int_var(
-                low, max(low, 1), f"x_{slot.date}_{slot.mealtime}_{k[0]}_{k[1]}"
+                low,
+                low if scoring else max(low, 1),
+                f"x_{slot.date}_{slot.mealtime}_{k[0]}_{k[1]}",
             )
+            if k[1] is not None and k[1] > slot.date:
+                problems.append(
+                    f"{slot.date} {slot.mealtime.value}: {k[0]} is eaten before "
+                    f"its session on {k[1]}"
+                )
 
     uses: dict[tuple[datetime.date, str], list[cp_model.IntVar]] = defaultdict(list)
     for keys in x.values():
@@ -244,7 +304,7 @@ def _build(recipes: Mapping[str, Recipe], problem: Problem) -> Context:
         known = existing.get((session, rid))
         if known is not None:
             serving, low = known.servings, known.batches
-            high = low if known.fixed else low + len(vars_)
+            high = low if known.fixed or scoring else low + len(vars_)
             outside[(session, rid)] = known.outside
         elif rid in recipes:
             serving, low, high = int(recipes[rid].servings), 0, len(vars_)
@@ -252,11 +312,20 @@ def _build(recipes: Mapping[str, Recipe], problem: Problem) -> Context:
         else:
             continue  # a pinned meal of a recipe that is gone: no batch to track
         var = model.new_int_var(low, high, f"b_{session}_{rid}")
-        model.add(LinearExpr.sum(vars_) + outside[(session, rid)] <= var * serving)
+        if scoring:
+            meals = sum(_upper(v) for v in vars_) + outside[(session, rid)]
+            if meals > low * serving:
+                problems.append(
+                    f"{rid} of the {session} session: {meals} meals for "
+                    f"{low * serving} portions"
+                )
+        else:
+            model.add(LinearExpr.sum(vars_) + outside[(session, rid)] <= var * serving)
         batches[(session, rid)] = var
         servings[(session, rid)] = serving
         already[(session, rid)] = low
-    return Context(
+    ctx = Context(
+        scoring=scoring,
         model=model,
         problem=problem,
         category=category,
@@ -268,6 +337,7 @@ def _build(recipes: Mapping[str, Recipe], problem: Problem) -> Context:
         existing=already,
         outside=outside,
     )
+    return ctx, problems
 
 
 def _still_good(batch: Batch, day: datetime.date) -> bool:
@@ -292,13 +362,15 @@ class ArchetypeFit:
 
     name: str = "archetype fit"
 
-    def build(self, ctx: Context) -> list[_Part]:
-        parts: list[_Part] = []
+    def build(self, ctx: Context) -> list[Part]:
+        parts: list[Part] = []
         model = ctx.model
         for slot in ctx.problem.slots:
             key = (slot.date, slot.mealtime)
             dishes = ctx.x[key]
             pinned = ctx.pinned[key]
+            if ctx.scoring and not pinned:
+                continue  # an empty meal isn't planned yet: nothing to read
             offered = [
                 a
                 for a in ctx.problem.archetypes.get(slot.mealtime, ())
@@ -360,14 +432,47 @@ class ArchetypeFit:
                         short = model.new_int_var(0, low, f"short_{tag}_{role.name}")
                         filled = LinearExpr.sum(added) if added else 0
                         model.add(short >= (low - already) * pick - filled)
-                        parts.append((role.missing, short))
+                        parts.append(
+                            Part(
+                                role.missing,
+                                short,
+                                f"{archetype.name}: {role.name} missing",
+                                slot.date,
+                                slot.mealtime,
+                            )
+                        )
                     if already > high:  # only pins can overfill a role
-                        parts.append((role.extra * (already - high), pick))
+                        parts.append(
+                            Part(
+                                role.extra * (already - high),
+                                pick,
+                                f"{archetype.name}: {already - high} extra {role.name}",
+                                slot.date,
+                                slot.mealtime,
+                            )
+                        )
                 strays = sum(n for k, n in pinned.items() if not fits(k[0], archetype))
                 if strays:
-                    parts.append((archetype.unknown * strays, pick))
+                    parts.append(
+                        Part(
+                            archetype.unknown * strays,
+                            pick,
+                            f"{archetype.name}: {strays} dish"
+                            f"{'es' if strays > 1 else ''} it doesn't take",
+                            slot.date,
+                            slot.mealtime,
+                        )
+                    )
                 if archetype.base_cost:
-                    parts.append((archetype.base_cost, pick))
+                    parts.append(
+                        Part(
+                            archetype.base_cost,
+                            pick,
+                            f"{archetype.name} (base cost)",
+                            slot.date,
+                            slot.mealtime,
+                        )
+                    )
         return parts
 
 
@@ -400,8 +505,8 @@ class SameDayRepeat:
     weight: float
     name: str = "same-day repeats"
 
-    def build(self, ctx: Context) -> list[_Part]:
-        parts: list[_Part] = []
+    def build(self, ctx: Context) -> list[Part]:
+        parts: list[Part] = []
         for day in sorted({d for d, _ in ctx.planned}):
             recipe_ids = {
                 rid
@@ -416,7 +521,9 @@ class SameDayRepeat:
                     continue
                 extra = ctx.model.new_int_var(0, 2 * len(uses), f"twice_{day}_{rid}")
                 ctx.model.add(extra >= LinearExpr.sum(uses) - 1)
-                parts.append((self.weight, extra))
+                parts.append(
+                    Part(self.weight, extra, f"{ctx.title(rid)} more than once", day)
+                )
         return parts
 
 
@@ -428,7 +535,7 @@ class NextDayRepeat:
     weight: float
     name: str = "next-day repeats"
 
-    def build(self, ctx: Context) -> list[_Part]:
+    def build(self, ctx: Context) -> list[Part]:
         model = ctx.model
         days = sorted({date for date, _ in ctx.x})
         planned_days = {d for d, _ in ctx.planned}
@@ -444,7 +551,7 @@ class NextDayRepeat:
                 eaten[(day, rid)] = flag
             return eaten[(day, rid)]
 
-        parts: list[_Part] = []
+        parts: list[Part] = []
         for first, second in pairwise(days):
             if second - first != _ONE_DAY:
                 continue
@@ -462,7 +569,14 @@ class NextDayRepeat:
                     continue
                 flag = model.new_bool_var(f"repeat_{first}_{rid}")
                 model.add(flag >= on(first, rid) + on(second, rid) - 1)
-                parts.append((self.weight, flag))
+                parts.append(
+                    Part(
+                        self.weight,
+                        flag,
+                        f"{ctx.title(rid)} again the next day",
+                        second,
+                    )
+                )
         return parts
 
 
@@ -477,8 +591,8 @@ class Leftovers:
     weight: float
     name: str = "leftovers"
 
-    def build(self, ctx: Context) -> list[_Part]:
-        parts: list[_Part] = []
+    def build(self, ctx: Context) -> list[Part]:
+        parts: list[Part] = []
         for (session, rid), var in ctx.batches.items():
             weight = self.weight
             if session in ctx.problem.truncated:
@@ -489,12 +603,23 @@ class Leftovers:
                 for (k_rid, k_session), v in keys.items()
                 if k_rid == rid and k_session == session
             ]
-            left = (
+            unused = (
                 var * ctx.servings[(session, rid)]
                 - LinearExpr.sum(used)
                 - ctx.outside[(session, rid)]
             )
-            parts.append((weight, left))
+            # Never below zero, even in a scored week with too many meals.
+            left = ctx.model.new_int_var(0, 1000, f"left_{session}_{rid}")
+            ctx.model.add(left >= unused)
+            cut = " (cut-off session)" if session in ctx.problem.truncated else ""
+            parts.append(
+                Part(
+                    weight,
+                    left,
+                    f"{ctx.title(rid)}: portions left over{cut}",
+                    session=session,
+                )
+            )
         return parts
 
 

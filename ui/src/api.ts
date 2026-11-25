@@ -290,6 +290,25 @@ export interface Placement {
   position?: number;
 }
 
+/** The week ahead's bill (docs/planner.md): points per term and per line,
+ * each meal's closest archetype, broken hard rules. */
+export interface Explanation {
+  start: string;
+  end: string;
+  total: number;
+  terms: { name: string; points: number }[];
+  lines: {
+    term: string;
+    reason: string;
+    points: number;
+    date: string | null;
+    mealtime: string | null;
+    session: string | null;
+  }[];
+  meals: { date: string; mealtime: string; archetype: string; points: number }[];
+  problems: string[];
+}
+
 export const MEALTIMES = ["breakfast", "lunch", "dinner", "snacks"] as const;
 export type Mealtime = (typeof MEALTIMES)[number];
 
@@ -362,6 +381,8 @@ export const api = {
   /** Keep one session's planned meals: they become ordinary meals. */
   acceptPlan: (week: string, session: string) =>
     send<DiaryWeek>("POST", `/api/plan/accept/${session}?week=${week}`, false),
+  /** The week ahead's bill as it stands (changes nothing). */
+  explain: () => request<Explanation>("/api/plan/explain"),
   /** Tick (or untick) recipe shares on the session's shopping checklist. */
   setHave: (session: string, shares: ShareRef[], have: boolean) =>
     send<SessionDetail>("PUT", `/api/sessions/${session}/have`, false, { shares, have }),

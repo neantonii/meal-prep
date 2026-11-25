@@ -249,3 +249,59 @@ def test_a_dish_in_two_roles_of_one_archetype_is_rejected():
     archetypes = {LUNCH: (split("odd", both, Role("again", frozenset({P}))),)}
     with pytest.raises(ValueError, match="two roles"):
         plan(_RECIPES, _problem(archetypes=archetypes))
+
+
+# -- scoring ----------------------------------------------------------------
+
+
+def test_scoring_adds_nothing_and_itemizes_the_bill():
+    from meal_prep.planner.solver import score
+
+    pins = (Pin(THU, LUNCH, "fish", THU), Pin(THU, LUNCH, "rice", THU))
+    batches = (Batch(THU, "fish", 1, 1), Batch(THU, "rice", 1, 1))
+    result = score(_RECIPES, _problem(pins=pins, batches=batches))
+    assert result.placements == () and result.cooks == ()
+    assert result.archetypes == ((THU, LUNCH, "plate"),)
+    (line,) = result.lines
+    assert (line.term, line.reason, line.points) == (
+        "archetype fit",
+        "plate: veg missing",
+        3,
+    )
+    assert (line.date, line.mealtime) == (THU, LUNCH)
+
+
+def test_scoring_charges_repeats_and_leftovers_where_they_happen():
+    from meal_prep.planner.solver import score
+
+    friday = _day(1)
+    slots = (Slot(THU, LUNCH, THU), Slot(friday, LUNCH, THU))
+    pins = tuple(
+        Pin(day, LUNCH, rid, THU)
+        for day in (THU, friday)
+        for rid in ("fish", "rice", "beans")
+    )
+    batches = (
+        Batch(THU, "fish", 2, 1),
+        Batch(THU, "rice", 3, 1, unassigned=1),  # one rice portion unused
+        Batch(THU, "beans", 1, 2),
+    )
+    result = score(_RECIPES, _problem(slots=slots, pins=pins, batches=batches))
+    by_term = dict(result.points)
+    assert by_term["next-day repeats"] == 3  # fish, rice, beans on both days
+    assert by_term["leftovers"] == 1
+    leftover = next(line for line in result.lines if line.term == "leftovers")
+    assert leftover.session == THU and "Recipe rice" in leftover.reason
+
+
+def test_scoring_reports_broken_hard_rules_instead_of_failing():
+    from meal_prep.planner.solver import score
+
+    pins = (Pin(THU, LUNCH, "fish", THU), Pin(_day(1), LUNCH, "fish", THU))
+    slots = (Slot(THU, LUNCH, THU), Slot(_day(1), LUNCH, THU))
+    result = score(
+        _RECIPES, _problem(slots=slots, pins=pins, batches=(Batch(THU, "fish", 1, 1),))
+    )
+    assert result.problems == (
+        "fish of the 2026-11-05 session: 2 meals for 1 portions",
+    )

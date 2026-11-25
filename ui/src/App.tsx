@@ -17,6 +17,7 @@ import {
   shiftWeek,
   type CatalogGroup,
   type DiaryWeek,
+  type Explanation,
   type Mealtime,
   type Placement,
   type TakeoutEntry,
@@ -28,6 +29,7 @@ import Palette from "./components/Palette";
 import SessionPage from "./components/SessionPage";
 import SessionsBar from "./components/SessionsBar";
 import WeekGrid from "./components/WeekGrid";
+import { BillPanel } from "./components/BillPanel";
 
 function weekFromUrl(): string | null {
   const w = new URLSearchParams(window.location.search).get("week");
@@ -49,6 +51,9 @@ export default function App() {
   const [version, setVersion] = useState<string>("");
   // Admin mode amends history; deliberately not remembered across reloads.
   const [admin, setAdmin] = useState(false);
+  // The week ahead's bill, while Explain is on (refetched after every change).
+  const [explainOn, setExplainOn] = useState(false);
+  const [bill, setBill] = useState<Explanation | null>(null);
   // Placeholder sessions added with "+ session", per week; saved once they
   // get a recipe.
   const [extraDates, setExtraDates] = useState<Record<string, string[]>>({});
@@ -117,6 +122,21 @@ export default function App() {
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, [openWeek]);
+
+  useEffect(() => {
+    if (!explainOn || !state) {
+      setBill(null);
+      return;
+    }
+    let live = true;
+    api
+      .explain()
+      .then((b) => live && setBill(b))
+      .catch((e) => live && setError(e instanceof Error ? e.message : String(e)));
+    return () => {
+      live = false;
+    };
+  }, [explainOn, state]);
 
   /** Run one entry change on the server and show the week it returns. */
   const change = (op: (week: string) => Promise<DiaryWeek>) => {
@@ -291,6 +311,14 @@ export default function App() {
               >
                 Clear plans
               </button>
+              <button
+                aria-pressed={explainOn}
+                className={explainOn ? "on" : ""}
+                title="Show the week ahead's points: each meal's archetype and what costs points"
+                onClick={() => setExplainOn((on) => !on)}
+              >
+                Explain
+              </button>
             </span>
             <span className="totals">
               {state?.exists
@@ -300,6 +328,7 @@ export default function App() {
                   : ""}
             </span>
           </div>
+          {explainOn && bill && <BillPanel bill={bill} />}
           {state && (
             <SessionsBar
               sessions={state.sessions}
@@ -334,6 +363,11 @@ export default function App() {
               onRemove={handleRemove}
               onAddOther={(date, meal) => setOther({ date, meal, entry: null })}
               onEditOther={(entry, date, meal) => setOther({ date, meal, entry })}
+              scores={
+                bill
+                  ? Object.fromEntries(bill.meals.map((m) => [`${m.date}|${m.mealtime}`, m]))
+                  : undefined
+              }
             />
           )}
         </section>

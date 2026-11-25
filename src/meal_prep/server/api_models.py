@@ -375,3 +375,39 @@ class Usual(TakeoutFields):
 
     last: str
     times: int
+
+
+class BillLine(BaseModel):
+    """One line of a week's bill: the term, where, why, how many points.
+    ``date`` + ``mealtime`` is a meal, ``date`` alone a day, ``session`` a
+    prep session."""
+
+    term: str
+    reason: str
+    points: float
+    date: str | None
+    mealtime: str | None
+    session: str | None
+
+
+class MealScore(BaseModel):
+    """How one meal of the week ahead reads: its closest archetype and the
+    points it costs on its own."""
+
+    date: str
+    mealtime: str
+    archetype: str
+    points: float
+
+
+class Explanation(BaseModel):
+    """The bill of the week ahead (``docs/planner.md``): totals per term,
+    every line, each meal's archetype, and any broken hard rule."""
+
+    start: str
+    end: str
+    total: float
+    terms: list[dict[str, float | str]]
+    lines: list[BillLine]
+    meals: list[MealScore]
+    problems: list[str]

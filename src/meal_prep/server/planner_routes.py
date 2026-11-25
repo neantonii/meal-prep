@@ -3,14 +3,20 @@ plan, accept one session's plan. Each returns the week page asked for."""
 
 from __future__ import annotations
 
+import datetime
 import logging
 import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
-from meal_prep.server.api_models import DiaryWeek
+from meal_prep.server.api_models import BillLine, DiaryWeek, Explanation, MealScore
 from meal_prep.server.editing import Editor
-from meal_prep.server.planning import plan_week_ahead
+from meal_prep.server.planning import (
+    HORIZON_DAYS,
+    explain_week_ahead,
+    first_plan_day,
+    plan_week_ahead,
+)
 from meal_prep.services import prep
 
 logger = logging.getLogger("meal_prep.server")
@@ -29,6 +35,50 @@ def planner_router(editor: Editor) -> APIRouter:
             return change
 
         return editor.edit(week, op, action="plan.run", params={}, admin=False)
+
+    @router.get("/explain")
+    def plan_explain() -> Explanation:
+        """The bill of the week ahead as it stands, whoever placed the meals."""
+        policy = editor.policy(False)
+        try:
+            result = explain_week_ahead(editor.load(), policy, editor.library)
+        except prep.RuleError as e:
+            raise HTTPException(status_code=409, detail=str(e)) from e
+        start = first_plan_day(policy.today)
+        per_meal: dict[tuple[str, str], float] = {}
+        for line in result.lines:
+            if line.date is not None and line.mealtime is not None:
+                key = (line.date.isoformat(), line.mealtime.value)
+                per_meal[key] = per_meal.get(key, 0.0) + line.points
+        return Explanation(
+            start=start.isoformat(),
+            end=(start + datetime.timedelta(days=HORIZON_DAYS - 1)).isoformat(),
+            total=round(result.total_points, 2),
+            terms=[{"name": n, "points": round(v, 2)} for n, v in result.points],
+            lines=[
+                BillLine(
+                    term=line.term,
+                    reason=line.reason,
+                    points=round(line.points, 2),
+                    date=line.date.isoformat() if line.date else None,
+                    mealtime=line.mealtime.value if line.mealtime else None,
+                    session=line.session.isoformat() if line.session else None,
+                )
+                for line in sorted(result.lines, key=lambda line: -line.points)
+            ],
+            meals=[
+                MealScore(
+                    date=date.isoformat(),
+                    mealtime=mealtime.value,
+                    archetype=name,
+                    points=round(
+                        per_meal.get((date.isoformat(), mealtime.value), 0.0), 2
+                    ),
+                )
+                for date, mealtime, name in result.archetypes
+            ],
+            problems=list(result.problems),
+        )
 
     @router.delete("")
     def plan_clear(week: str) -> DiaryWeek:

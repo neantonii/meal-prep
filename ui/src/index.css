@@ -342,3 +342,19 @@ details.shelf[open] > summary { padding-bottom: 6px; }
 .session-item.dragging { opacity: 0.35; }
 .session-item .x:disabled { opacity: 0.35; cursor: not-allowed; }
 .session-item .x { font-size: 0.75rem; white-space: nowrap; }
+
+/* Explain: the week ahead's bill and each meal's reading. */
+.plan-actions button.on { background: var(--text); color: var(--bg, #0b1220); }
+.slot-cell.costly { box-shadow: inset 0 0 0 999px color-mix(in srgb, #e0a43a calc(var(--heat, 0) * 22%), transparent); }
+.slot-score { display: inline-block; font-size: 0.68rem; letter-spacing: 0.03em; color: var(--text-muted); border: 1px solid var(--border); border-radius: 999px; padding: 0 7px; margin-bottom: 4px; }
+.slot-score.cost { color: #e0a43a; border-color: #e0a43a; }
+.bill { display: grid; gap: 8px; background: var(--surface-card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+.bill-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.bill-terms { display: flex; flex-wrap: wrap; gap: 6px; }
+.bill-term { font-size: 0.78rem; color: var(--text-muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 9px; }
+.bill-term.cost { color: #e0a43a; border-color: #e0a43a; }
+.bill-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; font-size: 0.82rem; }
+.bill-lines li { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr) 2.5rem; gap: 10px; }
+.bill-place { color: var(--text-muted); }
+.bill-pts { text-align: right; font-variant-numeric: tabular-nums; color: #e0a43a; }
+.bill-problems { margin: 0; padding-left: 0; list-style: none; color: var(--danger); font-size: 0.82rem; }
