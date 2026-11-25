@@ -1,0 +1,174 @@
+{
+  "$defs": {
+    "ArchetypeDTO": {
+      "additionalProperties": false,
+      "description": "One meal shape: its roles and what choosing it costs.",
+      "properties": {
+        "base_cost": {
+          "default": 0.0,
+          "description": "Points for choosing this archetype at all",
+          "minimum": 0,
+          "title": "Base Cost",
+          "type": "number"
+        },
+        "name": {
+          "description": "Shown in plan explanations",
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "plannable": {
+          "default": true,
+          "description": "The planner may choose it for an empty slot (false: it only matches meals already there, like eating out)",
+          "title": "Plannable",
+          "type": "boolean"
+        },
+        "roles": {
+          "description": "The parts of the meal; a dish fits one",
+          "items": {
+            "$ref": "#/$defs/RoleDTO"
+          },
+          "minItems": 1,
+          "title": "Roles",
+          "type": "array"
+        },
+        "unknown": {
+          "default": 1.0,
+          "description": "Points per dish no role takes",
+          "minimum": 0,
+          "title": "Unknown",
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "roles"
+      ],
+      "title": "ArchetypeDTO",
+      "type": "object"
+    },
+    "RecipeCategory": {
+      "enum": [
+        "modular_protein",
+        "modular_carb",
+        "modular_cooked_veg",
+        "fresh_salad_veg",
+        "one_dish",
+        "breakfast",
+        "snacks"
+      ],
+      "title": "RecipeCategory",
+      "type": "string"
+    },
+    "RoleDTO": {
+      "additionalProperties": false,
+      "description": "One part of a meal: a pool of dishes and how many it wants.",
+      "properties": {
+        "categories": {
+          "description": "Every recipe of these categories",
+          "items": {
+            "$ref": "#/$defs/RecipeCategory"
+          },
+          "title": "Categories",
+          "type": "array"
+        },
+        "count": {
+          "default": [
+            1,
+            1
+          ],
+          "description": "[fewest, most] dishes the role wants",
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "integer"
+            }
+          ],
+          "title": "Count",
+          "type": "array"
+        },
+        "extra": {
+          "description": "Points per dish over most",
+          "minimum": 0,
+          "title": "Extra",
+          "type": "number"
+        },
+        "missing": {
+          "description": "Points per dish short of fewest",
+          "minimum": 0,
+          "title": "Missing",
+          "type": "number"
+        },
+        "name": {
+          "description": "Shown in plan explanations",
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "recipes": {
+          "description": "Named recipe ids, on top of categories",
+          "items": {
+            "type": "string"
+          },
+          "title": "Recipes",
+          "type": "array"
+        },
+        "takeout": {
+          "default": false,
+          "description": "Takes a takeout meal (eating out)",
+          "title": "Takeout",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "missing",
+        "extra"
+      ],
+      "title": "RoleDTO",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The archetypes each mealtime chooses from, ``data/archetypes.yaml``.",
+  "properties": {
+    "breakfast": {
+      "description": "The archetypes breakfast chooses from",
+      "items": {
+        "$ref": "#/$defs/ArchetypeDTO"
+      },
+      "title": "Breakfast",
+      "type": "array"
+    },
+    "dinner": {
+      "description": "The archetypes dinner chooses from",
+      "items": {
+        "$ref": "#/$defs/ArchetypeDTO"
+      },
+      "title": "Dinner",
+      "type": "array"
+    },
+    "lunch": {
+      "description": "The archetypes lunch chooses from",
+      "items": {
+        "$ref": "#/$defs/ArchetypeDTO"
+      },
+      "title": "Lunch",
+      "type": "array"
+    },
+    "snacks": {
+      "description": "The archetypes snacks chooses from",
+      "items": {
+        "$ref": "#/$defs/ArchetypeDTO"
+      },
+      "title": "Snacks",
+      "type": "array"
+    }
+  },
+  "title": "ArchetypesDTO",
+  "type": "object"
+}

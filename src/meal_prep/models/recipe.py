@@ -18,7 +18,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import reduce
 
-from meal_prep.enums import Aisle, MealRole, RecipeCategory, StorageType
+from meal_prep.enums import Aisle, RecipeCategory, StorageType
 from meal_prep.models.ingredient import MacrosInfo, Package
 
 
@@ -66,7 +66,6 @@ class Recipe:
     cookware_by_token: Mapping[str, str]  # raw body token -> resolved display name
     ingredients: tuple[RecipeIngredient, ...]
     instructions: str
-    meal_role: MealRole | None = None  # the part of a meal it plays (planner)
 
     # ------------------------------------------------------------------
     # Pure aggregates of the fields above (raw, unrounded).

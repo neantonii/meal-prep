@@ -6,7 +6,7 @@ Usage (run from the workspace root):
 
 All locations are explicit parameters (CWD-relative by default); nothing is
 derived from the script's own path.
-Writes schemas/diary.schema.json, schemas/ingredient.schema.json,
+Writes schemas/archetypes.schema.json, schemas/diary.schema.json, schemas/ingredient.schema.json,
 schemas/meal.schema.json, schemas/recipe.schema.json,
 schemas/session.schema.json, schemas/staples.schema.json,
 schemas/unassigned.schema.json and schemas/bin.schema.json.
@@ -20,6 +20,7 @@ import argparse
 import json
 from pathlib import Path
 
+from meal_prep.dtos.archetypes import ArchetypesDTO
 from meal_prep.dtos.ingredient import IngredientDTO
 from meal_prep.dtos.log import DiaryWeekDTO
 from meal_prep.dtos.meal import MealDTO
@@ -29,6 +30,7 @@ from meal_prep.dtos.slots import BinDTO, UnassignedDTO
 from meal_prep.dtos.staples import StaplesDTO
 
 _DTOS = {
+    "archetypes": ArchetypesDTO,
     "bin": BinDTO,
     "diary": DiaryWeekDTO,
     "ingredient": IngredientDTO,

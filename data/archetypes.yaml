@@ -1,0 +1,81 @@
+# What a meal looks like, per mealtime (docs/planner.md, "Archetypes").
+# The planner picks one archetype per slot and pays points for misfits.
+#
+# A role's pool is recipe categories and/or named recipes. Groupings that
+# categories can't express (which breakfast dishes go together) live here,
+# not on recipes: a new recipe joins a named pool only when added below.
+#
+# Each role: missing = points per dish short of `count`'s fewest,
+# extra = points per dish over its most (count defaults to [1, 1]).
+# Archetype: base_cost = points for choosing it at all; plannable: false =
+# only matches meals already there (eating out), never planned.
+
+lunch:
+  - name: plate
+    roles:
+      - {name: protein, categories: [modular_protein], missing: 5, extra: 3}
+      - {name: carb, categories: [modular_carb], missing: 5, extra: 3}
+      - {name: veg, categories: [modular_cooked_veg], missing: 3, extra: 1}
+  - name: one dish
+    base_cost: 0.5
+    roles:
+      - {name: one dish, categories: [one_dish], missing: 5, extra: 3}
+  - name: eat out
+    plannable: false
+    roles:
+      - {name: takeout, takeout: true, missing: 5, extra: 1}
+
+dinner:
+  - name: plate
+    roles:
+      - {name: protein, categories: [modular_protein], missing: 5, extra: 3}
+      - {name: carb, categories: [modular_carb], missing: 5, extra: 3}
+      - {name: salad, categories: [fresh_salad_veg], missing: 3, extra: 1}
+  - name: one dish
+    base_cost: 0.5
+    roles:
+      - {name: one dish, categories: [one_dish], missing: 5, extra: 3}
+  - name: eat out
+    plannable: false
+    roles:
+      - {name: takeout, takeout: true, missing: 5, extra: 1}
+
+# Breakfasts are eaten as they come: high missing and extra points.
+breakfast:
+  - name: oats breakfast
+    roles:
+      - name: oats
+        recipes:
+          - blueberry-peanut-butter-overnight-oats
+          - granny-smith-maple-walnut-overnight-oats
+          - orange-cranberry-almond-overnight-oats
+        missing: 5
+        extra: 5
+      - {name: eggs, recipes: [boiled-eggs-with-mayo], missing: 5, extra: 5}
+      - {name: coffee, recipes: [flat-white], missing: 5, extra: 5}
+  - name: hot breakfast
+    roles:
+      - name: main
+        recipes:
+          - fried-eggs-ham-toast
+          - sausage-peas-breakfast
+          - spinach-sun-dried-tomato-feta-egg-muffins
+        missing: 5
+        extra: 5
+      - {name: coffee, recipes: [homemade-latte], missing: 5, extra: 5}
+
+snacks:
+  - name: apple and cottage cheese
+    roles:
+      - {name: apple, recipes: [honeycrisp-apple], missing: 1, extra: 0.5}
+      - name: cottage cheese
+        recipes: [cottage-cheese-snack-bowl]
+        missing: 1
+        extra: 0.5
+  - name: clementine bowl
+    roles:
+      - {name: bowl, recipes: [cottage-cheese-clementine-bowl], missing: 1, extra: 0.5}
+  - name: eat out
+    plannable: false
+    roles:
+      - {name: takeout, takeout: true, missing: 5, extra: 1}

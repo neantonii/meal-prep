@@ -7,8 +7,8 @@ writes the plan back (`server/planning.py`, `services/prep.py`).
 ## Role & Imports
 
 Consumes `meal_prep.models.Recipe` and `meal_prep.enums`. Only `solver.py`
-may import `ortools`; `plan.py`, `archetypes.py` and `quadratic.py` are
-solver-free.
+may import `ortools`; `plan.py` and `quadratic.py` are solver-free. The
+archetypes come from `data/archetypes.yaml` through the `Library`.
 
 ## Business Invariants
 

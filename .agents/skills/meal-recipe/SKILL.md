@@ -118,16 +118,16 @@ after each entry validates.
 ### 3. Draft the recipe
 
 Write `recipes/<category>/<slug>.cook`: YAML frontmatter (`id` matching
-the file stem, `title`, `category`, `yield`, `storage`; breakfast and
-snack recipes also `meal_role`, the part of a meal they play for the
-planner, one of `MealRole` in `src/meal_prep/enums.py`) plus a Cooklang
+the file stem, `title`, `category`, `yield`, `storage`) plus a Cooklang
 body with `@ingredient{quantity%unit}` amounts, `#cookware` tokens, and
 `~timer{name%amount%unit}` timers — the name is mandatory
 (quantities accept fractions and mixed numbers: `@syrup{1/2%tbsp}`,
 `@flour{1 1/2%cup}`)
 (`~chill{8%hour}`, never bare `~8%hour`: braceless timers fail validation).
 See an existing `.cook` file for the
-shape — never re-specify it here. `fridge_days` is how long the *cooked*
+shape — never re-specify it here. A breakfast or snack is planned only once a
+pool in `data/archetypes.yaml` names it (lunch and dinner pools go by
+category): ask the user which archetype and role it joins, if any. `fridge_days` is how long the *cooked*
 batch keeps in the fridge, not how long its raw ingredients keep before
 cooking (`shelf_life_days`, which matters for shopping and prep timing).
 Use food-safety guidance for cooked leftovers: 3–4 days for cooked meat,

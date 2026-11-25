@@ -197,17 +197,17 @@ Starting weights (points; a leftover portion and a next-day repeat are 1):
 
 ### As built
 
-- **Pools never list recipes.** A role takes recipe categories or *meal
-  roles*: a breakfast or snack recipe says in its frontmatter which part
-  of a meal it plays (`meal_role: overnight_oats`, `boiled_eggs`,
-  `hot_breakfast`, `coffee`, `fruit`, `snack_bowl`, `fruit_bowl`). "Oats
-  breakfast" = overnight oats + boiled eggs + coffee; "hot breakfast" = a
-  hot main + coffee; snacks: fruit + snack bowl, or a fruit bowl. A new
-  recipe joins a pool by its own file; an integration test checks every
-  role still has a recipe.
+- **Archetypes are data**, `data/archetypes.yaml`, loaded into the
+  `Library`. A role's pool is recipe categories and/or named recipes.
+  Groupings categories can't express live only there, never on recipes
+  ("oats breakfast" = any overnight oats + boiled eggs + flat white; "hot
+  breakfast" = fried eggs, the sausage skillet or egg muffins + latte;
+  snacks: apple + cottage cheese bowl, or the clementine bowl). A new
+  breakfast or snack joins a named pool only when added there. Loading
+  refuses unknown recipes, a role no recipe fits, and a recipe fitting two
+  roles of one archetype.
 - **No bundles yet.** Breakfasts and the snack pair are Splits. Bundles
-  (a set eaten whole as one pool unit) come when a meal needs them. Archetypes are code (`planner/archetypes.py`), not yet a
-  config file.
+  (a set eaten whole as one pool unit) come when a meal needs them.
 - **Unassigned portions are stock.** A planned dish may come from its
   slot's cycle session (cooked there) or from an earlier batch with
   unassigned portions that is still good: within its fridge life, or
