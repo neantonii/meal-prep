@@ -122,7 +122,6 @@ def load_recipe_file(path: Path | str) -> RecipeDTO:
         category=frontmatter.category,
         yield_info=frontmatter.yield_info,  # type: ignore[call-arg]
         storage_info=frontmatter.storage_info,
-        meal_role=frontmatter.meal_role,
         ingredients=ingredients,
         mentions=mentions,
         cookware=cookware,

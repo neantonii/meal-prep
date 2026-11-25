@@ -36,20 +36,6 @@ class RecipeCategory(StrEnum):
     SNACKS = "snacks"
 
 
-class MealRole(StrEnum):
-    """The part of a meal a recipe plays, where its category is too coarse
-    to say (breakfast and snack recipes). The planner's archetypes name
-    these, never recipe ids (``docs/planner.md``, "Archetypes")."""
-
-    OVERNIGHT_OATS = "overnight_oats"
-    BOILED_EGGS = "boiled_eggs"
-    HOT_BREAKFAST = "hot_breakfast"
-    COFFEE = "coffee"
-    FRUIT = "fruit"
-    SNACK_BOWL = "snack_bowl"
-    FRUIT_BOWL = "fruit_bowl"
-
-
 class Aisle(StrEnum):
     """Supermarket aisles in walking order (definition order is the order).
 

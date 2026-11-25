@@ -7,7 +7,7 @@ body references. Parsing of .cook files lives in ``meal_prep.adapters.recipes``.
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from meal_prep.dtos._normalize import normalize_slug
-from meal_prep.enums import MealRole, RecipeCategory
+from meal_prep.enums import RecipeCategory
 
 _SLUG_RULE = (
     "a lowercase kebab-case slug (alphanumeric words separated by single "
@@ -61,11 +61,6 @@ class RecipeFrontmatter(BaseModel):
     )
     storage_info: RecipeStorage = Field(
         ..., alias="storage", description="Fridge life and freezer suitability"
-    )
-    meal_role: MealRole | None = Field(
-        default=None,
-        description="The part of a meal it plays, for the planner's archetypes "
-        "(breakfast and snack recipes); absent when the category says enough",
     )
 
     @field_validator("id")
@@ -145,8 +140,8 @@ class RecipeCookwareRef(BaseModel):
 class RecipeDTO(BaseModel):
     """A parsed recipe file, ``recipes/<category>/<id>.cook``.
 
-    The file is YAML frontmatter (id, title, category, yield, storage,
-    optional meal_role; no other keys) followed by a Cooklang body. Ingredients, mentions and
+    The file is YAML frontmatter (id, title, category, yield, storage; no
+    other keys) followed by a Cooklang body. Ingredients, mentions and
     cookware are parsed from the body, never authored as YAML: ``@id{1/2%cup}``
     declares an amount, ``@id`` or ``@id{}`` mentions an ingredient declared
     elsewhere, ``#id`` names equipment, and ``~name{10%min}`` is a timer (the
@@ -168,11 +163,6 @@ class RecipeDTO(BaseModel):
     )
     storage_info: RecipeStorage = Field(
         ..., alias="storage", description="Fridge life and freezer suitability"
-    )
-    meal_role: MealRole | None = Field(
-        default=None,
-        description="The part of a meal it plays, for the planner's archetypes "
-        "(breakfast and snack recipes); absent when the category says enough",
     )
     ingredients: list[RecipeIngredientRef] = Field(
         ...,

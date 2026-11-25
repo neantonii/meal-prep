@@ -118,9 +118,7 @@ after each entry validates.
 ### 3. Draft the recipe
 
 Write `recipes/<category>/<slug>.cook`: YAML frontmatter (`id` matching
-the file stem, `title`, `category`, `yield`, `storage`; breakfast and
-snack recipes also `meal_role`, the part of a meal they play for the
-planner, one of `MealRole` in `src/meal_prep/enums.py`) plus a Cooklang
+the file stem, `title`, `category`, `yield`, `storage`) plus a Cooklang
 body with `@ingredient{quantity%unit}` amounts, `#cookware` tokens, and
 `~timer{name%amount%unit}` timers — the name is mandatory
 (quantities accept fractions and mixed numbers: `@syrup{1/2%tbsp}`,
