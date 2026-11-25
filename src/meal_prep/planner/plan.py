@@ -15,10 +15,10 @@ from __future__ import annotations
 import datetime
 from dataclasses import dataclass, field
 
-from meal_prep.enums import Mealtime, RecipeCategory
+from meal_prep.enums import Mealtime
+from meal_prep.models.archetype import TAKEOUT, Archetype, Role
 
-# A pinned takeout meal: a dish with no recipe and no session.
-TAKEOUT = "takeout"
+__all__ = ["TAKEOUT", "Archetype", "Role"]  # re-exported for planner users
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,44 +60,6 @@ class Batch:
     fixed: bool = False
     fridge_days: int | None = None
     freezer_friendly: bool | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class Role:
-    """One part of an archetype: dishes from a pool, a target count range,
-    and the points for each dish short of or over it."""
-
-    name: str
-    categories: frozenset[RecipeCategory] = frozenset()
-    recipe_ids: frozenset[str] = frozenset()
-    count: tuple[int, int] = (1, 1)
-    missing: float = 3.0
-    extra: float = 1.0
-
-    def accepts(self, recipe_id: str, category: RecipeCategory | None) -> bool:
-        """Whether a dish belongs to this role's pool."""
-        return recipe_id in self.recipe_ids or (
-            category is not None and category in self.categories
-        )
-
-
-@dataclass(frozen=True, slots=True)
-class Archetype:
-    """What a meal looks like (``docs/planner.md``, "Archetypes").
-
-    A slot chooses one archetype among those its mealtime allows and pays
-    for how badly its dishes fit: each role's shortfall and excess, plus
-    ``unknown`` for each dish no role takes. ``base_cost`` is paid for
-    choosing it at all. ``plannable``: the planner may pick it for a slot
-    with nothing pinned (takeout can only be matched, never planned).
-    A dish may be in the pool of one role only.
-    """
-
-    name: str
-    roles: tuple[Role, ...]
-    base_cost: float = 0.0
-    unknown: float = 1.0
-    plannable: bool = True
 
 
 def split(name: str, *roles: Role, base_cost: float = 0.0) -> Archetype:

@@ -14,6 +14,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from meal_prep.dtos.archetypes import ArchetypesDTO
 from meal_prep.dtos.ingredient import IngredientDTO
 from meal_prep.dtos.log import DiaryWeekDTO
 from meal_prep.dtos.meal import MealDTO
@@ -25,6 +26,7 @@ from meal_prep.dtos.staples import StaplesDTO
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
 _DTOS = {
+    "archetypes": ArchetypesDTO,
     "bin": BinDTO,
     "diary": DiaryWeekDTO,
     "ingredient": IngredientDTO,

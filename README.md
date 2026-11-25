@@ -5,7 +5,8 @@ enriched frozen models → rendered HTML cards.
 
 ## Layout
 
-- `data/` — authored taxonomies and ingredient catalog (YAML)
+- `data/` — authored taxonomies, ingredient catalog and the planner's meal
+  archetypes (YAML)
 - `recipes/` — authored recipes (Cooklang, `<category>/<slug>.cook`)
 - `recipe_cards/` — rendered HTML output
 - `src/meal_prep/renderer.py` — HTML card renderer (reads enriched models, emits HTML)
@@ -17,11 +18,11 @@ enriched frozen models → rendered HTML cards.
   - `services/` — business logic; resolves DTOs → models
   - `enums.py` — shared enum types
   - `library.py` — `load_library()`: loads and enriches everything into one
-    frozen `Library` (ingredients, recipes, meals); consumers start here
+    frozen `Library` (ingredients, recipes, meals, meal archetypes);
+    consumers start here
 - `planner/` (under `src/meal_prep/`) — the week-ahead meal planner (CP-SAT,
   `docs/planner.md`):
   - `plan.py` — the plain input and output values (slots, pins, archetypes, plan)
-  - `archetypes.py` — the standard archetypes per mealtime
   - `solver.py` — owns the OR-Tools import; builds and solves the model
 - `weekly_plan/` — rendered diary weeks (git-ignored)
 - `tests/` — pytest suite

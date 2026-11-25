@@ -197,13 +197,17 @@ Starting weights (points; a leftover portion and a next-day repeat are 1):
 
 ### As built
 
-- **No bundles yet.** Every breakfast and the snack pair are Splits whose
-  roles name recipes ("oats breakfast" = any overnight oats + boiled eggs
-  + flat white; "hot breakfast" = fried eggs, the sausage skillet or egg
-  muffins + latte; snacks: apple + cottage cheese bowl, or the clementine
-  bowl). Bundles (a set eaten whole as one pool unit) come when a meal
-  needs them. Archetypes are code (`planner/archetypes.py`), not yet a
-  config file.
+- **Archetypes are data**, `data/archetypes.yaml`, loaded into the
+  `Library`. A role's pool is recipe categories and/or named recipes.
+  Groupings categories can't express live only there, never on recipes
+  ("oats breakfast" = any overnight oats + boiled eggs + flat white; "hot
+  breakfast" = fried eggs, the sausage skillet or egg muffins + latte;
+  snacks: apple + cottage cheese bowl, or the clementine bowl). A new
+  breakfast or snack joins a named pool only when added there. Loading
+  refuses unknown recipes, a role no recipe fits, and a recipe fitting two
+  roles of one archetype.
+- **No bundles yet.** Breakfasts and the snack pair are Splits. Bundles
+  (a set eaten whole as one pool unit) come when a meal needs them.
 - **Unassigned portions are stock.** A planned dish may come from its
   slot's cycle session (cooked there) or from an earlier batch with
   unassigned portions that is still good: within its fridge life, or

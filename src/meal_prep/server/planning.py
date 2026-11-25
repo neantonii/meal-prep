@@ -18,7 +18,6 @@ from collections import Counter
 from meal_prep.dtos.log import TakeoutEntryDTO
 from meal_prep.enums import Mealtime
 from meal_prep.models.library import Library
-from meal_prep.planner.archetypes import STANDARD
 from meal_prep.planner.plan import TAKEOUT, Batch, Pin, Problem, Slot
 from meal_prep.planner.solver import NoPlanError, plan
 from meal_prep.services import prep
@@ -33,7 +32,7 @@ def first_plan_day(today: datetime.date) -> datetime.date:
     return prep.default_session_dates(today, today + 6 * _ONE_DAY)[0]
 
 
-def plan_problem(diary: prep.Diary, policy: prep.Policy) -> Problem:
+def plan_problem(diary: prep.Diary, policy: prep.Policy, library: Library) -> Problem:
     """The planner's view of the diary for the week ahead."""
     start = first_plan_day(policy.today)
     end = start + (HORIZON_DAYS - 1) * _ONE_DAY
@@ -104,7 +103,7 @@ def plan_problem(diary: prep.Diary, policy: prep.Policy) -> Problem:
         pins=tuple(pins),
         batches=tuple(batches),
         sessions=tuple(sorted(cookable)),
-        archetypes=dict(STANDARD),
+        archetypes=dict(library.archetypes),
         truncated=frozenset(s for s in cookable if prep.next_session_day(s) > end),
     )
 
@@ -113,7 +112,7 @@ def plan_week_ahead(
     diary: prep.Diary, policy: prep.Policy, library: Library
 ) -> prep.Change:
     """Plan the week ahead and write what it adds, flagged ``planned``."""
-    problem = plan_problem(diary, policy)
+    problem = plan_problem(diary, policy, library)
     try:
         result = plan(list(library.recipes.values()), problem)
     except NoPlanError as e:

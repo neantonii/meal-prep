@@ -19,7 +19,6 @@ from meal_prep.adapters.units import load_units
 from meal_prep.enums import Mealtime
 from meal_prep.library import load_library
 from meal_prep.models.library import Library
-from meal_prep.planner.archetypes import STANDARD
 from meal_prep.planner.plan import Problem, Slot
 from meal_prep.planner.solver import plan
 from meal_prep.services.ingredients import prepare_catalog
@@ -140,7 +139,7 @@ def test_plan_a_week_from_the_library(library: Library):
         pins=(),
         batches=(),
         sessions=(thursday,),
-        archetypes=dict(STANDARD),
+        archetypes=dict(library.archetypes),
     )
     result = plan(list(library.recipes.values()), problem)
     filled = {(p.date, p.mealtime) for p in result.placements}

@@ -1,8 +1,8 @@
 """The meal planner (``docs/planner.md``).
 
-``meal_prep.planner.plan`` holds the plain input and output values,
-``meal_prep.planner.archetypes`` the standard archetypes per mealtime, and
-``meal_prep.planner.solver`` (the only module that imports OR-Tools) builds
+``meal_prep.planner.plan`` holds the plain input and output values (the
+archetypes per mealtime come from ``data/archetypes.yaml`` through the
+``Library``), and ``meal_prep.planner.solver`` (the only module that imports OR-Tools) builds
 and solves the model. Writing a plan into the diary is the services' job.
 """
 
