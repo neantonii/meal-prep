@@ -2,7 +2,8 @@
 
 ``load_library`` is the composition root between the loading machinery
 (adapters → DTOs → services) and everything that consumes the domain. It reads
-the authored files, enriches ingredients, recipes and meals, and returns one
+the authored files, enriches ingredients, recipes and meals, resolves
+the meal archetypes, and returns one
 frozen ``Library`` of models. Consumers never see DTOs or call services.
 
 All locations are explicit: nothing is resolved against the working directory.
@@ -13,6 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 from types import MappingProxyType
 
+from meal_prep.adapters.archetypes import load_archetypes
 from meal_prep.adapters.equipment import load_equipment
 from meal_prep.adapters.ingredients import load_all_ingredients
 from meal_prep.adapters.meals import load_all_meals
@@ -20,6 +22,7 @@ from meal_prep.adapters.recipes import load_all_recipes
 from meal_prep.adapters.units import load_units
 from meal_prep.models.library import Library
 from meal_prep.models.meal import Meal
+from meal_prep.services.archetypes import prepare_archetypes
 from meal_prep.services.ingredients import prepare_catalog
 from meal_prep.services.meals import prepare_meal
 from meal_prep.services.recipes import prepare_recipe
@@ -33,7 +36,8 @@ def load_library(
     """Load, validate and enrich the whole workspace into a frozen ``Library``.
 
     Args:
-        data_dir: Holds ``units.yaml``, ``equipment.yaml`` and ``ingredients/``.
+        data_dir: Holds ``units.yaml``, ``equipment.yaml``, ``archetypes.yaml``
+            and ``ingredients/``.
         recipes_dir: Holds ``<category>/<slug>.cook`` recipe files.
         meals_dir: Holds authored meal YAML files; ``None`` means no meals.
 
@@ -58,8 +62,13 @@ def load_library(
             for meal_id, dto in load_all_meals(Path(meals_dir)).items()
         }
 
+    archetypes = prepare_archetypes(
+        load_archetypes(data_path / "archetypes.yaml"), recipes
+    )
+
     return Library(
         ingredients=MappingProxyType(ingredients),
         recipes=MappingProxyType(recipes),
         meals=MappingProxyType(meals),
+        archetypes=archetypes,
     )

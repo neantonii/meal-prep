@@ -1,9 +1,12 @@
 # Planner
 
-Status: design. Building blocks exist (the quadratic helper,
-`planner/quadratic.py`); the app integration below is not built. The
-model and the terms were tried in a sandbox (branch
-`sandbox/session-optimizer`, kept for reference only). The meal
+Status: built. The first version (#200) had hard templates; the model below
+replaces it: existing meals are pins, the objective is a sum of named
+terms, and each slot chooses an archetype ("Existing items are pins",
+"Terms", "Archetypes"). "As built" lists where the code differs from the
+design for now. The terms were
+first tried in a sandbox (branch `sandbox/session-optimizer`, reference
+only). The meal
 requirements themselves (what a breakfast is, the kcal target, pairing
 rules) are in `src/meal_prep/planner/requirements.md`.
 
@@ -23,8 +26,11 @@ batch is exactly its portions, and leftovers go to the unassigned slot.
 - **Plan** (one button, on the week page) plans the **week ahead**: every
   empty slot from the next planned session's cycle through the horizon
   (below). It writes all of it: sessions with batch counts, meals on days,
-  leftover portions unassigned. Slots that already hold something (manual
-  meals, takeout, accepted meals) are left alone and count as fixed.
+  leftover portions unassigned. What is already there (manual meals,
+  takeout, accepted meals) stays and is planned around: a half-filled meal
+  gets completed (see "Existing items are pins"). The first version left
+  any slot that held something alone, so a lunch with only a carb stayed
+  that way.
 - **Planned meals are flagged.** Every meal the planner creates, on a day or
   unassigned, carries `planned: true` (an optional entry field; existing
   files load unchanged). The week page shows them with a distinct style.
@@ -45,22 +51,189 @@ about 225 MB).
 
 ## The model
 
-### Slots and templates
+### Existing items are pins
 
-Every mealtime of every day in the horizon is a slot. A **template** per
-mealtime says what a slot holds (requirements B1/B2, L1, D1, S1):
+One model, built the same way whatever already exists. Existing items never
+change how a constraint or term is written: they only fix variables.
 
-- **roles:** each filled by exactly one recipe from a category or a list
-  (lunch: protein + carb + cooked veg);
-- **presets:** alternatively one fixed set of recipes eaten whole (the two
-  breakfasts);
-- **alternatives:** a whole other shape (lunch or dinner: one one-dish
-  recipe instead of the three roles);
-- **extras:** optional additions (snacks: any other snack; the escape
-  hatch).
+- **Variables.** `x[slot, recipe, session]`: this recipe, a portion of this
+  session's batch, is in this slot. `b[session, recipe]`: batches cooked.
+  Slots cover the horizon and the history days the terms reach back to.
+  Candidate sessions for a slot: its cycle session and any session with
+  stock of the recipe (unassigned portions, older batches), so a frozen or
+  older portion is representable.
+- **Pins.** A meal on a day fixes its `x = 1`. A cooked session fixes
+  `b = its batches`; a planned session keeps at least its manual batches
+  (`b ≥`, open question). History days are fully pinned.
+- **Hard constraints are only what the diary already guarantees**, so pins
+  can never make the model infeasible: a portion is eaten on or after its
+  session's date; meals from a batch (plus binned portions) never exceed
+  `b × servings`; cooked batches are fixed. Unassigned portions are
+  capacity not yet placed.
+- **Everything else is soft**, including the templates and "once a day".
+  Rejected: hard templates with constraints dropped locally where pins
+  break them (fragile, and every new rule would need its own exceptions).
+- **Write-back is the difference:** new meals are the `x = 1` that were not
+  pinned; new batches are `b` minus what existed.
+- **History** enters at two scales. Short reach (next-day repeats, rolling
+  kcal): the last few logged days are slots with every `x` pinned, the
+  terms run over them unchanged, and presolve turns them into constants.
+  Long reach (frequency over weeks): precomputed per-recipe counts, not
+  slot variables, so a month of history does not grow the model.
 
-Nothing else goes in a slot. Templates start strict (hard rules) and can
-be softened later into penalties for leaving the pattern.
+### Terms: the extension point
+
+The objective is a sum of named **terms**. A term reads the shared
+variables and adds its own: `build(ctx) -> points expression`, plus a name
+for the points breakdown. The model builds the shared variables once
+(`x`, `b`, the archetype choice per slot) and each term contributes;
+adding a term is one class and changes nothing else. Pins never reach a
+term: they only fix variables.
+
+Two shapes cover the terms so far (see "Point system"): an **amount**
+(`weight × ((x − target) / tolerance)²`, with the quadratic helper) and an
+**event** (`weight × count`).
+
+### Archetypes
+
+What a meal looks like is decided per slot by an **archetype**: an explicit
+choice variable `archetype[slot, a]`, exactly one per slot, among the
+archetypes its mealtime allows. The solver picks the archetype and the
+dishes; the slot pays for how badly its dishes fit the chosen archetype.
+Nothing is enforced, so pinned contents never conflict: at worst the slot
+pays a misfit. Rice every day is a possible plan; it just costs a lot.
+
+Because the choice is a variable, later terms can act on it: per-day
+preferences (one-dish on Sundays), frequency ("one-dish at most twice a
+week"), diversity of archetypes over the week.
+
+**Class shape** (kept shallow; subclass only for new behaviour, never for
+new data):
+
+```
+Term (protocol)              build(ctx) -> points, name
+└── Archetype (protocol)     fit(ctx, slot) -> points if chosen
+    └── RoleArchetype        roles with target counts and penalties
+        ├── Split            3 roles, one dish each (protein, carb, veg)
+        ├── Single           1 role: one unit from a pool
+        │   └── Bundle       Single whose pool is one fixed set
+        └── (later) flexible kinds, e.g. 2-3 roles, optional extras
+```
+
+- **`RoleArchetype`** does the work. A role has a **pool** (recipes or
+  bundles), a **target count range** (exactly 1; 0-2 for extras) and
+  **missing / extra weights**. Fit = weighted shortfall and excess per role,
+  plus a cost for anything in the slot no role takes. Linear: the
+  shortfall and excess are counted only when the archetype is chosen.
+- **Strict vs flexible is a weight, not a class.** A breakfast bundle has
+  high missing and extra weights; a plate moderate ones, so the solver can
+  leave the pattern when it really pays. "Hard" is a very large weight; no
+  archetype is a hard constraint.
+- **Pool units can be bundles**: a set of recipes eaten together is one
+  unit (a breakfast set, apple + cottage cheese). Half a bundle pays its
+  missing items. Bundles are authored data (the unused `Meal` bundles,
+  `meals/*.yaml`, revived for this; `docs/spikes/meal-composition.md`).
+- **Extensions add named terms on top of the fit**, e.g. a Split with
+  pairing rules (requirement P1, rice-stick noodles only with minced meat:
+  a penalty on that protein-carb pair), or a balanced-plate nutrient term.
+- **Preferences on units** use the same machinery: oats on Mon / Wed / Fri
+  (B1) is a per-weekday cost on one pool unit.
+- **Archetype base cost**: plates slightly preferred over one-dish, etc.
+
+**Configuration** (data, not code): which archetypes each mealtime allows,
+with their pools and weights. Pools that differ by mealtime (cooked veg at
+lunch, salad at dinner) are configuration, not subclasses.
+
+```yaml
+archetypes:
+  lunch:
+    - split:  {protein: modular_protein, carb: modular_carb, veg: modular_cooked_veg}
+    - single: {pool: one_dish, base_cost: 0.5}
+  dinner:
+    - split:  {protein: modular_protein, carb: modular_carb, veg: fresh_salad_veg}
+    - single: {pool: one_dish, base_cost: 0.5}
+  breakfast:
+    - single: {pool: [oats-set, eggs-set, sausage-set], strict: true}
+  snacks:
+    - bundle: apple-cottage
+```
+
+Takeout needs an archetype too, or the planner would "complete" a takeout
+dinner with a plate around it: **eat out**, a Single whose pool is any
+takeout entry, allowed at lunch and dinner. The planner never picks it for
+an empty slot (takeout can't be planned); it matches pinned takeout at no
+cost.
+
+Starting weights (points; a leftover portion and a next-day repeat are 1):
+
+| Archetype role | missing | extra |
+|---|---|---|
+| Split: protein, carb | 5 | 3 |
+| Split: veg | 3 | 1 |
+| Single: one-dish | 5 | 3 |
+| Bundle item (breakfast, strict) | 5 | 5 |
+| Snack bundle item | 1 | 0.5 |
+| Anything no role takes | – | 1 |
+
+### Where the first version's rules go
+
+| First version | In this model |
+|---|---|
+| Hard template per empty slot (exactly one option, its roles) | `archetype[slot, a]` + `RoleArchetype` fit (soft) |
+| Breakfast presets | Single over breakfast bundles, strict weights |
+| Lunch / dinner "plate" and "one dish" options | Split and Single archetypes, per-mealtime pools |
+| Snacks: fixed pair + any other snack | Bundle apple + cottage cheese; extras later |
+| Slots holding anything skipped | gone: their meals are pins, the slot is completed or pays a misfit |
+| `eaten` set (once-a-day, repeats) | gone: pinned `x`, the terms read all `x` alike |
+| Once a day (hard) | event term, 5 points per extra use in a day |
+| Next-day repeat (1 point, special-cased for fixed days) | event term over all `x`, history days included |
+| Leftovers (1 point per portion, planned batches only) | event term over every batch, manual ones included |
+| `uses ≤ batches × servings` | hard, unchanged (diary invariant), with binned and unassigned portions counted |
+| Meal on or after its session's date | hard, unchanged (diary invariant) |
+| Truncated last session (leftovers not charged) | a parameter of the leftover term |
+| Session of a meal = its cycle day | session is a variable index; candidates: cycle session + sessions with stock |
+| Points per term in the plan | one name per term, the breakdown is automatic |
+| Deterministic solve, time limit | unchanged |
+
+### As built
+
+- **Archetypes are data**, `data/archetypes.yaml`, loaded into the
+  `Library`. A role's pool is recipe categories and/or named recipes.
+  Groupings categories can't express live only there, never on recipes
+  ("oats breakfast" = any overnight oats + boiled eggs + flat white; "hot
+  breakfast" = fried eggs, the sausage skillet or egg muffins + latte;
+  snacks: apple + cottage cheese bowl, or the clementine bowl). A new
+  breakfast or snack joins a named pool only when added there. Loading
+  refuses unknown recipes, a role no recipe fits, and a recipe fitting two
+  roles of one archetype.
+- **No bundles yet.** Breakfasts and the snack pair are Splits. Bundles
+  (a set eaten whole as one pool unit) come when a meal needs them.
+- **Unassigned portions are stock.** A planned dish may come from its
+  slot's cycle session (cooked there) or from an earlier batch with
+  unassigned portions that is still good: within its fridge life, or
+  freezer-friendly. The write-back moves those portions onto days,
+  flagged `planned`. New batches are only cooked in planned sessions.
+- **Planned batches are counted on the recipe line** (`planned_batches`
+  on a session item: how many of its `batches` the plan added and nobody
+  has accepted). Meals carry only `planned`. Clear plans takes off the
+  planned batches of open sessions (keeping what manual meals need),
+  sends every planned meal from today on back to Unassigned, and leaves
+  past days alone. A cooked session keeps its batches (a fact). Accept
+  clears both flags; removing a batch takes a planned one first.
+- **Additions never overfill a role**: what the plan adds under the chosen
+  archetype fits in the room the pins leave (a hard limit on additions
+  only, never on pins), and it only adds dishes the chosen archetype
+  takes. Shortfall is linear (`short ≥ target × chosen − count`), pinned
+  excess and pinned unknown dishes are a constant × the choice. This keeps
+  the bound tight: a 7-day plan is proven optimal in 1-3 s (a big-M
+  version timed out at 10 s with poor plans).
+- **A session the horizon cuts off** pays 1% of the leftover points, so
+  its batches stay just enough (with no charge at all the solver cooked
+  arbitrary batches into Unassigned).
+- **History**: the day before the horizon and the start day's meals from
+  the previous cycle are fully pinned slots.
+- OR-Tools note: a variable's `proto.domain[-1]` does not index from the
+  end; bounds are read through a helper.
 
 ### Sessions and batches
 
@@ -84,15 +257,6 @@ Rejected: a horizon in whole sessions (the last day comes out half
 planned), and averaging kcal over shifted "dinner-to-lunch" days (every
 per-day rule would have to pick a kind of day).
 
-### Fixed inputs
-
-- Meals already on days (manual, takeout, accepted) count as fixed: their
-  kcal enter the day and window sums, their recipes enter the repeat
-  terms.
-- Days before the horizon (logged history) count as fixed numbers in the
-  rolling windows and repeat terms.
-- Unassigned portions are free stock (planned use: later).
-
 ## Point system
 
 Every soft term is in **points**, so unlike terms can be weighed against
@@ -109,8 +273,9 @@ reports its points per term, so a strange plan can be explained.
 
 | Term | Shape | Parameters | Status |
 |---|---|---|---|
-| Templates | hard | per mealtime | first version |
-| No recipe twice in a day | hard | | first version |
+| Archetype fit | event | per role (Archetypes) | next (hard templates in the first version) |
+| Same recipe twice in a day | event | 5 points | next (hard in the first version) |
+| Archetype preferences | event | per day / frequency | later |
 | Leftover portion | event | 1 point each | first version |
 | Repeat on the next day | event | 1 point each | first version |
 | Daily kcal | amount | 2100, tolerance 100, hard 0–4000 | next |
@@ -164,22 +329,33 @@ Notes per term:
 
 ## Order of work
 
-1. **First version:** templates, the planned flag, Plan / Accept / Clear
-   plans, leftovers and next-day repeats, written over 7 days. Retire the
-   old `plan_week` and its report (#103, L5).
-2. Kcal terms, then session repeats.
-3. A points breakdown in the UI and a config file in the diary folder, so
+1. **First version** (done, #200): hard templates, the planned flag,
+   Plan / Accept / Clear plans, leftovers and next-day repeats over 7 days;
+   the old `plan_week` and its report retired.
+2. **Pins, terms and archetypes:** the model above. Half-filled meals get
+   completed, existing batches and unassigned stock count, history is
+   pinned slots, archetypes are chosen per slot and scored.
+3. Kcal terms, then session repeats.
+4. A points breakdown in the UI and a config file in the diary folder, so
    weights can be tuned without a deploy.
-4. Long-run frequency (with the `added` field), then freshness and spread
+5. Long-run frequency (with the `added` field), then freshness and spread
    as real plans show the need.
 
 ## Open questions
 
-1. Frequency shares: equal per role to start; which recipes get more or
+1. Unassigned stock: may the planner put existing unassigned portions on
+   days (as planned meals)? Proposed: yes; that is what the slot is for
+   (`docs/freezer.md`).
+2. Planned sessions with manual batches: `b ≥ yours` (the plan may add
+   batches of a recipe you batched) or `b = yours`? Proposed: `≥`.
+3. How far back history reaches per term (a day for repeats, the window
+   for rolling kcal, weeks for frequency).
+4. Frequency shares: equal per role to start; which recipes get more or
    less?
-2. Made-fresh recipes (#145): until the recipe property exists, a list in
+5. Made-fresh recipes (#145): until the recipe property exists, a list in
    the config.
-3. Meal composition (`docs/spikes/meal-composition.md`): the templates here
-   are option C of the spike in practice.
-4. Should accepted or manual meals ever be moved by the planner (soft pins)?
-   Today: never.
+6. Meal composition (`docs/spikes/meal-composition.md`): archetypes with
+   bundle pools answer it (option C); the spike can be closed with this
+   design.
+7. Should accepted or manual meals ever be moved by the planner (soft
+   pins)? Today: never.

@@ -98,6 +98,13 @@ class SessionItemDTO(BaseModel):
     freezer_friendly: bool | None = Field(
         default=None, description="Whether the cooked dish can be frozen"
     )
+    # Added for the planner (docs/planner.md); absent in older files.
+    planned_batches: int | None = Field(
+        default=None,
+        ge=1,
+        description="How many of the batches the planner added and nobody has "
+        "accepted yet; absent when none",
+    )
 
     @field_validator("recipe")
     @classmethod

@@ -112,17 +112,100 @@ def test_clear_plans_keeps_manual_meals_and_what_they_need():
     )
     cleared = _apply(diary, prep.clear_plans(diary, PLAN))
     (thursday,) = cleared.sessions.values()
-    # 4 manual portions + 1 adopted = 5 meals: 2 batches of 4, 3 refilled.
-    assert [(i.recipe, i.batches) for i in thursday.items] == [("chicken", 2)]
+    # The plan ate the 3 unassigned manual portions first; one was adopted,
+    # the other 2 go back. The plan's own batch goes: 4 meals, 1 batch.
+    assert [(i.recipe, i.batches) for i in thursday.items] == [("chicken", 1)]
     assert {m.id for m in _day_meals(cleared)} == {manual.id, planned.id}
-    assert sum(1 for m in cleared.unassigned if m.recipe == "chicken") == 6
+    assert sum(1 for m in cleared.unassigned if m.recipe == "chicken") == 2
     assert not any(m.planned for m in cleared.unassigned)
+    assert thursday.items[0].planned_batches is None
 
 
-def test_clear_plans_leaves_cooked_sessions_alone():
+def test_a_plan_records_its_batches_on_the_recipe_line():
+    diary, _ = _add(EMPTY, THU, CHICKEN, meal=DINNER)  # 1 batch by hand
+    diary = _plan(diary)
+    thursday = next(s for s in diary.sessions.values() if s.date == THU)
+    (line,) = thursday.items
+    assert (line.batches, line.planned_batches) == (2, 1)
+    # Accepting makes the batch yours.
+    accepted = _apply(diary, prep.accept_session(diary, PLAN, thursday.id))
+    (line,) = accepted.sessions[thursday.id].items
+    assert (line.batches, line.planned_batches) == (2, None)
+
+
+def test_removing_a_batch_takes_back_a_planned_one_first():
+    diary = _plan()  # Thursday: 1 planned chicken batch, 3 eaten, 1 unassigned
+    thursday = next(s for s in diary.sessions.values() if s.date == THU)
+    # Two adds by hand: 2 batches, 1 of them planned.
+    diary, _ = _add(diary, THU, CHICKEN, session=thursday.id, meal=DINNER)
+    (line,) = diary.sessions[thursday.id].items
+    assert (line.batches, line.planned_batches) == (2, 1)
+    # Free the planned portions, then remove a batch: the planned one goes.
+    for meal in [m for m in _day_meals(diary) if m.planned]:
+        diary = _apply(diary, prep.move_meal(diary, PLAN, meal.id, "unassigned"))
+    diary = _apply(diary, prep.remove_batch(diary, PLAN, thursday.id, "chicken"))
+    (line,) = diary.sessions[thursday.id].items
+    assert (line.batches, line.planned_batches) == (1, None)
+
+
+def test_a_plan_uses_unassigned_portions_first_and_clear_puts_them_back():
+    diary, _ = _add(EMPTY, THU, CHICKEN, meal=DINNER)  # 1 on Thu, 3 unassigned
+    stock = {m.id for m in diary.unassigned}
+    change = prep.apply_plan(
+        diary,
+        PLAN,
+        RECIPES,
+        cooks=[],
+        meals=[
+            PlannedMeal(FRI, LUNCH, "chicken", THU),
+            PlannedMeal(SAT, LUNCH, "chicken", THU),
+        ],
+    )
+    planned = _apply(diary, change)
+    placed = [m for m in _day_meals(planned) if m.planned]
+    assert {m.id for m in placed} <= stock  # existing portions, no new batch
+    assert all(m.planned for m in placed)
+    (thursday,) = planned.sessions.values()
+    assert thursday.items[0].batches == 1
+    assert len(planned.unassigned) == 1
+
+    cleared = _apply(planned, prep.clear_plans(planned, PLAN))
+    assert {m.id for m in cleared.unassigned} == stock
+    assert not any(m.planned for m in cleared.unassigned)
+    assert cleared.sessions == planned.sessions
+
+
+def test_clear_puts_back_portions_of_cooked_sessions_too():
+    diary, _ = _add(EMPTY, THU, CHICKEN, meal=DINNER)
+    change = prep.apply_plan(
+        diary, PLAN, RECIPES, cooks=[], meals=[PlannedMeal(SAT, LUNCH, "chicken", THU)]
+    )
+    planned = _apply(diary, change)
+    later = prep.Policy(today=FRI)  # Thursday's session is cooked by then
+    cleared = _apply(planned, prep.clear_plans(planned, later))
+    assert len(cleared.unassigned) == 3
+    assert not any(m.planned for m in _day_meals(cleared))
+
+
+def test_clear_plans_keeps_cooked_batches_and_past_days():
     diary = _plan()
-    later = prep.Policy(today=FRI)  # both sessions are cooked by then
-    assert prep.clear_plans(diary, later) == prep.Change()
+    later = prep.Policy(today=FRI)  # both sessions cooked; Thursday is past
+    cleared = _apply(diary, prep.clear_plans(diary, later))
+    # Cooked batches are facts: no session loses a batch.
+    batches = {
+        (s.date, i.recipe): (i.batches, i.planned_batches)
+        for s in cleared.sessions.values()
+        for i in s.items
+    }
+    assert batches == {(THU, "chicken"): (1, None), (SUN, "egg"): (1, None)}
+    # Thursday's dinner is history and stays; Friday on goes back.
+    days = {
+        (link.date, link.entry.recipe)
+        for link in prep.linked_entries(cleared.weeks.values())
+    }
+    assert (THU, "chicken") in days
+    assert (FRI, "chicken") not in days
+    assert sum(1 for m in cleared.unassigned if m.recipe == "chicken") == 3
 
 
 def test_accept_makes_a_sessions_meals_manual():
