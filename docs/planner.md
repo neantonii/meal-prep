@@ -225,6 +225,20 @@ Starting weights (points; a leftover portion and a next-day repeat are 1):
 - OR-Tools note: a variable's `proto.domain[-1]` does not index from the
   end; bounds are read through a helper.
 
+### Scoring and Explain
+
+The same model scores any week ahead, the planner's meals and yours alike:
+every dish is pinned, no batch changes, each meal is read as its closest
+archetype, and the hard rules are checked and reported instead of
+enforced (so an inconsistent file still gets a bill). Every term labels
+its points with a place (a meal, a day or a session) and a reason, so
+the result is a bill: total, points per term, and lines such as "Sat
+dinner · plate: 1 extra protein · 3". An empty meal is not planned yet and
+costs nothing when scoring. `GET /api/plan/explain` serves it; the week
+page's **Explain** toggle shows the bill and tags each meal with its
+archetype and points. Next: "why not something else?" per meal (free one
+slot, re-solve, compare) and what-if with a pinned alternative.
+
 ### Sessions and batches
 
 Sessions are on the preset days (Sun, Tue, Thu). A meal belongs to the

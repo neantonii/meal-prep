@@ -20,6 +20,8 @@ interface Props {
   onAddOther: (date: string, meal: Mealtime) => void;
   /** Click on a takeout meal: correct it. */
   onEditOther: (entry: TakeoutEntry, date: string, meal: Mealtime) => void;
+  /** With Explain on: each meal's archetype and points, by "date|mealtime". */
+  scores?: Record<string, { archetype: string; points: number }>;
 }
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -92,14 +94,22 @@ function Slot({ date, meal, entries, settled, ...rest }: SlotProps) {
     (target.kind === "slot" || target.kind === "entry") &&
     target.date === date &&
     target.meal === meal;
+  const score = rest.scores?.[`${date}|${meal}`];
   return (
     <td
       ref={setNodeRef}
-      className={`slot-cell${hovered ? " dragover" : ""}${settled ? " settled" : ""}`}
+      className={`slot-cell${hovered ? " dragover" : ""}${settled ? " settled" : ""}${score && score.points > 0 ? " costly" : ""}`}
+      style={score ? ({ "--heat": Math.min(score.points / 8, 1) } as React.CSSProperties) : undefined}
       title={settled ? "Settled: its prep cycle ended (Admin can still change it)" : undefined}
     >
       <SortableContext id={id} items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
         <div className="slot">
+          {score && (
+            <span className={`slot-score${score.points > 0 ? " cost" : ""}`}>
+              {score.archetype}
+              {score.points > 0 ? ` · ${score.points} pts` : ""}
+            </span>
+          )}
           {entries.length === 0 && settled ? (
             <span className="empty-slot">—</span>
           ) : (

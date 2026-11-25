@@ -19,8 +19,8 @@ from meal_prep.dtos.log import TakeoutEntryDTO
 from meal_prep.enums import Mealtime
 from meal_prep.models.library import Library
 from meal_prep.planner.archetypes import STANDARD
-from meal_prep.planner.plan import TAKEOUT, Batch, Pin, Problem, Slot
-from meal_prep.planner.solver import NoPlanError, plan
+from meal_prep.planner.plan import TAKEOUT, Batch, Pin, Plan, Problem, Slot
+from meal_prep.planner.solver import NoPlanError, plan, score
 from meal_prep.services import prep
 
 HORIZON_DAYS = 7
@@ -126,3 +126,16 @@ def plan_week_ahead(
         for p in result.placements
     ]
     return prep.apply_plan(diary, policy, library.recipes, cooks, meals)
+
+
+def explain_week_ahead(
+    diary: prep.Diary, policy: prep.Policy, library: Library
+) -> Plan:
+    """The bill of the week ahead as it stands (the planner's meals and
+    yours alike): points per term and line, each meal's archetype, and any
+    broken hard rule. Nothing is changed."""
+    problem = plan_problem(diary, policy)
+    try:
+        return score(list(library.recipes.values()), problem)
+    except NoPlanError as e:
+        raise prep.RuleError(str(e)) from e

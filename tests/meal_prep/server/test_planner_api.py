@@ -144,3 +144,23 @@ def test_session_rows_tell_planned_from_manual(client: TestClient):
         planned_rows
         and sum(i["planned"] for i in thursday["items"]) == thursday["planned"]
     )
+
+
+def test_explain_scores_the_week_ahead_whoever_placed_it(client: TestClient):
+    # A hand-made lunch missing its veg, then the planner's week.
+    _ok(_add(client, "2026-11-06", CHICKEN, mealtime="lunch"))
+    _ok(_add(client, "2026-11-06", "boiled-basmati-rice", mealtime="lunch"))
+    bill = _ok(client.get("/api/plan/explain"))
+    assert bill["start"] == "2026-11-05" and bill["problems"] == []
+    (friday,) = [m for m in bill["meals"] if m["date"] == "2026-11-06"]
+    assert (friday["mealtime"], friday["archetype"], friday["points"]) == (
+        "lunch",
+        "plate",
+        3,
+    )
+    assert any(line["reason"] == "plate: veg missing" for line in bill["lines"])
+
+    _plan(client)
+    planned = _ok(client.get("/api/plan/explain"))
+    assert len(planned["meals"]) > 20  # every meal of the week ahead is read
+    assert planned["total"] == sum(t["points"] for t in planned["terms"])
