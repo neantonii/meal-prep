@@ -97,9 +97,7 @@ _PLATE = split(
     Role("veg", frozenset({V}), missing=3, extra=1),
 )
 _ONE_DISH = single("one dish", Role("dish", frozenset({D}), missing=5, extra=3), 0.5)
-_EAT_OUT = Archetype(
-    "eat out", (Role("takeout", recipe_ids=frozenset({TAKEOUT})),), plannable=False
-)
+_EAT_OUT = Archetype("eat out", (Role("takeout", takeout=True),), plannable=False)
 _LUNCHES = {LUNCH: (_PLATE, _ONE_DISH, _EAT_OUT)}
 
 _RECIPES = [

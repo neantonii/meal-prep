@@ -30,13 +30,14 @@ from typing import Protocol
 from ortools.sat.python import cp_model
 from ortools.sat.python.cp_model import LinearExpr
 
-from meal_prep.enums import Mealtime, RecipeCategory
+from meal_prep.enums import Mealtime
 from meal_prep.models.recipe import Recipe
 from meal_prep.planner.plan import (
     TAKEOUT,
     Archetype,
     Batch,
     Cook,
+    Dish,
     Placement,
     Plan,
     Problem,
@@ -64,7 +65,7 @@ class Context:
 
     model: cp_model.CpModel
     problem: Problem
-    category: Mapping[str, RecipeCategory | None]
+    dish: Mapping[str, Dish]  # recipe id -> what roles look at
     # (date, mealtime) -> key -> portions in the slot
     x: dict[tuple[datetime.date, Mealtime], dict[_Key, cp_model.IntVar]]
     pinned: dict[tuple[datetime.date, Mealtime], Counter[_Key]]
@@ -176,13 +177,13 @@ def _build(recipes: Mapping[str, Recipe], problem: Problem) -> Context:
     """The shared variables: dishes per slot (pins as lower bounds, history
     fixed), batches per session and recipe with their portion limit."""
     model = cp_model.CpModel()
-    category: dict[str, RecipeCategory | None] = {
-        rid: r.category for rid, r in recipes.items()
+    dish: dict[str, Dish] = {
+        rid: Dish(r.category, r.meal_role) for rid, r in recipes.items()
     }
     pinned: dict[tuple[datetime.date, Mealtime], Counter[_Key]] = defaultdict(Counter)
     for pin in problem.pins:
         pinned[(pin.date, pin.mealtime)][(pin.recipe_id, pin.session)] += 1
-        category.setdefault(pin.recipe_id, None)
+        dish.setdefault(pin.recipe_id, Dish())
 
     existing = {(b.session, b.recipe_id): b for b in problem.batches}
     sessions = set(problem.sessions)
@@ -206,8 +207,8 @@ def _build(recipes: Mapping[str, Recipe], problem: Problem) -> Context:
             if archetype.plannable
             for role in archetype.roles
         ]
-        for rid, recipe in recipes.items():
-            if not any(role.accepts(rid, recipe.category) for role in roles):
+        for rid in recipes:
+            if not any(role.accepts(rid, dish[rid]) for role in roles):
                 continue
             if slot.cycle in sessions:
                 found.add((rid, slot.cycle))
@@ -259,7 +260,7 @@ def _build(recipes: Mapping[str, Recipe], problem: Problem) -> Context:
     return Context(
         model=model,
         problem=problem,
-        category=category,
+        dish=dish,
         x=x,
         pinned=pinned,
         planned={(s.date, s.mealtime) for s in problem.slots},
@@ -314,9 +315,7 @@ class ArchetypeFit:
             ctx.archetype[key] = chosen
 
             def fits(rid: str, archetype: Archetype) -> bool:
-                return any(
-                    role.accepts(rid, ctx.category.get(rid)) for role in archetype.roles
-                )
+                return any(role.accepts(rid, ctx.dish[rid]) for role in archetype.roles)
 
             # What the plan adds must fit the chosen archetype.
             for k, var in dishes.items():
@@ -337,7 +336,7 @@ class ArchetypeFit:
                     members = {
                         k: var
                         for k, var in dishes.items()
-                        if role.accepts(k[0], ctx.category.get(k[0]))
+                        if role.accepts(k[0], ctx.dish[k[0]])
                     }
                     low, high = role.count
                     already = sum(pinned[k] for k in members)
@@ -375,7 +374,7 @@ def _fits_a_pin(
     archetype: Archetype, ctx: Context, key: tuple[datetime.date, Mealtime]
 ) -> bool:
     return any(
-        role.accepts(rid, ctx.category.get(rid))
+        role.accepts(rid, ctx.dish[rid])
         for (rid, _) in ctx.pinned[key]
         for role in archetype.roles
     )
@@ -385,7 +384,7 @@ def _check_pools(
     archetype: Archetype, dishes: Mapping[_Key, object], ctx: Context
 ) -> None:
     for rid in {k[0] for k in dishes}:
-        roles = [r for r in archetype.roles if r.accepts(rid, ctx.category.get(rid))]
+        roles = [r for r in archetype.roles if r.accepts(rid, ctx.dish[rid])]
         if len(roles) > 1:
             raise ValueError(
                 f"{rid} is in two roles of archetype '{archetype.name}': "

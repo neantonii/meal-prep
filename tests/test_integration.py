@@ -20,7 +20,7 @@ from meal_prep.enums import Mealtime
 from meal_prep.library import load_library
 from meal_prep.models.library import Library
 from meal_prep.planner.archetypes import STANDARD
-from meal_prep.planner.plan import Problem, Slot
+from meal_prep.planner.plan import Dish, Problem, Slot
 from meal_prep.planner.solver import plan
 from meal_prep.services.ingredients import prepare_catalog
 
@@ -146,3 +146,18 @@ def test_plan_a_week_from_the_library(library: Library):
     filled = {(p.date, p.mealtime) for p in result.placements}
     assert filled == {(s.date, s.mealtime) for s in slots}
     assert dict(result.points)["archetype fit"] < 3  # base costs at most
+
+
+def test_every_archetype_role_has_a_recipe(library: Library):
+    """Archetypes name categories and meal roles, never recipes: each role
+    must still find a recipe in the library (a typo or a retired role would
+    leave a part of a meal that can never be filled)."""
+    dishes = [Dish(r.category, r.meal_role) for r in library.recipes.values()]
+    for mealtime, archetypes in STANDARD.items():
+        for archetype in archetypes:
+            for role in archetype.roles:
+                if role.takeout:
+                    continue
+                assert any(role.accepts("", d) for d in dishes), (
+                    f"{mealtime} {archetype.name}: no recipe plays {role.name}"
+                )
